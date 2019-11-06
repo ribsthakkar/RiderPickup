@@ -1,0 +1,35 @@
+date,trip_id,trip_status,scrub_name,trip_pickup_time,scrub_trip_pickup_address,trip_dropoff_time,scrub_trip_dropoff_address,trip_los,trip_miles
+10/17/2019,01-116251-A,NEW,Samuel Vincent,0.552083,"4509 Springdale Rd, Austin, TX 78723",0.581250,"1030 Norwood Park Blvd , Austin , TX 78753",A,2
+10/17/2019,01-116251-B,NEW,Samuel Vincent,0.000000,"1030 Norwood Park Blvd , Austin , TX 78753",0.000000,"4509 Springdale Rd, Austin, TX 78723",A,2
+10/17/2019,01-116383-A,NEW,Giorgio Camacho,0.510417,"3908 Avenue B, Austin, TX 78751",0.539583,"835 N Pleasant Valley Rd , Austin , TX 78702",A,5
+10/17/2019,01-116383-B,NEW,Giorgio Camacho,0.583333,"835 N Pleasant Valley Rd , Austin , TX 78702",0.612500,"3908 Avenue B, Austin, TX 78751",A,5
+10/17/2019,01-12943-A,NEW,Billie-Jo Fraser,0.572917,"901 Trinity St, Austin, TX 78701",0.602083,"801 W 38th St , Austin , TX 78705",A,4
+10/17/2019,01-12943-B,NEW,Billie-Jo Fraser,0.000000,"801 W 38th St , Austin , TX 78705",0.000000,"901 Trinity St, Austin, TX 78701",A,4
+10/17/2019,01-19018-A,NEW,Rebekka Forbes,0.166667,"1500 Royston Ln, Round Rock, TX 78664",0.206250,"1801 E 51st St , Bldg . G , Austin , TX 78723",A,14
+10/17/2019,01-19018-B,NEW,Rebekka Forbes,0.000000,"1801 E 51st St , Bldg . G , Austin , TX 78723",0.000000,"1500 Royston Ln, Round Rock, TX 78664",A,14
+10/17/2019,01-2204-A,CANCELED,Rebekka Forbes,0.166667,"1500 Royston Ln, Round Rock, TX 78664",0.206250,"1801 E 51st St , Bldg . G , Austin , TX 78723",A,14
+10/17/2019,01-2204-B,CANCELED,Rebekka Forbes,0.000000,"1801 E 51st St , Bldg . G , Austin , TX 78723",0.000000,"1500 Royston Ln, Round Rock, TX 78664",A,14
+10/17/2019,01-35956-A,NEW,Jimi Herrera,0.364583,"1101 W New Hope Dr, Cedar Park, TX 78613",0.402778,"2800 S I H 35 , Austin , TX 78704-5700",W,4
+10/17/2019,01-35956-B,NEW,Jimi Herrera,0.562500,"2800 S I H 35 , Austin , TX 78704-5700",0.600694,"1101 W New Hope Dr, Cedar Park, TX 78613",W,3
+10/17/2019,01-36121-A,NEW,Dulcie Derrick,0.156250,"216 W 3rd St, Elgin, TX 78621",0.216667,"6114 S First St , Austin , TX 78745-4008",A,30
+10/17/2019,01-36121-B,NEW,Dulcie Derrick,0.437500,"6114 S First St , Austin , TX 78745-4008",0.497917,"216 W 3rd St, Elgin, TX 78621",A,30
+10/17/2019,01-36535-A,NEW,Harpreet Muir,0.270833,"3500 W Parmer Ln, Austin, TX 78727",0.309028,"1631 E 2nd St , Bldg . D , Austin , TX 78702",W,12
+10/17/2019,01-36535-B,NEW,Harpreet Muir,0.322917,"1631 E 2nd St , Bldg . D , Austin , TX 78702",0.371528,"3500 W Parmer Ln, Austin, TX 78727",W,12
+10/17/2019,01-36553-A,NEW,Yunus Cross,0.322917,"2211 E Martin Luther King Jr Blvd, Austin, TX 78702",0.361111,"10000 Metric Blvd , Austin , TX 78758",W,3
+10/17/2019,01-36553-B,NEW,Yunus Cross,0.541667,"10000 Metric Blvd , Austin , TX 78758",0.579861,"2211 E Martin Luther King Jr Blvd, Austin, TX 78702",W,3
+10/17/2019,01-37095-A,NEW,Mehdi Morrison,0.427083,"9507 Dessau Rd, Austin, TX 78754",0.456250,"1801 E 51st St , Apt . 100 , Bldg . G , Austin , TX 78723",A,5
+10/17/2019,01-37095-B,NEW,Mehdi Morrison,0.635417,"1801 E 51st St , Apt . 100 , Bldg . G , Austin , TX 78723",0.664583,"9507 Dessau Rd, Austin, TX 78754",A,5
+10/17/2019,01-37099-A,NEW,Jonny Miller,0.270833,"5500 Avenue G, Austin, TX 78751",0.309028,"1631 E 2nd St , Bldg . A , Austin , TX 78702",W,1
+10/17/2019,01-37099-B,NEW,Jonny Miller,0.343750,"1631 E 2nd St , Bldg . A , Austin , TX 78702",0.381944,"5500 Avenue G, Austin, TX 78751",W,1
+10/17/2019,01-37274-A,NEW,Moses Whitaker,0.239583,"606 W 15th St, Austin, TX 78701",0.268750,"1631 E 2nd St , Bldg . A C & D , Austin , TX 78702",A,2
+10/17/2019,01-37274-B,NEW,Moses Whitaker,0.281250,"1631 E 2nd St , Bldg . A C & D , Austin , TX 78702",0.310417,"606 W 15th St, Austin, TX 78701",A,2
+10/17/2019,01-37381-A,NEW,Momina Huerta,0.302083,"2121 Cypress Creek Road, Cedar Park, TX 78613",0.371528,"1110 W William Cannon Dr , Apt . 303 , Austin , TX 78745",W,28
+10/17/2019,01-37381-B,NEW,Momina Huerta,0.395833,"1110 W William Cannon Dr , Apt . 303 , Austin , TX 78745",0.434028,"2121 Cypress Creek Road, Cedar Park, TX 78613",W,27
+10/17/2019,01-37414-A,NEW,Jenna Kramer,0.166667,"9507 Dessau Rd, Austin, TX 78754",0.215278,"1701 W Ben White Blvd , Apt . 180 , Austin , TX 78704",W,16
+10/17/2019,01-37414-B,NEW,Jenna Kramer,0.406250,"1701 W Ben White Blvd , Apt . 180 , Austin , TX 78704",0.454861,"9507 Dessau Rd, Austin, TX 78754",W,15
+10/17/2019,01-5895-A,CANCELED,Cynthia Ibarra,0.322917,"1504 E 51st St, Austin, TX 78723",0.362500,"3706 S 1st St , Austin , TX 78704",A,11
+10/17/2019,01-5895-B,CANCELED,Cynthia Ibarra,0.000000,"3706 S 1st St , Austin , TX 78704",0.000000,"1504 E 51st St, Austin, TX 78723",A,12
+10/17/2019,01-73577-A,NEW,Terry Couch,0.395833,"1014 Gardner Rd, Austin, TX 78721",0.425000,"3100 Red River St , Austin , TX 78705",A,4
+10/17/2019,01-73577-B,NEW,Terry Couch,0.468750,"3100 Red River St , Austin , TX 78705",0.497917,"1014 Gardner Rd, Austin, TX 78721",A,4
+10/17/2019,01-92415-A,NEW,Dawid Conley,0.593750,"5801 Westminster Dr, Austin, TX 78723",0.622917,"7801 N Lamar Blvd , Apt . B174 , Austin , TX 78752",A,4
+10/17/2019,01-92415-B,NEW,Dawid Conley,0.625000,"7801 N Lamar Blvd , Apt . B174 , Austin , TX 78752",0.654167,"5801 Westminster Dr, Austin, TX 78723",A,4
