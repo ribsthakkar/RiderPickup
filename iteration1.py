@@ -1,10 +1,17 @@
 import pandas as pd
+from opencage.geocoder import OpenCageGeocode
+
 from Driver import Driver
 from Trip import Trip, TripType
 import pyOpt
+from pyOpt import pyALHSO
 
-
-exit(1)
+# geo_api = "78bdef6c2b254abaa78c55640925d3db"
+# # get lat,lon for l1 and l2
+# geolocator = OpenCageGeocode(geo_api)
+# l1loc = geolocator.geocode("2101 Rio Grande st Austin,TX")
+# print(l1loc[0]['geometry']['lat'])
+# exit(1)
 # Read input data
 trip_df = pd.read_csv("Trips.csv")
 driver_df = pd.read_csv("Drivers.csv")
@@ -17,9 +24,11 @@ locations = set()
 
 primary_trips = set()
 secondary_trips = set()
-all_trips = set()
+location_pair = set()
+inflow_trips = dict()
+outlfow_trips = dict()
 
-
+count = 0
 for index, row in trip_df.iterrows():
     if not row['trip_status'] == "CANCELLED":
         o = row['scrub_trip_pickup_address']
@@ -33,17 +42,47 @@ for index, row in trip_df.iterrows():
         cap = 1 if row['trip_los'] == 'A' else 1.5
         locations.add(o)
         locations.add(d)
-        primary_trips.add(Trip(o, d, cap, id, type, start, end))
+        t = Trip(o, d, cap, id, type, start, end)
+        primary_trips.add(t)
+        location_pair.add((o,d))
+        if o not in outlfow_trips:
+            outlfow_trips[o] = {t}
+        else:
+            outlfow_trips[o].add(t)
+        if d not in inflow_trips:
+            inflow_trips[d] = {t}
+        else:
+            inflow_trips[d].add(t)
+        count += 1
+        if count == 2:
+            break
 id = 1
 
 for index, row in driver_df.iterrows():
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
     drivers.add(Driver(row['Driver'], row['Address'], cap))
-    for location in locations:
-        secondary_trips.add(Trip(row['Address'], location, cap, id, TripType.INTER,0.0, 1.0))
-        secondary_trips.add(Trip(location, row['Address'], cap, id+1, TripType.INTER,0.0, 1.0))
     locations.add(row['Address'])
-    id += 2
+    # for location in locations:
+    #     t = Trip(row['Address'], location, cap, id, TripType.INTER,0.0, 1.0)
+    #     secondary_trips.add(t)
+    #     trip_dict[(row['Address'],location)] = t
+    #     t = Trip(location, row['Address'], cap, id+1, TripType.INTER,0.0, 1.0)
+    #     secondary_trips.add(t)
+    #     trip_dict[(location, row['Address'])] = t
+for o in locations:
+    for d in locations:
+        if o is not d and (o,d) not in location_pair:
+            t = Trip(o, d, 0, id, TripType.INTER, 0.0, 1.0)
+            if o not in outlfow_trips:
+                outlfow_trips[o] = {t}
+            else:
+                outlfow_trips[o].add(t)
+            if d not in inflow_trips:
+                inflow_trips[d] = {t}
+            else:
+                inflow_trips[d].add(t)
+            secondary_trips.add(t)
+            id += 1
 
 all_trips = []
 all_trips += primary_trips
@@ -51,6 +90,7 @@ all_trips += secondary_trips
 print("Number of primary trips ", len(primary_trips))
 print("Number of possible secondary trips", len(secondary_trips))
 print("Total Number of possible trips", len(all_trips))
+indices = {k: v for v, k in enumerate(all_trips)}
 
 # Formulate optimization problem
 """
@@ -66,13 +106,22 @@ def objfunc(x):
             total += trip.lp.time * x[i * len(all_trips) + j]
 
     constraints = []
-
-    # Each trip only has one driver
+    # Inflow = outflow for all locations except driver home
+    for loc in locations:
+        for i, d in enumerate(drivers):
+            total = 0.0
+            for intrip in inflow_trips[loc]:
+                total += x[i * len(all_trips) + indices[intrip]]
+            for otrip in outlfow_trips[loc]:
+                total += x[i * len(all_trips) + indices[otrip]]
+            constraints.append(total)
+            
+    # Each trip only has one driver if primary and at most one driver if not primary
     for j, trip in enumerate(all_trips):
         total = 0
         for i, driver in enumerate(drivers):
             total += x[i * len(all_trips) + j]
-        constraints.append(total)
+        constraints.append(total - 1)
 
     # Trips do not overlap for each driver
     for i, driver in enumerate(drivers):
@@ -99,35 +148,54 @@ def objfunc(x):
 
     return total, constraints, fail
 # Solve Optimization Problem
-opt_prob = pyOpt.Optimization('TP37 Constrained Problem',objfunc)
+for i, driver in enumerate(drivers):
+    for j, trip in enumerate(all_trips):
+        print("Driver i ", driver.name, " does trip ", j, " from ", trip.lp.o, " to ", trip.lp.d, " in ", trip.lp.time, " minutes")
+opt_prob = pyOpt.Optimization('Hospital Dropoff Problem',objfunc)
 opt_prob.addObj('Time Traveled')
+
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        opt_prob.addVar('y' + str(i) + str(j), 'i', lower=0, upper=1)
+        opt_prob.addVar('y' +'_'  + str(i) +'_' + str(j), 'i', lower=0, upper=1)
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        opt_prob.addVar('t' + str(i) + str(j), 'c', lower=0, upper=1)
+        opt_prob.addVar('t' +'_' + str(i) +'_' + str(j), 'c', lower=0, upper=1)
+#Inflow = outflow for all locations except driver home
+for loc in locations:
+    for i, d in enumerate(drivers):
+        opt_prob.addCon('flowinout' + '_' + str(i) + '_' + str(j), 'e')
+# Only one driver per trip
 for j, trip in enumerate(all_trips):
     total = 0
     if j < len(primary_trips):
-        opt_prob.addCon('primaryTrip' + str(j), 'e')
+        opt_prob.addCon('primaryTrip' +'_' + str(j), 'e')
     else:
-        opt_prob.addCon('secondaryTrip' + str(j), 'i')
+        opt_prob.addCon('secondaryTrip'+'_'  + str(j), 'i')
+
+#Trips can't overlap for a driver
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
         for k, trip2 in enumerate(all_trips):
             if trip is not trip2:
-                opt_prob.addCon('tripConflict' + str(i) + str(j) + str(k), 'i')
+                opt_prob.addCon('tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(k), 'i')
 # Wheelchair constraint
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        opt_prob.addCon('capacity'+str(i)+str(j), 'i')
+        opt_prob.addCon('capacity'+'_' +str(i)+'_' +str(j), 'i')
 
 # Pickup at most 15 mins before
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        opt_prob.addCon('pickup' + str(i) + str(j), 'i')
+        opt_prob.addCon('pickup' +'_' + str(i)+'_'  + str(j), 'i')
 # Dropoff by the required time
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        opt_prob.addCon('dropoff'+str(i) + str(j), 'i')
+        opt_prob.addCon('dropoff'+'_' +str(i)+'_'  + str(j), 'i')
+
+
+print(opt_prob)
+solvopt = pyALHSO.ALHSO()
+solvopt.setOption('fileout',0)
+sol = solvopt(opt_prob)
+print(opt_prob.solution(0))
+print(sol)
