@@ -16,7 +16,7 @@ class Trip:
         self.lp = LocationPair(o, d)
         self.space = space
         self.start = max(0.0, start)
-        self.end = end
+        self.end = 1.0 if end == 0 else end
 
 
 class LocationPair:
