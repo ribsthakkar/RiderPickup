@@ -1,21 +1,11 @@
 import pandas as pd
 from Driver import Driver
 from Trip import Trip, TripType
-import pyOpt
-from pyOpt import pyALHSO
-import numpy as np
-from scipy.optimize import minimize
 import cplex
 from docplex.cp.model import CpoModel
 from docplex.mp.model import Model
 
 
-# geo_api = "78bdef6c2b254abaa78c55640925d3db"
-# # get lat,lon for l1 and l2
-# geolocator = OpenCageGeocode(geo_api)
-# l1loc = geolocator.geocode("2101 Rio Grande st Austin,TX")
-# print(l1loc[0]['geometry']['lat'])
-# exit(1)
 # Read input data
 trip_df = pd.read_csv("Trips.csv")
 driver_df = pd.read_csv("Drivers.csv")
@@ -32,7 +22,7 @@ secondary_trips = set()
 location_pair = set()
 inflow_trips = dict()
 outlfow_trips = dict()
-
+last_trip = None
 count = 0
 for index, row in trip_df.iterrows():
     if not row['trip_status'] == "CANCELLED":
@@ -44,6 +34,8 @@ for index, row in trip_df.iterrows():
             end = 1.0
         id = row['trip_id']
         type = TripType.A if 'A' in id else TripType.B
+        if type == TripType.B and start == 0: # Assuming that a B trip with no required pickup time will require pickup 1 hr after A trip dropoff
+            start = last_trip.end + (1/24)
         cap = 1 if row['trip_los'] == 'A' else 1.5
         locations.add(o)
         locations.add(d)
@@ -59,6 +51,7 @@ for index, row in trip_df.iterrows():
         else:
             inflow_trips[d].add(t)
         count += 1
+        last_trip = t
         if count == 2:
             break
 id = 1
@@ -93,14 +86,29 @@ for o in locations:
 all_trips = []
 all_trips += primary_trips
 all_trips += secondary_trips
+sorted(all_trips, key=lambda x: x.start)
 print("Number of primary trips ", len(primary_trips))
 print("Number of possible secondary trips", len(secondary_trips))
 print("Total Number of possible trips", len(all_trips))
 indices = {k: v for v, k in enumerate(all_trips)}
 INT_VARS_OFFSET = len(all_trips) * len(drivers)
+print("Total number of variables", INT_VARS_OFFSET * 2)
+print("Driver details")
+for i, driver in enumerate(drivers):
+    print("Driver", i, driver.name)
 
+print("Trip details")
+for i, trip in enumerate(all_trips):
+    if trip.type == TripType.A or trip.type == TripType.B:
+        print("Primary trip", i, "FROM",trip.lp.o, "TO" ,trip.lp.d, "pickup by", trip.start, "drop off by", trip.end )
+    else:
+        print("Secondary trip", i, "FROM",trip.lp.o, "TO" ,trip.lp.d, "pickup by", trip.start, "drop off by", trip.end )
 
+print("Locataion details")
+for i, loc in enumerate(locations):
+    print("Location", i, loc)
 
+print(indices)
 # Formulate optimization problem
 """
 For each driver
@@ -116,6 +124,9 @@ for i, driver in enumerate(drivers):
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
         x.append(mdl.continuous_var(lb=0, ub=1, name='t' +'_' + str(i) +'_' + str(j)))
+
+print("Number of variables: ", mdl.number_of_variables)
+
 #Inflow = outflow for all locations
 for loc in locations:
     for i, d in enumerate(drivers):
@@ -125,18 +136,20 @@ for loc in locations:
         for otrip in outlfow_trips[loc]:
             total -= x[i * len(all_trips) + indices[otrip]]
         mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(hash(loc))[:5] + '_' + str(i))
-# Inflow before outflow for all locations except driver home
+print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
+
+# Inflow before outflow for all locations except driver home --- can't figure this out ----
 for loc in locations:
     for i, d in enumerate(drivers):
-        total = 0.0
         for intrip in inflow_trips[loc]:
+            total = 0.0
             for otrip in outlfow_trips[loc]:
-                total = (x[INT_VARS_OFFSET + i * len(all_trips) + indices[intrip]] + intrip.lp.time) - x[INT_VARS_OFFSET + i * len(all_trips) + indices[otrip]]
-                if loc in driverLocations: # leave home before coming back
-                    mdl.add_constraint(ct=total >= 0, ctname='outb4in' + '_' + str(hash(loc))[:5] + '_' + str(i))
-                else:
-                    mdl.add_constraint(ct= total <= 0 , ctname='inb4out' + '_' + str(hash(loc))[:5] + '_' + str(i))
-
+                total += (x[INT_VARS_OFFSET + i * len(all_trips) + indices[intrip]] + intrip.lp.time) - x[INT_VARS_OFFSET + i * len(all_trips) + indices[otrip]]
+            if loc in driverLocations: # leave home before coming back
+                mdl.add_constraint(ct= total >= 0, ctname='outb4in' + '_' + str(hash(loc))[:5] + '_' + str(i))
+            else:
+                mdl.add_constraint(ct= total <= 0 , ctname='inb4out' + '_' + str(hash(loc))[:5] + '_' + str(i))
+print("Number of constraints after flow in before flow out" , mdl.number_of_constraints)
 # Only one driver per trip
 for j, trip in enumerate(all_trips):
     total = 0
@@ -146,110 +159,68 @@ for j, trip in enumerate(all_trips):
         mdl.add_constraint(ct= total == 1 , ctname='primaryTrip' +'_' + str(j))
     else:
         mdl.add_constraint(ct= total <=1 , ctname='secondaryTrip' +'_' + str(j))
-#
+print("Number of constraints after required trips" ,mdl.number_of_constraints)
+
 #Trips can't overlap for a driver
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        for k, trip2 in enumerate(all_trips):
-            if trip is not trip2:
-                total = ((x[INT_VARS_OFFSET + i * len(all_trips) + k] - x[INT_VARS_OFFSET + i * len(all_trips) + j])
-                         + ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
-                            x[INT_VARS_OFFSET + i * len(all_trips) + k]) - trip.lp.time)
-                mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(k))
+        for k, trip2 in enumerate(all_trips[j+1:]):
+            l = k + j
+            if trip.start + trip.lp.time >= trip2.start - 0.01041666666:
+                total = ((x[i * len(all_trips) + l] * x[INT_VARS_OFFSET + i * len(all_trips) + l] - x[i * len(all_trips) + j] * x[INT_VARS_OFFSET + i * len(all_trips) + j])
+                     + (x[i * len(all_trips) + j]* (x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
+                        x[i * len(all_trips) + l]* x[INT_VARS_OFFSET + i * len(all_trips) + l]) - trip.lp.time)
+                mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(l))
+            else:
+                break
+print("Number of constraints after overlap constraints" ,mdl.number_of_constraints)
+
+#Trips can't overlap for a driver
+# for i, driver in enumerate(drivers):
+#     for j, trip in enumerate(all_trips):
+#         for k, trip2 in enumerate(all_trips):
+#             if trip is not trip2:
+#                 total = ((x[INT_VARS_OFFSET + i * len(all_trips) + k] - x[INT_VARS_OFFSET + i * len(all_trips) + j])
+#                          + ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
+#                             x[INT_VARS_OFFSET + i * len(all_trips) + k]) - trip.lp.time)
+#                 mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(k))
 # Wheelchair constraint
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
         total = (x[i * len(all_trips) + j]*trip.space - driver.capacity)
         mdl.add_constraint(ct=total <= 0, ctname='capacity'+'_' +str(i)+'_' +str(j))
+print("Number of constraints after wheelchair capacity" ,mdl.number_of_constraints)
 
-# Pickup at most 15 mins before
+# Pickup at most 15 mins before for primary trips
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        total = ((trip.start - 0.01041666666) - x[INT_VARS_OFFSET + i * len(all_trips) + j])
-        mdl.add_constraint(ct= total <= 0,ctname='pickup' +'_' + str(i)+'_'  + str(j))
-# Dropoff by the required time
+        if trip in primary_trips:
+            total = ((trip.start - 0.01041666666) - x[INT_VARS_OFFSET + i * len(all_trips) + j])
+            mdl.add_constraint(ct= total <= 0,ctname='pickup' +'_' + str(i)+'_'  + str(j))
+print("Number of constraints after pickup time constraint" ,mdl.number_of_constraints)
+
+# Dropoff by the required time for primary trips
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
-        total = ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) - trip.end)
-        mdl.add_constraint(ct= total <= 0,ctname='dropoff'+'_' +str(i)+'_'  + str(j))
+        if trip in primary_trips:
+            total = ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) - trip.end)
+            mdl.add_constraint(ct= total <= 0,ctname='dropoff'+'_' +str(i)+'_'  + str(j))
+
+print("Number of constraints after dropoff time constraint" ,mdl.number_of_constraints)
 
 total = 0.0
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(all_trips):
         total += trip.lp.time * x[i * len(all_trips) + j]
 
+print(mdl.get_constraint_by_name("pickup_0_1"))
+
+print('\n'.join(str(c) for c in mdl.iter_constraints()))
+
 mdl.minimize(total)
 mdl.solve()
 print("Solve status: " + str(mdl.get_solve_status()))
 print("Obj value: " + str(mdl.objective_value))
+
 for var in x:
     print(var.get_name() + ": "+ str(var.solution_value))
-
-# constraints = []
-# # Inflow = outflow for all locations except driver home
-# for loc in locations:
-#     for i, d in enumerate(drivers):
-#         def cons(x):
-#             total = 0.0
-#             for intrip in inflow_trips[loc]:
-#                 total += x[i * len(all_trips) + indices[intrip]]
-#             for otrip in outlfow_trips[loc]:
-#                 total += x[i * len(all_trips) + indices[otrip]]
-#             return total
-#         constraints.append({'type':'eq', 'fun':cons})
-#
-# # Each trip only has one driver if primary and at most one driver if not primary
-# for j, trip in enumerate(all_trips):
-#     def cons(x):
-#         total = 0
-#         for i, driver in enumerate(drivers):
-#             total += x[i * len(all_trips) + j]
-#         return -(total - 1)
-#     if j < len(primary_trips):
-#         constraints.append({'type':'eq', 'fun':cons})
-#     else:
-#         constraints.append({'type':'ineq', 'fun':cons})
-#
-# # Trips do not overlap for each driver
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         for k, trip2 in enumerate(all_trips):
-#             if trip is not trip2:
-#                 def cons(x):
-#                     total = ((x[i * len(all_trips) + k]*x[INT_VARS_OFFSET+i * len(all_trips) + k]-x[i * len(all_trips) + j]*x[INT_VARS_OFFSET+i * len(all_trips) + j])
-#                                    + (x[i * len(all_trips) + j] *(x[INT_VARS_OFFSET+i * len(all_trips) + j]+trip.lp.time) - x[i * len(all_trips) + k]*x[INT_VARS_OFFSET+i * len(all_trips) + k]) - trip.lp.time)
-#                     return -total
-#                 constraints.append({'type': 'ineq', 'fun': cons})
-#
-# # Wheelchair constraint
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         def cons(x):
-#             return -(x[i * len(all_trips) + j]*trip.space - driver.capacity)
-#         constraints.append({'type':'ineq', 'fun':cons})
-#
-#
-# # Pickup at most 15 mins before
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         def cons(x):
-#             return -(x[i * len(all_trips) + j] * (trip.start  - 0.01041666666) - x[i * len(all_trips) + j]* x[INT_VARS_OFFSET + i * len(all_trips) + j])
-#         constraints.append({'type':'ineq', 'fun':cons})
-#
-# # Dropoff by the required time
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         def cons(x):
-#             return -(x[i * len(all_trips) + j] * (x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) - x[i * len(all_trips) + j] * trip.end)
-#         constraints.append({'type':'ineq', 'fun':cons})
-#
-# # Solve Optimization Problem
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         print("Driver i ", driver.name, " does trip ", j, " from ", trip.lp.o, " to ", trip.lp.d, " in ", trip.lp.time, " minutes")
-# opt_prob = pyOpt.Optimization('Hospital Dropoff Problem',objfunc)
-# opt_prob.addObj('Time Traveled')
-#
-#
-#
-# bounds = []
