@@ -5,9 +5,12 @@ from time import sleep
 from geopy.geocoders import Nominatim
 
 class TripType(Enum):
-    A = 1
-    B = 2
-    INTER = 3
+    A = 1 # Destination is a home without passenger Must be before B for a location
+    B = 2 # Destination is a hospital with passenger Must be before C for a location
+    C = 3 # Destination is a hospital without a passenger Must be before D for a location
+    D = 4 # Destination is a home with a passenger
+    INTER_A = 5 # From driver home to any other location Must occur before any A trips
+    INTER_B = 6 # From any location to driver home Must occur after all D trips
 
 class Trip:
     def __init__(self, o, d, space, id, type, start, end):

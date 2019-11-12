@@ -1,10 +1,7 @@
 import pandas as pd
 from Driver import Driver
 from Trip import Trip, TripType
-import cplex
-from docplex.cp.model import CpoModel
 from docplex.mp.model import Model
-
 
 # Read input data
 trip_df = pd.read_csv("Trips.csv")
@@ -18,10 +15,14 @@ locations = set()
 driverLocations = set()
 
 primary_trips = set()
+driver_home_trips = set()
 secondary_trips = set()
 location_pair = set()
+homes = set()
+not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
+
 last_trip = None
 count = 0
 for index, row in trip_df.iterrows():
@@ -33,8 +34,13 @@ for index, row in trip_df.iterrows():
         if end == 0.0:
             end = 1.0
         id = row['trip_id']
-        type = TripType.A if 'A' in id else TripType.B
-        if type == TripType.B and start == 0: # Assuming that a B trip with no required pickup time will require pickup 1 hr after A trip dropoff
+        if 'A' in id:
+            type = TripType.B
+            homes.add(o)
+            not_homes.add(d)
+        else:
+            type = TripType.D
+        if type == TripType.D and start == 0:
             start = last_trip.end + (1/24)
         cap = 1 if row['trip_los'] == 'A' else 1.5
         locations.add(o)
@@ -61,37 +67,69 @@ for index, row in driver_df.iterrows():
     drivers.add(Driver(row['ID'], row['Driver'], row['Address'], cap))
     locations.add(row['Address'])
     driverLocations.add(row['Address'])
-    # for location in locations:
-    #     t = Trip(row['Address'], location, cap, id, TripType.INTER,0.0, 1.0)
-    #     secondary_trips.add(t)
-    #     trip_dict[(row['Address'],location)] = t
-    #     t = Trip(location, row['Address'], cap, id+1, TripType.INTER,0.0, 1.0)
-    #     secondary_trips.add(t)
-    #     trip_dict[(location, row['Address'])] = t
+
 for o in locations:
     for d in locations:
-        if o is not d and (o,d) not in location_pair:
-            t = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0)
-            if o not in outlfow_trips:
-                outlfow_trips[o] = {t}
-            else:
-                outlfow_trips[o].add(t)
-            if d not in inflow_trips:
-                inflow_trips[d] = {t}
-            else:
-                inflow_trips[d].add(t)
-            secondary_trips.add(t)
-            id += 1
+        if o is not d and (o,d) not in primary_trips:
+            if o in driverLocations:
+                t = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0)
+                if o not in outlfow_trips:
+                    outlfow_trips[o] = {t}
+                else:
+                    outlfow_trips[o].add(t)
+                if d not in inflow_trips:
+                    inflow_trips[d] = {t}
+                else:
+                    inflow_trips[d].add(t)
+                driver_home_trips.add(t)
+                id += 1
+            elif d in driverLocations:
+                t = Trip(o, d, 0, id, TripType.INTER_B, 0.0, 1.0)
+                if o not in outlfow_trips:
+                    outlfow_trips[o] = {t}
+                else:
+                    outlfow_trips[o].add(t)
+                if d not in inflow_trips:
+                    inflow_trips[d] = {t}
+                else:
+                    inflow_trips[d].add(t)
+                driver_home_trips.add(t)
+                id += 1
+            elif d in homes:
+                t = Trip(o, d, 0, id, TripType.A, 0.0, 1.0)
+                if o not in outlfow_trips:
+                    outlfow_trips[o] = {t}
+                else:
+                    outlfow_trips[o].add(t)
+                if d not in inflow_trips:
+                    inflow_trips[d] = {t}
+                else:
+                    inflow_trips[d].add(t)
+                secondary_trips.add(t)
+                id += 1
+            elif d in not_homes:
+                t = Trip(o, d, 0, id, TripType.C, 0.0, 1.0)
+                if o not in outlfow_trips:
+                    outlfow_trips[o] = {t}
+                else:
+                    outlfow_trips[o].add(t)
+                if d not in inflow_trips:
+                    inflow_trips[d] = {t}
+                else:
+                    inflow_trips[d].add(t)
+                secondary_trips.add(t)
+                id += 1
 
 all_trips = []
 all_trips += primary_trips
+all_trips += driver_home_trips
 all_trips += secondary_trips
 sorted(all_trips, key=lambda x: x.start)
 print("Number of primary trips ", len(primary_trips))
 print("Number of possible secondary trips", len(secondary_trips))
 print("Total Number of possible trips", len(all_trips))
 indices = {k: v for v, k in enumerate(all_trips)}
-INT_VARS_OFFSET = len(all_trips) * len(drivers)
+INT_VARS_OFFSET = len(all_trips)//2
 print("Total number of variables", INT_VARS_OFFSET * 2)
 print("Driver details")
 for i, driver in enumerate(drivers):
@@ -99,8 +137,10 @@ for i, driver in enumerate(drivers):
 
 print("Trip details")
 for i, trip in enumerate(all_trips):
-    if trip.type == TripType.A or trip.type == TripType.B:
+    if trip.type == TripType.B or trip.type == TripType.D:
         print("Primary trip", i, "FROM",trip.lp.o, "TO" ,trip.lp.d, "pickup by", trip.start, "drop off by", trip.end )
+    elif trip.type == TripType.INTER_A or trip.type == TripType.INTER_B:
+        print("Driver Home trip", i, "FROM",trip.lp.o, "TO" ,trip.lp.d, "pickup by", trip.start, "drop off by", trip.end )
     else:
         print("Secondary trip", i, "FROM",trip.lp.o, "TO" ,trip.lp.d, "pickup by", trip.start, "drop off by", trip.end )
 
@@ -114,6 +154,7 @@ For each driver
 For each location
 """
 mdl = Model(name="Patient Transport")
+# cplex.paramset.ParameterSet.
 x = []
 
 for i, driver in enumerate(drivers):
@@ -126,53 +167,68 @@ for i, driver in enumerate(drivers):
 
 print("Number of variables: ", mdl.number_of_variables)
 
-#Inflow = outflow for all locations
-for loc in locations:
-    for i, d in enumerate(drivers):
-        total = 0.0
-        for intrip in inflow_trips[loc]:
-            total += x[i * len(all_trips) + indices[intrip]]
-        for otrip in outlfow_trips[loc]:
-            total -= x[i * len(all_trips) + indices[otrip]]
-        mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(hash(loc))[:5] + '_' + str(i))
-print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
+# #Inflow = outflow for all locations
+# for loc in locations:
+#     for i, d in enumerate(drivers):
+#         total = 0.0
+#         for intrip in inflow_trips[loc]:
+#             total += x[i * len(all_trips) + indices[intrip]]
+#         for otrip in outlfow_trips[loc]:
+#             total -= x[i * len(all_trips) + indices[otrip]]
+#         mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(hash(loc))[:5] + '_' + str(i))
+# print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
+
+type_conflicts = {(TripType.INTER_A, TripType.B), (TripType.B, TripType.C), (TripType.C, TripType.D), (TripType.D, TripType.INTER_B)}
 
 # Inflow before outflow for all locations except driver home --- can't figure this out ----
 for loc in locations:
     for i, d in enumerate(drivers):
         for intrip in inflow_trips[loc]:
-            total = 0.0
             for otrip in outlfow_trips[loc]:
-                total += (x[INT_VARS_OFFSET + i * len(all_trips) + indices[intrip]] + intrip.lp.time) - x[INT_VARS_OFFSET + i * len(all_trips) + indices[otrip]]
-            if loc in driverLocations: # leave home before coming back
-                mdl.add_constraint(ct= total >= 0, ctname='outb4in' + '_' + str(hash(loc))[:5] + '_' + str(i))
-            else:
-                mdl.add_constraint(ct= total <= 0 , ctname='inb4out' + '_' + str(hash(loc))[:5] + '_' + str(i))
+                if (intrip.type, otrip.type) in type_conflicts:
+                    mdl.add_constraint(ct=x[INT_VARS_OFFSET + i * len(all_trips) + indices[intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * len(all_trips) + indices[otrip]], ctname='tripord' + '_' + str(hash(loc))[:5] + '_' + str(i))
+
 print("Number of constraints after flow in before flow out" , mdl.number_of_constraints)
 # Only one driver per trip
 for j, trip in enumerate(all_trips):
-    total = 0
-    for i, driver in enumerate(drivers):
-        total += x[i * len(all_trips) + j]
-    if j < len(primary_trips):
-        mdl.add_constraint(ct= total == 1 , ctname='primaryTrip' +'_' + str(j))
-    else:
-        mdl.add_constraint(ct= total <=1 , ctname='secondaryTrip' +'_' + str(j))
-print("Number of constraints after required trips" ,mdl.number_of_constraints)
+    if trip.type != TripType.INTER_B or trip.type != TripType.INTER_A:
+        total = 0
+        for i, driver in enumerate(drivers):
+            total += x[i * len(all_trips) + j]
+        if j < len(primary_trips):
+            mdl.add_constraint(ct=total == 1, ctname='primaryTrip' + '_' + str(j))
+        else:
+            mdl.add_constraint(ct=total <= 1, ctname='secondaryTrip' + '_' + str(j))
+print("Number of constraints after primary/secondary trips" ,mdl.number_of_constraints)
+
+for i, driver in enumerate(drivers):
+    total_o = 0.0
+    total_d = 0.0
+    for l, trip in enumerate(all_trips[len(primary_trips): len(primary_trips) + len(driver_home_trips)]):
+        j = l + len(primary_trips)
+        if trip.lp.o == driver.address:
+            total_o += x[i * len(all_trips) + j]
+        if trip.lp.d == driver.address:
+            total_d += x[i * len(all_trips) + j]
+    mdl.add_constraint(ct=total_o == 1, ctname='driverFromHome' + '_' + str(i))
+    mdl.add_constraint(ct=total_d == 1, ctname='driverToHome' + '_' + str(i))
+print("Number of constraints after driver home trips" ,mdl.number_of_constraints)
+
+
 
 #Trips can't overlap for a driver
-for i, driver in enumerate(drivers):
-    for j, trip in enumerate(all_trips):
-        for k, trip2 in enumerate(all_trips[j+1:]):
-            l = k + j
-            if trip.start + trip.lp.time >= trip2.start - 0.01041666666:
-                total = ((x[i * len(all_trips) + l] * x[INT_VARS_OFFSET + i * len(all_trips) + l] - x[i * len(all_trips) + j] * x[INT_VARS_OFFSET + i * len(all_trips) + j])
-                     + (x[i * len(all_trips) + j]* (x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
-                        x[i * len(all_trips) + l]* x[INT_VARS_OFFSET + i * len(all_trips) + l]) - trip.lp.time)
-                mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(l))
-            else:
-                break
-print("Number of constraints after overlap constraints" ,mdl.number_of_constraints)
+# for i, driver in enumerate(drivers):
+#     for j, trip in enumerate(all_trips):
+#         for k, trip2 in enumerate(all_trips[j+1:]):
+#             l = k + j
+#             if trip.start + trip.lp.time >= trip2.start - 0.01041666666:
+#                 total = ((x[INT_VARS_OFFSET + i * len(all_trips) + l] - x[INT_VARS_OFFSET + i * len(all_trips) + j])
+#                      + ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
+#                         x[INT_VARS_OFFSET + i * len(all_trips) + l]) - trip.lp.time)
+#                 mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(l))
+#             else:
+#                 break
+# print("Number of constraints after overlap constraints" ,mdl.number_of_constraints)
 
 #Trips can't overlap for a driver
 # for i, driver in enumerate(drivers):
@@ -219,10 +275,19 @@ print('\n'.join(str(c) for c in mdl.iter_constraints()))
 mdl.minimize(total)
 mdl.solve()
 print("Solve status: " + str(mdl.get_solve_status()))
-print("Obj value: " + str(mdl.objective_value))
 
-for var in x:
-    print(var.get_name() + ": "+ str(var.solution_value))
+try:
+    print("Obj value: " + str(mdl.objective_value))
+except Exception as e:
+    print(e)
+    pass
+
+try:
+    for var in x:
+        print(var.get_name() + ": "+ str(var.solution_value))
+except Exception as e:
+    print(e)
+    pass
 
 with open("modeltrips.txt", "w+") as o:
     o.write("Trip_id, start, end, pickup, dropoff\n")
