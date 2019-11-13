@@ -280,7 +280,7 @@ for i, driver in enumerate(drivers):
         total += trip.lp.time * x[i * len(all_trips) + j]
         for k, trip2 in enumerate(all_trips[j + 1:]):
             l = k + j
-            if trip.end >= trip2.start - 0.01041666666:
+            if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
                 total += 100 * (x[i * len(all_trips) + l] * x[i * len(all_trips) + j])
 
 print(mdl.get_constraint_by_name("pickup_0_1"))
