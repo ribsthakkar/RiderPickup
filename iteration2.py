@@ -190,8 +190,8 @@ for i, d in enumerate(drivers):
                 if (intrip.type, otrip.type) in type_conflicts:
                     print("Intrip:", intrip.lp.o, intrip.lp.d, intrip.start, intrip.end, intrip.type)
                     print("Otrip:", otrip.lp.o, otrip.lp.d, otrip.start, otrip.end, otrip.type)
-                    mdl.add_constraint(ct=x[INT_VARS_OFFSET + i * len(all_trips) + indices[intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * len(all_trips) + indices[otrip]], ctname='tripord' + '_' + str(intrip.id) + '_' + str(otrip.id))
-                    # mdl.add_constraint(ct=x[i * len(all_trips) + indices[intrip]] >= x[i * len(all_trips) + indices[otrip]], ctname='tripordbool' + '_' + str(intrip.id) + '_' + str(otrip.id))
+                    mdl.add_constraint(ct=x[INT_VARS_OFFSET + i * len(all_trips) + indices[intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * len(all_trips) + indices[otrip]], ctname='tripord' + '_' + str(i) +  '_' + str(intrip.id) + '_' + str(otrip.id))
+                    # mdl.add_constraint(ct=x[i * len(all_trips) + indices[intrip]] >= x[i * len(all_trips) + indices[otrip]], ctname='tripordbool' + '_' + str(i)  + '_' + str(intrip.id) + '_' + str(otrip.id))
 
 print("Number of constraints after flow in before flow out" , mdl.number_of_constraints)
 # Only one driver per trip
@@ -281,7 +281,7 @@ for i, driver in enumerate(drivers):
         for k, trip2 in enumerate(all_trips[j + 1:]):
             l = k + j
             if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
-                total += 100 * (x[i * len(all_trips) + l] * x[i * len(all_trips) + j])
+                total += 100000 * (x[i * len(all_trips) + l] * x[i * len(all_trips) + j])
 
 print(mdl.get_constraint_by_name("pickup_0_1"))
 
