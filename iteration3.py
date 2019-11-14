@@ -189,16 +189,18 @@ INT_VARS_OFFSET = len(x)//2
 
 print("Number of variables: ", mdl.number_of_variables)
 
-# #Inflow = outflow for all locations
-# for loc in locations:
-#     for i, d in enumerate(drivers):
-#         total = 0.0
-#         for intrip in inflow_trips[loc]:
-#             total += x[i * len(all_trips) + indices[intrip]]
-#         for otrip in outlfow_trips[loc]:
-#             total -= x[i * len(all_trips) + indices[otrip]]
-#         mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(hash(loc))[:5] + '_' + str(i))
-# print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
+#Inflow = outflow for all locations
+for i, d in enumerate(drivers):
+    for loc in locations:
+        total = 0.0
+        for intrip in inflow_trips[loc]:
+            if (intrip.lp.o in driverLocations and intrip.lp.o != d.address): continue
+            total += x[i * len(all_trips) + indices[d][intrip]]
+        for otrip in outlfow_trips[loc]:
+            if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
+            total -= x[i * len(all_trips) + indices[d][otrip]]
+        mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(loc)[:5] + '_' + str(i))
+print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
 
 home_type_conflicts = {(TripType.INTER_A, TripType.B), (TripType.INTER_A, TripType.C), (TripType.INTER_A, TripType.INTER_B),
                        (TripType.A, TripType.B), (TripType.A, TripType.INTER_B),
@@ -217,16 +219,15 @@ for i, d in enumerate(drivers):
         else:
             type_conflicts = driver_type_conflicts
         for intrip in inflow_trips[loc]:
-            if (intrip.lp.o in driverLocations and intrip.lp.o != d.address) or (
-                    intrip.lp.d in driverLocations and intrip.lp.d != d.address): continue
+            if (intrip.lp.o in driverLocations and intrip.lp.o != d.address): continue
             for otrip in outlfow_trips[loc]:
-                if (otrip.lp.o in driverLocations and otrip.lp.o != d.address) or (
-                        otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
+                if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
                 if loc not in driverLocations:
                     if (intrip.type, otrip.type) in type_conflicts:
                         print("Intrip:", intrip.lp.o, intrip.lp.d, intrip.start, intrip.end, intrip.type)
                         print("Otrip:", otrip.lp.o, otrip.lp.d, otrip.start, otrip.end, otrip.type)
-                        mdl.add_constraint(ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]], ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
+                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] == x[i * valid_trips + indices[d][otrip]], then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]])
+                        # mdl.add_constraint(ct=(x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time -x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]]) <= 0, ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
                         # tot = 0.0
                         # for i2, od in enumerate(drivers):
                         #     if od != d:
@@ -236,10 +237,12 @@ for i, d in enumerate(drivers):
                     if (otrip.type, intrip.type) in type_conflicts:
                         print("Intrip:", intrip.lp.o, intrip.lp.d, intrip.start, intrip.end, intrip.type)
                         print("Otrip:", otrip.lp.o, otrip.lp.d, otrip.start, otrip.end, otrip.type)
-                        mdl.add_constraint(
-                            ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time <= x[
-                                INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]],
-                            ctname='tripord' + '_' + str(i) + '_' + str(otrip.id) + '_' + str(intrip.id))
+                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] == x[i * valid_trips + indices[d][otrip]], then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]])
+                        # mdl.add_constraint(
+                        #     ct=
+                        #        (x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time  - x[
+                        #         INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] )<= 0,
+                        #     ctname='tripord' + '_' + str(i) + '_' + str(otrip.id) + '_' + str(intrip.id))
                         # mdl.add_constraint(ct=x[i * valid_trips + indices[otrip]] >= x[i * valid_trips + indices[intrip]], ctname='tripordbool' + '_' + str(i) + '_' + str(otrip.id) + '_' + str(intrip.id))
 
 print("Number of constraints after flow in before flow out" , mdl.number_of_constraints)
