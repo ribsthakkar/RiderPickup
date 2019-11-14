@@ -208,12 +208,12 @@ for i, d in enumerate(drivers):
         mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(loc)[:5] + '_' + str(i))
 print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
 
-home_type_conflicts = {(TripType.INTER_A, TripType.B), (TripType.INTER_A, TripType.C), (TripType.INTER_A, TripType.INTER_B),
-                       (TripType.A, TripType.B), (TripType.A, TripType.INTER_B),
+home_type_conflicts = {(TripType.INTER_A, TripType.B), (TripType.INTER_A, TripType.INTER_B),
+                       (TripType.A, TripType.B),
                        (TripType.D, TripType.C), (TripType.D, TripType.A), (TripType.D, TripType.INTER_B)}
-not_homes_type_conflicts = {(TripType.INTER_A, TripType.A), (TripType.INTER_A, TripType.D), (TripType.INTER_A, TripType.INTER_B),
-                       (TripType.C, TripType.D), (TripType.A, TripType.INTER_B),
-                       (TripType.B, TripType.A), (TripType.B, TripType.C), (TripType.D, TripType.INTER_B)}
+not_homes_type_conflicts = {(TripType.INTER_A, TripType.D), (TripType.INTER_A, TripType.INTER_B),
+                       (TripType.C, TripType.D),
+                       (TripType.B, TripType.A), (TripType.B, TripType.D) ,(TripType.B, TripType.C), (TripType.B, TripType.INTER_B)}
 driver_type_conflicts = {(TripType.INTER_A, TripType.INTER_B)}
 # Inflow before outflow for all locations except driver home --- can't figure this out ----
 for i, d in enumerate(drivers):
@@ -351,11 +351,7 @@ print("Number of constraints after dropoff time constraint" ,mdl.number_of_const
 total = 0.0
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(filter(f(driver), all_trips)):
-        total += trip.lp.time * x[i * valid_trips + j]
-        # for k, trip2 in enumerate(filter(f(driver) ,all_trips[j + 1:])):
-        #     l = indices[driver][trip2]
-            # if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
-            #     total += 100000 * (x[i * valid_trips + l] * x[i * valid_trips + j])
+        total += trip.lp.miles * x[i * valid_trips + j]
 
 print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
