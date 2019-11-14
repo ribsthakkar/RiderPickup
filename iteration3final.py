@@ -211,9 +211,9 @@ print("Number of constraints after flow in = flow out" , mdl.number_of_constrain
 home_type_conflicts = {(TripType.INTER_A, TripType.B), (TripType.INTER_A, TripType.INTER_B),
                        (TripType.A, TripType.B),
                        (TripType.D, TripType.C), (TripType.D, TripType.A), (TripType.D, TripType.INTER_B)}
-not_homes_type_conflicts = {(TripType.INTER_A, TripType.D), (TripType.INTER_A, TripType.INTER_B),
+not_homes_type_conflicts = {(TripType.INTER_A, TripType.A), (TripType.INTER_A, TripType.D), (TripType.INTER_A, TripType.INTER_B),
                        (TripType.C, TripType.D),
-                       (TripType.B, TripType.A), (TripType.B, TripType.D) ,(TripType.B, TripType.C), (TripType.B, TripType.INTER_B)}
+                       (TripType.B, TripType.A), (TripType.B, TripType.C), (TripType.B, TripType.INTER_B)}
 driver_type_conflicts = {(TripType.INTER_A, TripType.INTER_B)}
 # Inflow before outflow for all locations except driver home --- can't figure this out ----
 for i, d in enumerate(drivers):
@@ -378,11 +378,11 @@ with open("modeltrips.txt", "w+") as o:
         o.write(str(trip.id) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '",' + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
 
 with open("modelsoln.txt", "w+") as o:
-    o.write("Driver_id, Trip_id, Time, Trip_type\n")
+    o.write("Driver_id, Trip_id, Time, Miles, Trip_Time, Trip_type\n")
     for i, driver in enumerate(drivers):
         for j, trip in enumerate(filter(f(driver), all_trips)):
             if x[i * valid_trips + j].solution_value == 1:
-                o.write(driver.name + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.type) + "\n")
+                o.write(driver.name + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.lp.miles) + "," + str(trip.lp.time) + "," + str(trip.type) + "\n")
                 print("Driver ", driver.name, " goes from ", trip.lp.o, " to ", trip.lp.d, " at ", x[INT_VARS_OFFSET + i * valid_trips + j].solution_value)
 
 print("Ended", datetime.now())
