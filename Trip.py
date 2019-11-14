@@ -2,7 +2,10 @@ from enum import Enum
 import requests
 from opencage.geocoder import OpenCageGeocode
 from time import sleep
+from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
+
+locations = dict()
 
 class TripType(Enum):
     A = 1 # Destination is a home without passenger Must be before B for a location
@@ -21,6 +24,16 @@ class Trip:
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
 
+class Location:
+    def __init__(self, addr):
+        self.addr = addr
+        self.coord = self.find_coord(addr)
+
+    def find_coord(self, addr):
+        geo_api = "fdc220d91036420493450e36eaca1db5"
+        geolocator = OpenCageGeocode(geo_api)
+        l1loc = geolocator.geocode(addr)
+        return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
 
 class LocationPair:
     def __init__(self, l1, l2):
@@ -31,20 +44,33 @@ class LocationPair:
 
     def computeDistance(self, l1, l2):
         api_key = "40c83aa3-735d-4d4f-b205-e7c1590b7550"
-        # geo_api = "10f1e06a3c004d2a9106cdf80bc09be3"
-        geo_api = "fdc220d91036420493450e36eaca1db5"
         # get lat,lon for l1 and l2
         print(l1,l2)
-        geolocator = OpenCageGeocode(geo_api)
-        l1loc = geolocator.geocode(l1)
-        sleep(1)
-        l2loc = geolocator.geocode(l2)
-        c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
-        c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])
+        if l1 in locations:
+            loc1 = locations[l1]
+        else:
+            loc1 = Location(l1)
+            locations[l1] = loc1
+            sleep(1)
+        if l2 in locations:
+            loc2 = locations[l2]
+        else:
+            loc2 = Location(l2)
+            locations[l2] = loc2
+        speed = 30
+        # c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
+        # c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])
+        # c1 = (l1loc[0]['geometry']['lat'] ,l1loc[0]['geometry']['lng'])
+        # c2 = (l2loc[0]['geometry']['lat'],l2loc[0]['geometry']['lng'])
+        c1 = loc1.coord
+        c2 = loc2.coord
         print(c1, c2)
-        url = "https://graphhopper.com/api/1/route?point=" + c1 + "&point=" + c2 + "&vehicle=car&locale=de&calc_points=false&key=" + api_key
-        resp = requests.get(url).json()
-        # print(resp["paths"][0]['distance']/1609.344, resp['paths'][0]['time']/60000.0)
-        sleep(1)
-        return resp["paths"][0]['distance']/1609.344, (resp['paths'][0]['time']/60000.0)/(24*60)
+        miles = haversine(c1,c2, Unit.MILES)
+        time = (miles/speed)/24
+        return miles, time
+        # url = "https://graphhopper.com/api/1/route?point=" + c1 + "&point=" + c2 + "&vehicle=car&locale=de&calc_points=false&key=" + api_key
+        # resp = requests.get(url).json()
+        # # print(resp["paths"][0]['distance']/1609.344, resp['paths'][0]['time']/60000.0)
+        # sleep(1)
+        # return resp["paths"][0]['distance']/1609.344, (resp['paths'][0]['time']/60000.0)/(24*60)
 

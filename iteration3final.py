@@ -33,8 +33,8 @@ homes = set()
 not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
-TRIPS_TO_DO = 8
-NUM_DRIVERS = 2
+TRIPS_TO_DO = 34
+NUM_DRIVERS = 6
 last_trip = None
 count = 0
 for index, row in trip_df.iterrows():
@@ -352,10 +352,10 @@ total = 0.0
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(filter(f(driver), all_trips)):
         total += trip.lp.time * x[i * valid_trips + j]
-        for k, trip2 in enumerate(filter(f(driver) ,all_trips[j + 1:])):
-            l = indices[driver][trip2]
-            if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
-                total += 100000 * (x[i * valid_trips + l] * x[i * valid_trips + j])
+        # for k, trip2 in enumerate(filter(f(driver) ,all_trips[j + 1:])):
+        #     l = indices[driver][trip2]
+            # if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
+            #     total += 100000 * (x[i * valid_trips + l] * x[i * valid_trips + j])
 
 print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
@@ -379,7 +379,7 @@ except Exception as e:
 with open("modeltrips.txt", "w+") as o:
     o.write("Trip_id, start, end, pickup, dropoff, time, type, miles\n")
     for trip in all_trips:
-        o.write(str(trip.id) + ',"' + str(trip.lp.o) + '",' + str(trip.lp.d) + '",' + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
+        o.write(str(trip.id) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '",' + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
 
 with open("modelsoln.txt", "w+") as o:
     o.write("Driver_id, Trip_id, Time, Trip_type\n")
