@@ -202,7 +202,7 @@ print("Number of variables: ", mdl.number_of_variables)
 
 home_type_conflicts = {(TripType.INTER_A, TripType.B), (TripType.INTER_A, TripType.C), (TripType.INTER_A, TripType.INTER_B),
                        (TripType.A, TripType.B), (TripType.A, TripType.INTER_B),
-                       (TripType.D, TripType.INTER_C), (TripType.D, TripType.A), (TripType.D, TripType.INTER_B)}
+                       (TripType.D, TripType.C), (TripType.D, TripType.A), (TripType.D, TripType.INTER_B)}
 not_homes_type_conflicts = {(TripType.INTER_A, TripType.A), (TripType.INTER_A, TripType.D), (TripType.INTER_A, TripType.INTER_B),
                        (TripType.C, TripType.D), (TripType.A, TripType.INTER_B),
                        (TripType.B, TripType.A), (TripType.B, TripType.C), (TripType.D, TripType.INTER_B)}
