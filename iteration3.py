@@ -34,7 +34,7 @@ homes = set()
 not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
-
+TRIPS_TO_DO = 4
 last_trip = None
 count = 0
 for index, row in trip_df.iterrows():
@@ -70,7 +70,7 @@ for index, row in trip_df.iterrows():
             inflow_trips[d].add(t)
         count += 1
         last_trip = t
-        if count == 4:
+        if count == TRIPS_TO_DO:
             break
 id = 1
 
@@ -140,8 +140,7 @@ all_trips += secondary_trips
 all_trips += driver_home_trips
 print("Number of primary trips ", len(primary_trips))
 print("Number of possible secondary trips", len(secondary_trips))
-valid_trips = len(all_trips)
-print("Total Number of possible trips", valid_trips)
+print("Total Number of possible trips", len(all_trips))
 print("Driver details")
 for i, driver in enumerate(drivers):
     print("Driver", i, driver.name)
@@ -192,13 +191,15 @@ print("Number of variables: ", mdl.number_of_variables)
 #Inflow = outflow for all locations
 for i, d in enumerate(drivers):
     for loc in locations:
+        if loc in driverLocations and loc != d.address:
+            continue
         total = 0.0
         for intrip in inflow_trips[loc]:
             if (intrip.lp.o in driverLocations and intrip.lp.o != d.address): continue
-            total += x[i * len(all_trips) + indices[d][intrip]]
+            total += x[i * valid_trips + indices[d][intrip]]
         for otrip in outlfow_trips[loc]:
             if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
-            total -= x[i * len(all_trips) + indices[d][otrip]]
+            total -= x[i * valid_trips + indices[d][otrip]]
         mdl.add_constraint(ct= total == 0 , ctname='flowinout' + '_' + str(loc)[:5] + '_' + str(i))
 print("Number of constraints after flow in = flow out" , mdl.number_of_constraints)
 
@@ -212,10 +213,67 @@ driver_type_conflicts = {(TripType.INTER_A, TripType.INTER_B)}
 # Inflow before outflow for all locations except driver home --- can't figure this out ----
 for i, d in enumerate(drivers):
     for loc in locations:
+        if loc in driverLocations and loc != d.address:
+            continue
         if loc in homes:
             type_conflicts = home_type_conflicts
+            # If A == 1, sum of all Ds must be >= 1 for all A trips
+            # If B == 1 , sum of As/Inter_As must be >= 1 for all B trips
+            # If C == 1, sum of Ds must be >= 1 for all C trips
+            # If I_B == 1, sum of Inter_A and Ds must be >= 1 for all I_B trips
+            for otrip in outlfow_trips[loc]:
+                if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
+                Dsum = 0.0
+                Asum = 0.0
+                IAsum = 0.0
+                for intrip in inflow_trips[loc]:
+                    if (intrip.lp.o in driverLocations and intrip.lp.o != d.address): continue
+                    if intrip.type == TripType.A:
+                        Asum += x[i * valid_trips + indices[d][intrip]]
+                    elif intrip.type == TripType.INTER_A:
+                        IAsum += x[i * valid_trips + indices[d][intrip]]
+                    elif intrip.type == TripType.D:
+                        Dsum += x[i * valid_trips + indices[d][intrip]]
+                    else:
+                        print("Something not sure???????")
+                if otrip.type == TripType.A:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Dsum>=1)
+                if otrip.type == TripType.B:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Asum + IAsum >= 1)
+                if otrip.type == TripType.C:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Dsum >= 1)
+                if otrip.type == TripType.INTER_B:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct=IAsum + Dsum >= 1)
+
         elif loc in not_homes:
             type_conflicts = not_homes_type_conflicts
+            # If A == 1, sum of all Bs must be >= 1
+            # If C == 1, sum of all Bs must be >= 1
+            # If D == 1, sum of Inter_As/Cs must be >= 1
+            # If I_B == 1, sum of Inter_A and Bs must be >= 1
+            for otrip in outlfow_trips[loc]:
+                if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
+                Bsum = 0.0
+                Csum = 0.0
+                IAsum = 0.0
+                for intrip in inflow_trips[loc]:
+                    if (intrip.lp.o in driverLocations and intrip.lp.o != d.address): continue
+                    if intrip.type == TripType.B:
+                        Bsum += x[i * valid_trips + indices[d][intrip]]
+                    elif intrip.type == TripType.INTER_A:
+                        IAsum += x[i * valid_trips + indices[d][intrip]]
+                    elif intrip.type == TripType.C:
+                        Csum += x[i * valid_trips + indices[d][intrip]]
+                    else:
+                        print("Something not sure???????")
+                if otrip.type == TripType.A:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Bsum>=1)
+                if otrip.type == TripType.C:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Bsum >= 1)
+                if otrip.type == TripType.D:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= IAsum + Csum >= 1)
+                if otrip.type == TripType.INTER_B:
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct=IAsum + Bsum >= 1)
         else:
             type_conflicts = driver_type_conflicts
         for intrip in inflow_trips[loc]:
@@ -224,26 +282,40 @@ for i, d in enumerate(drivers):
                 if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
                 if loc not in driverLocations:
                     if (intrip.type, otrip.type) in type_conflicts:
+                        # If A == 1, sum of all Ds must be >= 1 for all A trips
+                        # If B == 1 , sum of As/Inter_As must be >= 1 for all B trips
+                        # If C == 1, sum of Ds must be >= 1 for all C trips
+                        # If I_B == 1, sum of Inter_A and Ds must be >= 1 for all I_B trips
+
+                        #If A == 1, sum of all Bs must be >= 1
+                        #If C == 1, sum of all Bs must be >= 1
+                        # If D == 1, sum of Inter_As/Cs must be >= 1
+                        # If I_B == 1, sum of Inter_A and Bs must be >= 1
                         print("Intrip:", intrip.lp.o, intrip.lp.d, intrip.start, intrip.end, intrip.type)
                         print("Otrip:", otrip.lp.o, otrip.lp.d, otrip.start, otrip.end, otrip.type)
-                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] == x[i * valid_trips + indices[d][otrip]], then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]])
+                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] + x[i * valid_trips + indices[d][otrip]] == 2, then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]])
                         # mdl.add_constraint(ct=(x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time -x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]]) <= 0, ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
                         # tot = 0.0
                         # for i2, od in enumerate(drivers):
                         #     if od != d:
                         #         tot
                         # mdl.add_constraint(ct=x[i * valid_trips + indices[d][intrip]] >= x[i * valid_trips + indices[d][otrip]], ctname='tripordbool' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
+                        # mdl.add_constraint(ct=x[i * valid_trips + indices[d][otrip]]* (x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time) <= x[i * valid_trips + indices[d][intrip]] * x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]], ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
+                        # mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] >= x[i * valid_trips + indices[d][otrip]], then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]])
+
                 else:
                     if (otrip.type, intrip.type) in type_conflicts:
                         print("Intrip:", intrip.lp.o, intrip.lp.d, intrip.start, intrip.end, intrip.type)
                         print("Otrip:", otrip.lp.o, otrip.lp.d, otrip.start, otrip.end, otrip.type)
-                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] == x[i * valid_trips + indices[d][otrip]], then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]])
+                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] + x[i * valid_trips + indices[d][otrip]] == 2, then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]])
                         # mdl.add_constraint(
                         #     ct=
                         #        (x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time  - x[
                         #         INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] )<= 0,
                         #     ctname='tripord' + '_' + str(i) + '_' + str(otrip.id) + '_' + str(intrip.id))
-                        # mdl.add_constraint(ct=x[i * valid_trips + indices[otrip]] >= x[i * valid_trips + indices[intrip]], ctname='tripordbool' + '_' + str(i) + '_' + str(otrip.id) + '_' + str(intrip.id))
+                        # mdl.add_constraint(ct=x[i * valid_trips + indices[d][otrip]] >= x[i * valid_trips + indices[d][intrip]], ctname='tripordbool' + '_' + str(i) + '_' + str(otrip.id) + '_' + str(intrip.id))
+                        # mdl.add_constraint(ct=x[i * valid_trips + indices[d][intrip]]* (x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]] + otrip.lp.time) <= x[i * valid_trips + indices[d][otrip]] * x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]], ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
+
 
 print("Number of constraints after flow in before flow out" , mdl.number_of_constraints)
 # Only one driver per trip
@@ -256,8 +328,8 @@ for j, trip in enumerate(all_trips[:len(primary_trips) + len(secondary_trips)]):
             total += x[i * valid_trips + j]
         if j < len(primary_trips):
             mdl.add_constraint(ct=total == 1, ctname='primaryTrip' + '_' + str(j))
-        else:
-            mdl.add_constraint(ct=total <= 1, ctname='secondaryTrip' + '_' + str(j))
+        # else:
+        #     mdl.add_constraint(ct=total <= 1, ctname='secondaryTrip' + '_' + str(j))
 print("Number of constraints after primary/secondary trips" ,mdl.number_of_constraints)
 
 for i, driver in enumerate(drivers):
@@ -275,31 +347,6 @@ for i, driver in enumerate(drivers):
 
 print("Number of constraints after driver home trips" ,mdl.number_of_constraints)
 
-
-
-#Trips can't overlap for a driver
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         for k, trip2 in enumerate(all_trips[j+1:]):
-#             l = k + j
-#             if trip.start + trip.lp.time >= trip2.start - 0.01041666666:
-#                 total = ((x[INT_VARS_OFFSET + i * len(all_trips) + l] - x[INT_VARS_OFFSET + i * len(all_trips) + j])
-#                      + ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
-#                         x[INT_VARS_OFFSET + i * len(all_trips) + l]) - trip.lp.time)
-#                 mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(l))
-#             else:
-#                 break
-# print("Number of constraints after overlap constraints" ,mdl.number_of_constraints)
-
-#Trips can't overlap for a driver
-# for i, driver in enumerate(drivers):
-#     for j, trip in enumerate(all_trips):
-#         for k, trip2 in enumerate(all_trips):
-#             if trip is not trip2:
-#                 total = ((x[INT_VARS_OFFSET + i * len(all_trips) + k] - x[INT_VARS_OFFSET + i * len(all_trips) + j])
-#                          + ((x[INT_VARS_OFFSET + i * len(all_trips) + j] + trip.lp.time) -
-#                             x[INT_VARS_OFFSET + i * len(all_trips) + k]) - trip.lp.time)
-#                 mdl.add_constraint(ct= total <= 0, ctname='tripConflict'+'_'  + str(i) +'_' + str(j)+'_'  + str(k))
 # Wheelchair constraint
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(filter(f(driver), all_trips)):
@@ -330,10 +377,8 @@ for i, driver in enumerate(drivers):
         total += trip.lp.time * x[i * valid_trips + j]
         for k, trip2 in enumerate(filter(f(driver) ,all_trips[j + 1:])):
             l = indices[driver][trip2]
-            if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
-                total += 100000 * (x[i * valid_trips + l] * x[i * valid_trips + j])
-
-print(mdl.get_constraint_by_name("pickup_0_1"))
+            # if trip.end >= trip2.start - 0.01041666666 and trip.end <= trip2.end:
+            #     total += 100000 * (x[i * valid_trips + l] * x[i * valid_trips + j])
 
 print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
