@@ -31,7 +31,7 @@ class LocationPair:
 
     def computeDistance(self, l1, l2):
         api_key = "40c83aa3-735d-4d4f-b205-e7c1590b7550"
-        geo_api = "78bdef6c2b254abaa78c55640925d3db"
+        geo_api = "10f1e06a3c004d2a9106cdf80bc09be3"
         # get lat,lon for l1 and l2
         print(l1,l2)
         geolocator = OpenCageGeocode(geo_api)
