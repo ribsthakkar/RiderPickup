@@ -33,7 +33,8 @@ homes = set()
 not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
-TRIPS_TO_DO = 10
+TRIPS_TO_DO = 8
+NUM_DRIVERS = 2
 last_trip = None
 count = 0
 for index, row in trip_df.iterrows():
@@ -73,11 +74,16 @@ for index, row in trip_df.iterrows():
             break
 id = 1
 
+count = 0
 for index, row in driver_df.iterrows():
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
     drivers.add(Driver(row['ID'], row['Driver'], row['Address'], cap))
     locations.add(row['Address'])
     driverLocations.add(row['Address'])
+    count += 1
+    if count == NUM_DRIVERS:
+        break
+
 
 for o in locations:
     for d in locations:
@@ -216,10 +222,10 @@ for i, d in enumerate(drivers):
             continue
         if loc in homes:
             type_conflicts = home_type_conflicts
-            # If A == 1, sum of all Ds must be >= 1 for all A trips
-            # If B == 1 , sum of As/Inter_As must be >= 1 for all B trips
-            # If C == 1, sum of Ds must be >= 1 for all C trips
-            # If I_B == 1, sum of Inter_A and Ds must be >= 1 for all I_B trips
+            # If outgoing trip A == 1, sum of all Ds must be >= 1 for all A trips
+            # If outgoing trip B == 1 , sum of As/Inter_As must be >= 1 for all B trips
+            # If outgoing trip C == 1, sum of Ds must be >= 1 for all C trips
+            # If outgoing trip I_B == 1, sum of Inter_A and Ds must be >= 1 for all I_B trips
             for otrip in outlfow_trips[loc]:
                 if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
                 Dsum = 0.0
@@ -238,7 +244,7 @@ for i, d in enumerate(drivers):
                 if otrip.type == TripType.A:
                     mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Dsum>=1)
                 if otrip.type == TripType.B:
-                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Asum + IAsum >= 1)
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Asum + IAsum  >= 1)
                 if otrip.type == TripType.C:
                     mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Dsum >= 1)
                 if otrip.type == TripType.INTER_B:
@@ -246,10 +252,10 @@ for i, d in enumerate(drivers):
 
         elif loc in not_homes:
             type_conflicts = not_homes_type_conflicts
-            # If A == 1, sum of all Bs must be >= 1
-            # If C == 1, sum of all Bs must be >= 1
-            # If D == 1, sum of Inter_As/Cs must be >= 1
-            # If I_B == 1, sum of Inter_A and Bs must be >= 1
+            # If outgoing trip A == 1, sum of all Bs must be >= 1
+            # If outgoing trip C == 1, sum of all Bs must be >= 1
+            # If outgoing trip D == 1, sum of Inter_As/B/Cs must be >= 1
+            # If outgoing trip I_B == 1, sum of Inter_A and Bs must be >= 1
             for otrip in outlfow_trips[loc]:
                 if (otrip.lp.d in driverLocations and otrip.lp.d != d.address): continue
                 Bsum = 0.0
@@ -270,7 +276,7 @@ for i, d in enumerate(drivers):
                 if otrip.type == TripType.C:
                     mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Bsum >= 1)
                 if otrip.type == TripType.D:
-                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= IAsum + Csum >= 1)
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= IAsum + Csum +Bsum >= 1)
                 if otrip.type == TripType.INTER_B:
                     mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct=IAsum + Bsum >= 1)
         else:
@@ -373,7 +379,7 @@ except Exception as e:
 with open("modeltrips.txt", "w+") as o:
     o.write("Trip_id, start, end, pickup, dropoff, time, type, miles\n")
     for trip in all_trips:
-        o.write(str(trip.id) + "," + str(trip.lp.o) + "," + str(trip.lp.d) + "," + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
+        o.write(str(trip.id) + ',"' + str(trip.lp.o) + '",' + str(trip.lp.d) + '",' + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
 
 with open("modelsoln.txt", "w+") as o:
     o.write("Driver_id, Trip_id, Time, Trip_type\n")
