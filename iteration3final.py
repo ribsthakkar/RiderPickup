@@ -33,8 +33,14 @@ homes = set()
 not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
-TRIPS_TO_DO = 34
+TRIPS_TO_DO = 30
 NUM_DRIVERS = 6
+FIFTEEN = 0.01041666666
+THIRTY = FIFTEEN * 2
+TWENTY = FIFTEEN * (4/3)
+TEN = FIFTEEN * (2/3)
+FIVE = FIFTEEN * (1/3)
+
 last_trip = None
 count = 0
 for index, row in trip_df.iterrows():
@@ -289,7 +295,15 @@ for i, d in enumerate(drivers):
                     if (intrip.type, otrip.type) in type_conflicts:
                         print("Intrip:", intrip.lp.o, intrip.lp.d, intrip.start, intrip.end, intrip.type)
                         print("Otrip:", otrip.lp.o, otrip.lp.d, otrip.start, otrip.end, otrip.type)
-                        mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] + x[i * valid_trips + indices[d][otrip]] == 2, then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]])
+                        if loc in homes:
+                            mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] + x[
+                                i * valid_trips + indices[d][otrip]] == 2, then_ct=x[INT_VARS_OFFSET + i * valid_trips +
+                                                                                     indices[d][
+                                                                                         intrip]] + intrip.lp.time + 0 <= x[
+                                                                                       INT_VARS_OFFSET + i * valid_trips +
+                                                                                       indices[d][otrip]])
+                        else:
+                            mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][intrip]] + x[i * valid_trips + indices[d][otrip]] == 2, then_ct=x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time <= x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]])
                         # mdl.add_constraint(ct=(x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time -x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]]) <= 0, ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
                         # mdl.add_constraint(ct=x[i * valid_trips + indices[d][intrip]] >= x[i * valid_trips + indices[d][otrip]], ctname='tripordbool' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
                         # mdl.add_constraint(ct=x[i * valid_trips + indices[d][otrip]]* (x[INT_VARS_OFFSET + i * valid_trips + indices[d][intrip]] + intrip.lp.time) <= x[i * valid_trips + indices[d][intrip]] * x[INT_VARS_OFFSET + i * valid_trips + indices[d][otrip]], ctname='tripord' + '_' + str(i) + '_' + str(intrip.id) + '_' + str(otrip.id))
@@ -335,7 +349,7 @@ print("Number of constraints after wheelchair capacity" ,mdl.number_of_constrain
 for i, driver in enumerate(drivers):
     for j, trip in enumerate(filter(f(driver), all_trips)):
         if trip in primary_trips:
-            total = ((trip.start - 0.01041666666) - x[INT_VARS_OFFSET + i * valid_trips + j])
+            total = ((trip.start - FIFTEEN) - x[INT_VARS_OFFSET + i * valid_trips + j])
             mdl.add_constraint(ct= total <= 0,ctname='pickup' +'_' + str(i)+'_'  + str(j))
 print("Number of constraints after pickup time constraint" ,mdl.number_of_constraints)
 
@@ -377,12 +391,15 @@ with open("modeltrips.txt", "w+") as o:
     for trip in all_trips:
         o.write(str(trip.id) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '",' + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
 
+totalMiles = 0
 with open("modelsoln.txt", "w+") as o:
-    o.write("Driver_id, Trip_id, Time, Miles, Trip_Time, Trip_type\n")
+    o.write("Driver_id, Trip_id, Time, Miles, Trip_Time, Trip_type, Trip_start, Trip_end\n")
     for i, driver in enumerate(drivers):
         for j, trip in enumerate(filter(f(driver), all_trips)):
             if x[i * valid_trips + j].solution_value == 1:
-                o.write(driver.name + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.lp.miles) + "," + str(trip.lp.time) + "," + str(trip.type) + "\n")
+                totalMiles += trip.lp.miles
+                o.write(driver.name + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.lp.miles) + "," + str(trip.lp.time) + "," + str(trip.type) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '"\n')
                 print("Driver ", driver.name, " goes from ", trip.lp.o, " to ", trip.lp.d, " at ", x[INT_VARS_OFFSET + i * valid_trips + j].solution_value)
 
+print("Total miles traveled", totalMiles)
 print("Ended", datetime.now())

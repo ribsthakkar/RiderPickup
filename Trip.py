@@ -30,7 +30,7 @@ class Location:
         self.coord = self.find_coord(addr)
 
     def find_coord(self, addr):
-        geo_api = "fdc220d91036420493450e36eaca1db5"
+        geo_api = "78bdef6c2b254abaa78c55640925d3db"
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
         return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
@@ -43,7 +43,6 @@ class LocationPair:
 
 
     def computeDistance(self, l1, l2):
-        api_key = "40c83aa3-735d-4d4f-b205-e7c1590b7550"
         # get lat,lon for l1 and l2
         print(l1,l2)
         if l1 in locations:
@@ -57,7 +56,7 @@ class LocationPair:
         else:
             loc2 = Location(l2)
             locations[l2] = loc2
-        speed = 30
+        speed = 35
         # c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
         # c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])
         # c1 = (l1loc[0]['geometry']['lat'] ,l1loc[0]['geometry']['lng'])
