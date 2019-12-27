@@ -33,13 +33,17 @@ class Location:
         geo_api = "78bdef6c2b254abaa78c55640925d3db"
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
+        # print(addr, l1loc)
         return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
 
 class LocationPair:
     def __init__(self, l1, l2):
         self.o = l1
         self.d = l2
-        self.miles, self.time = self.computeDistance(l1, l2)
+        if self.o[:-1] == self.d[:-1]:
+            self.miles, self.time = 0, 0
+        else:
+            self.miles, self.time = self.computeDistance(self.o[:-1], self.d[:-1])
 
 
     def computeDistance(self, l1, l2):
