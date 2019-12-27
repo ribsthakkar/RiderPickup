@@ -158,12 +158,15 @@ temp = len(P)
 temp2 = max(idxes.values())
 for index, row in driver_df.iterrows():
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
-    drivers.add(Driver(row['ID'], row['Driver'], row['Address'], cap))
-    locations.add(row['Address'])
-    driverLocations.add(row['Address'])
+    add = row['Address']
+    drivers.add(Driver(row['ID'], row['Driver'], add, cap))
+    locations.add(add + "P")
+    locations.add(add + "D")
+    driverLocations.add(add + "P")
+    driverLocations.add(add + "D")
     count += 1
-    DP.append(row['Address'])
-    DD.append(row['Address'])
+    DP.append(add + "P")
+    DD.append(add + "D")
     DPe.append(0)  # Add to Pickups open window
     DDe.append(0)  # Add to Dropoffs open window
     DPl.append(1)  # Add to Pickups close window
@@ -202,99 +205,38 @@ print(q)
 
 t = [] # time of traversing trip ij; length of A
 c = [] # cost of traversing trip ij; length of A
-for i, o in locations:
-    for j, d in locations:
-        print(o, d)
-        for i in inflow_trips:
-            print(len(inflow_trips[i]))
-        for i in outlfow_trips:
-            print(len(outlfow_trips[i]))
+for i, o in enumerate(locations):
+    for j, d in enumerate(locations):
         if o != d:
             if (o, d) in location_pair:
                 trp = ar[(o, d)]
-                x.append(mdl.binary_var(name='x' +'_' + str(i) +'_' + str(j)))
+                x.append(mdl.binary_var(name= o +'->' + d))
                 tripdex[(o,d)] = len(x) - 1
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
             else:
-                trp = None
                 if o in driverLocations and d in driverLocations:
                     continue
-                if o in driverLocations:
-                    trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0)
-                    if o not in outlfow_trips:
-                        outlfow_trips[o] = {trp}
-                    else:
-                        outlfow_trips[o].add(trp)
-                    if d not in inflow_trips:
-                        inflow_trips[d] = {trp}
-                    else:
-                        inflow_trips[d].add(trp)
-                    driver_home_trips.add(trp)
-                    id += 1
-                    ar[(o, d)] = trp
-                elif d in driverLocations:
-                    trp = Trip(o, d, 0, id, TripType.INTER_B, 0.0, 1.0)
-                    if o not in outlfow_trips:
-                        outlfow_trips[o] = {trp}
-                    else:
-                        outlfow_trips[o].add(trp)
-                    if d not in inflow_trips:
-                        inflow_trips[d] = {trp}
-                    else:
-                        inflow_trips[d].add(trp)
-                    driver_home_trips.add(trp)
-                    id += 1
-                    ar[(o, d)] = trp
-                elif d in homes:
-                    trp = Trip(o, d, 0, id, TripType.A, 0.0, 1.0)
-                    if o not in outlfow_trips:
-                        outlfow_trips[o] = {trp}
-                    else:
-                        outlfow_trips[o].add(trp)
-                    if d not in inflow_trips:
-                        inflow_trips[d] = {trp}
-                    else:
-                        inflow_trips[d].add(trp)
-                    secondary_trips.add(trp)
-                    id += 1
-                    ar[(o, d)] = trp
-                elif d in not_homes:
-                    trp = Trip(o, d, 0, id, TripType.C, 0.0, 1.0)
-                    if o not in outlfow_trips:
-                        outlfow_trips[o] = {trp}
-                    else:
-                        outlfow_trips[o].add(trp)
-                    if d not in inflow_trips:
-                        inflow_trips[d] = {trp}
-                    else:
-                        inflow_trips[d].add(trp)
-                    secondary_trips.add(trp)
-                    id += 1
-                    ar[(o, d)] = trp
-                if trp is None: exit(1)
-                x.append(mdl.binary_var(name='x' + '_' + str(i) + '_' + str(j)))
+                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0)
+                if o not in outlfow_trips:
+                    outlfow_trips[o] = {trp}
+                else:
+                    outlfow_trips[o].add(trp)
+                if d not in inflow_trips:
+                    inflow_trips[d] = {trp}
+                else:
+                    inflow_trips[d].add(trp)
+                driver_home_trips.add(trp)
+                id += 1
+                ar[(o, d)] = trp
+                x.append(mdl.binary_var(name= o +'->' + d))
                 tripdex[(o,d)] = len(x) - 1
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
-print(primary_trips)
-print(secondary_trips)
-exit(0)
-all_trips = []
-all_trips += primary_trips
-all_trips += secondary_trips
-all_trips += driver_home_trips
-print("Number of primary trips ", len(primary_trips))
-print("Number of possible secondary trips", len(secondary_trips))
-print("Total Number of possible trips", len(all_trips))
-print("Driver details")
-for i, driver in enumerate(drivers):
-    print("Driver", i, driver.name)
-
-
-print("Locataion details")
-for i, loc in enumerate(locations):
-    print("Location", i, loc)
+print(x)
+print(t)
+print(c)
+# exit(0)
 
 # Constraints
 """
@@ -320,7 +262,7 @@ Time Consistency
 
 for i, o in enumerate(N):
     for j, d in enumerate(N):
-        if o != d:
+        if o != d and (o not in driverLocations or d not in driverLocations):
             mdl.add_constraint(ct= B[j] >= B[i] + t[tripdex[(o,d)]] - BIGM*(1- x[tripdex[o,d]]))
             mdl.add_constraint(ct= Q[j] >= Q[i] + q[j] - BIGM*(1- x[tripdex[o,d]]))
 
@@ -348,12 +290,12 @@ for i, loc in enumerate(P):
     mdl.add_constraint(v[i] == v[i + n])
 
 for j, loc in enumerate(N):
-    if loc not in driverLocations and loc != N[0]:
-        mdl.add_constraint(v[j] >= j * x[tripdex[(N[0], loc)]])
-        mdl.add_constraint(v[j] <= j * x[tripdex[(N[0], loc)]] - n * (j * x[tripdex[(N[0], loc)]] - 1))
+    if loc not in driverLocations and loc != N[2]:
+        mdl.add_constraint(v[j] >= j * x[tripdex[(N[2], loc)]])
+        mdl.add_constraint(v[j] <= j * x[tripdex[(N[2], loc)]] - n * (j * x[tripdex[(N[2], loc)]] - 1))
 for i, o in enumerate(N):
     for j, d in enumerate(N):
-        if o != d and o not in driverLocations and d not in driverLocations:
+        if o != d and (o not in driverLocations or d not in driverLocations):
             mdl.add_constraint(v[j] >= v[i] + n * (x[tripdex[(o,d)]] - 1))
             mdl.add_constraint(v[j] <= v[i] + n * (1 - x[tripdex[(o,d)]]))
 
