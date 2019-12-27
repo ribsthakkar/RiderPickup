@@ -27,8 +27,8 @@ outlfow_trips = dict()
 ar = dict()
 idxes = dict()
 tripdex = dict()
-TRIPS_TO_DO = 2
-NUM_DRIVERS = 1
+TRIPS_TO_DO = 30
+NUM_DRIVERS = 6
 FIFTEEN = 0.01041666666
 
 last_trip = None
@@ -263,8 +263,8 @@ Time Consistency
 for i, o in enumerate(N):
     for j, d in enumerate(N):
         if o != d and (o not in driverLocations or d not in driverLocations):
-            mdl.add_constraint(ct= B[j] >= B[i] + t[tripdex[(o,d)]] - BIGM*(1- x[tripdex[o,d]]))
-            mdl.add_constraint(ct= Q[j] >= Q[i] + q[j] - BIGM*(1- x[tripdex[o,d]]))
+            mdl.add_constraint(ct= B[j] >= B[i] + t[tripdex[(o,d)]] - BIGM*(1- x[tripdex[(o,d)]]))
+            mdl.add_constraint(ct= Q[j] >= Q[i] + q[j] - BIGM*(1- x[tripdex[(o,d)]]))
 
 """
 Time Windows
@@ -290,9 +290,9 @@ for i, loc in enumerate(P):
     mdl.add_constraint(v[i] == v[i + n])
 
 for j, loc in enumerate(N):
-    if loc not in driverLocations and loc != N[2]:
-        mdl.add_constraint(v[j] >= j * x[tripdex[(N[2], loc)]])
-        mdl.add_constraint(v[j] <= j * x[tripdex[(N[2], loc)]] - n * (j * x[tripdex[(N[2], loc)]] - 1))
+    if loc not in driverLocations and loc != N[0]:
+        mdl.add_constraint(v[j] >= j * x[tripdex[(N[0], loc)]])
+        mdl.add_constraint(v[j] <= j * x[tripdex[(N[0], loc)]] - n * (x[tripdex[(N[0], loc)]] - 1))
 for i, o in enumerate(N):
     for j, d in enumerate(N):
         if o != d and (o not in driverLocations or d not in driverLocations):
@@ -303,8 +303,8 @@ for i, o in enumerate(N):
 Objective
 """
 total = 0.0
-for i,v in enumerate(x):
-    total += c[i] * v
+for i,yes in enumerate(x):
+    total += c[i] * yes
 
 print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
@@ -322,6 +322,11 @@ except Exception as e:
 try:
     for var in x:
         print(var.get_name() + ": "+ str(var.solution_value))
+    for var1, var2, var3 in zip(B, Q, v):
+        print(var1.get_name() + ": "+ str(var1.solution_value))
+        print(var2.get_name() + ": "+ str(var2.solution_value))
+        print(var3.get_name() + ": "+ str(var3.solution_value))
+
 except Exception as e:
     print(e)
     pass
