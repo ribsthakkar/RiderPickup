@@ -1,267 +1,52 @@
-Started 2019-12-27 09:27:07.350771
-4509 Springdale Rd, Austin, TX 7872 1030 Norwood Park Blvd , Austin , TX 7875
-(30.285456, -97.683217) (30.3392181, -97.6896801)
-1030 Norwood Park Blvd , Austin , TX 7875 4509 Springdale Rd, Austin, TX 7872
-(30.3392181, -97.6896801) (30.285456, -97.683217)
-3908 Avenue B, Austin, TX 7875 835 N Pleasant Valley Rd , Austin , TX 7870
+Started 2019-12-27 11:30:36.300860
+4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753
+(30.287794, -97.6801265) (30.3392181, -97.6896801)
+1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723
+(30.3392181, -97.6896801) (30.287794, -97.6801265)
+3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702
 (30.3040961, -97.7355612) (30.2643654, -97.7080983)
-835 N Pleasant Valley Rd , Austin , TX 7870 3908 Avenue B, Austin, TX 7875
+835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751
 (30.2643654, -97.7080983) (30.3040961, -97.7355612)
-1030 Norwood Park Blvd , Austin , TX 7875 3908 Avenue B, Austin, TX 7875
-(30.3392181, -97.6896801) (30.3040961, -97.7355612)
-1030 Norwood Park Blvd , Austin , TX 7875 110 Inner Campus Drive Austin,T
-(30.3392181, -97.6896801) (30.28606, -97.739353)
-1030 Norwood Park Blvd , Austin , TX 7875 835 N Pleasant Valley Rd , Austin , TX 7870
-(30.3392181, -97.6896801) (30.2643654, -97.7080983)
-4509 Springdale Rd, Austin, TX 7872 3908 Avenue B, Austin, TX 7875
-(30.285456, -97.683217) (30.3040961, -97.7355612)
-4509 Springdale Rd, Austin, TX 7872 110 Inner Campus Drive Austin,T
-(30.285456, -97.683217) (30.28606, -97.739353)
-4509 Springdale Rd, Austin, TX 7872 835 N Pleasant Valley Rd , Austin , TX 7870
-(30.285456, -97.683217) (30.2643654, -97.7080983)
-3908 Avenue B, Austin, TX 7875 1030 Norwood Park Blvd , Austin , TX 7875
-(30.3040961, -97.7355612) (30.3392181, -97.6896801)
-3908 Avenue B, Austin, TX 7875 4509 Springdale Rd, Austin, TX 7872
-(30.3040961, -97.7355612) (30.285456, -97.683217)
-3908 Avenue B, Austin, TX 7875 110 Inner Campus Drive Austin,T
-(30.3040961, -97.7355612) (30.28606, -97.739353)
-110 Inner Campus Drive Austin,T 1030 Norwood Park Blvd , Austin , TX 7875
-(30.28606, -97.739353) (30.3392181, -97.6896801)
-110 Inner Campus Drive Austin,T 4509 Springdale Rd, Austin, TX 7872
-(30.28606, -97.739353) (30.285456, -97.683217)
-110 Inner Campus Drive Austin,T 3908 Avenue B, Austin, TX 7875
-(30.28606, -97.739353) (30.3040961, -97.7355612)
-110 Inner Campus Drive Austin,T 835 N Pleasant Valley Rd , Austin , TX 7870
-(30.28606, -97.739353) (30.2643654, -97.7080983)
-835 N Pleasant Valley Rd , Austin , TX 7870 1030 Norwood Park Blvd , Austin , TX 7875
-(30.2643654, -97.7080983) (30.3392181, -97.6896801)
-835 N Pleasant Valley Rd , Austin , TX 7870 4509 Springdale Rd, Austin, TX 7872
-(30.2643654, -97.7080983) (30.285456, -97.683217)
-835 N Pleasant Valley Rd , Austin , TX 7870 110 Inner Campus Drive Austin,T
-(30.2643654, -97.7080983) (30.28606, -97.739353)
-Number of primary trips  4
-Number of possible secondary trips 8
-Total Number of possible trips 20
-Driver details
-Driver 0 A
-Trip details
-Primary trip 0 FROM 4509 Springdale Rd, Austin, TX 78723 TO 1030 Norwood Park Blvd , Austin , TX 78753 pickup by 0.552083 drop off by 0.58125
-Primary trip 1 FROM 3908 Avenue B, Austin, TX 78751 TO 835 N Pleasant Valley Rd , Austin , TX 78702 pickup by 0.510417 drop off by 0.539583
-Primary trip 2 FROM 1030 Norwood Park Blvd , Austin , TX 78753 TO 4509 Springdale Rd, Austin, TX 78723 pickup by 0.6229166666666667 drop off by 1.0
-Primary trip 3 FROM 835 N Pleasant Valley Rd , Austin , TX 78702 TO 3908 Avenue B, Austin, TX 78751 pickup by 0.583333 drop off by 0.6125
-Secondary trip 4 FROM 4509 Springdale Rd, Austin, TX 78723 TO 3908 Avenue B, Austin, TX 78751 pickup by 0.0 drop off by 1.0
-Secondary trip 5 FROM 3908 Avenue B, Austin, TX 78751 TO 1030 Norwood Park Blvd , Austin , TX 78753 pickup by 0.0 drop off by 1.0
-Secondary trip 6 FROM 835 N Pleasant Valley Rd , Austin , TX 78702 TO 4509 Springdale Rd, Austin, TX 78723 pickup by 0.0 drop off by 1.0
-Secondary trip 7 FROM 835 N Pleasant Valley Rd , Austin , TX 78702 TO 1030 Norwood Park Blvd , Austin , TX 78753 pickup by 0.0 drop off by 1.0
-Secondary trip 8 FROM 1030 Norwood Park Blvd , Austin , TX 78753 TO 3908 Avenue B, Austin, TX 78751 pickup by 0.0 drop off by 1.0
-Secondary trip 9 FROM 1030 Norwood Park Blvd , Austin , TX 78753 TO 835 N Pleasant Valley Rd , Austin , TX 78702 pickup by 0.0 drop off by 1.0
-Secondary trip 10 FROM 4509 Springdale Rd, Austin, TX 78723 TO 835 N Pleasant Valley Rd , Austin , TX 78702 pickup by 0.0 drop off by 1.0
-Secondary trip 11 FROM 3908 Avenue B, Austin, TX 78751 TO 4509 Springdale Rd, Austin, TX 78723 pickup by 0.0 drop off by 1.0
-Driver Home trip 12 FROM 4509 Springdale Rd, Austin, TX 78723 TO 110 Inner Campus Drive Austin,TX pickup by 0.0 drop off by 1.0
-Driver Home trip 13 FROM 110 Inner Campus Drive Austin,TX TO 1030 Norwood Park Blvd , Austin , TX 78753 pickup by 0.0 drop off by 1.0
-Driver Home trip 14 FROM 110 Inner Campus Drive Austin,TX TO 835 N Pleasant Valley Rd , Austin , TX 78702 pickup by 0.0 drop off by 1.0
-Driver Home trip 15 FROM 1030 Norwood Park Blvd , Austin , TX 78753 TO 110 Inner Campus Drive Austin,TX pickup by 0.0 drop off by 1.0
-Driver Home trip 16 FROM 3908 Avenue B, Austin, TX 78751 TO 110 Inner Campus Drive Austin,TX pickup by 0.0 drop off by 1.0
-Driver Home trip 17 FROM 835 N Pleasant Valley Rd , Austin , TX 78702 TO 110 Inner Campus Drive Austin,TX pickup by 0.0 drop off by 1.0
-Driver Home trip 18 FROM 110 Inner Campus Drive Austin,TX TO 3908 Avenue B, Austin, TX 78751 pickup by 0.0 drop off by 1.0
-Driver Home trip 19 FROM 110 Inner Campus Drive Austin,TX TO 4509 Springdale Rd, Austin, TX 78723 pickup by 0.0 drop off by 1.0
-Locataion details
-Location 0 1030 Norwood Park Blvd , Austin , TX 78753
-Location 1 4509 Springdale Rd, Austin, TX 78723
-Location 2 3908 Avenue B, Austin, TX 78751
-Location 3 110 Inner Campus Drive Austin,TX
-Location 4 835 N Pleasant Valley Rd , Austin , TX 78702
-<Driver.Driver object at 0x110f2fd68> : {<Trip.Trip object at 0x10ec2b2b0>: 0, <Trip.Trip object at 0x110f2fac8>: 1, <Trip.Trip object at 0x10573bc50>: 2, <Trip.Trip object at 0x110f2f160>: 3, <Trip.Trip object at 0x110f08fd0>: 4, <Trip.Trip object at 0x110f2f278>: 5, <Trip.Trip object at 0x110f2f080>: 6, <Trip.Trip object at 0x110f2ff28>: 7, <Trip.Trip object at 0x105bced68>: 8, <Trip.Trip object at 0x110f08f98>: 9, <Trip.Trip object at 0x110f2ffd0>: 10, <Trip.Trip object at 0x110f2f7f0>: 11, <Trip.Trip object at 0x110f08ef0>: 12, <Trip.Trip object at 0x110f2fb00>: 13, <Trip.Trip object at 0x110f2fef0>: 14, <Trip.Trip object at 0x110f2fb70>: 15, <Trip.Trip object at 0x110f2f390>: 16, <Trip.Trip object at 0x110f2fba8>: 17, <Trip.Trip object at 0x110f2f9b0>: 18, <Trip.Trip object at 0x110f2f1d0>: 19}
-20 1
-40
-[docplex.mp.Var(type=B,name='y_0_0'), docplex.mp.Var(type=B,name='y_0_1'), docplex.mp.Var(type=B,name='y_0_2'), docplex.mp.Var(type=B,name='y_0_3'), docplex.mp.Var(type=B,name='y_0_4'), docplex.mp.Var(type=B,name='y_0_5'), docplex.mp.Var(type=B,name='y_0_6'), docplex.mp.Var(type=B,name='y_0_7'), docplex.mp.Var(type=B,name='y_0_8'), docplex.mp.Var(type=B,name='y_0_9'), docplex.mp.Var(type=B,name='y_0_10'), docplex.mp.Var(type=B,name='y_0_11'), docplex.mp.Var(type=B,name='y_0_12'), docplex.mp.Var(type=B,name='y_0_13'), docplex.mp.Var(type=B,name='y_0_14'), docplex.mp.Var(type=B,name='y_0_15'), docplex.mp.Var(type=B,name='y_0_16'), docplex.mp.Var(type=B,name='y_0_17'), docplex.mp.Var(type=B,name='y_0_18'), docplex.mp.Var(type=B,name='y_0_19'), docplex.mp.Var(type=C,name='t_0_0',ub=1), docplex.mp.Var(type=C,name='t_0_1',ub=1), docplex.mp.Var(type=C,name='t_0_2',ub=1), docplex.mp.Var(type=C,name='t_0_3',ub=1), docplex.mp.Var(type=C,name='t_0_4',ub=1), docplex.mp.Var(type=C,name='t_0_5',ub=1), docplex.mp.Var(type=C,name='t_0_6',ub=1), docplex.mp.Var(type=C,name='t_0_7',ub=1), docplex.mp.Var(type=C,name='t_0_8',ub=1), docplex.mp.Var(type=C,name='t_0_9',ub=1), docplex.mp.Var(type=C,name='t_0_10',ub=1), docplex.mp.Var(type=C,name='t_0_11',ub=1), docplex.mp.Var(type=C,name='t_0_12',ub=1), docplex.mp.Var(type=C,name='t_0_13',ub=1), docplex.mp.Var(type=C,name='t_0_14',ub=1), docplex.mp.Var(type=C,name='t_0_15',ub=1), docplex.mp.Var(type=C,name='t_0_16',ub=1), docplex.mp.Var(type=C,name='t_0_17',ub=1), docplex.mp.Var(type=C,name='t_0_18',ub=1), docplex.mp.Var(type=C,name='t_0_19',ub=1)]
-Number of variables:  40
-Number of constraints after flow in = flow out 5
-Intrip: 110 Inner Campus Drive Austin,TX 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.INTER_A
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723 0.6229166666666667 1.0 TripType.D
-Intrip: 110 Inner Campus Drive Austin,TX 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.INTER_A
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.A
-Intrip: 110 Inner Campus Drive Austin,TX 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.INTER_A
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 835 N Pleasant Valley Rd , Austin , TX 78702 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.C
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723 0.6229166666666667 1.0 TripType.D
-Intrip: 4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753 0.552083 0.58125 TripType.B
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.C
-Intrip: 4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753 0.552083 0.58125 TripType.B
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.A
-Intrip: 4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753 0.552083 0.58125 TripType.B
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 3908 Avenue B, Austin, TX 78751 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.C
-Otrip: 1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723 0.6229166666666667 1.0 TripType.D
-Intrip: 835 N Pleasant Valley Rd , Austin , TX 78702 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.A
-Otrip: 4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753 0.552083 0.58125 TripType.B
-Intrip: 110 Inner Campus Drive Austin,TX 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.INTER_A
-Otrip: 4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753 0.552083 0.58125 TripType.B
-Intrip: 110 Inner Campus Drive Austin,TX 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.INTER_A
-Otrip: 4509 Springdale Rd, Austin, TX 78723 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723 0.6229166666666667 1.0 TripType.D
-Otrip: 4509 Springdale Rd, Austin, TX 78723 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.C
-Intrip: 1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723 0.6229166666666667 1.0 TripType.D
-Otrip: 4509 Springdale Rd, Austin, TX 78723 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.A
-Intrip: 1030 Norwood Park Blvd , Austin , TX 78753 4509 Springdale Rd, Austin, TX 78723 0.6229166666666667 1.0 TripType.D
-Otrip: 4509 Springdale Rd, Austin, TX 78723 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 3908 Avenue B, Austin, TX 78751 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.A
-Otrip: 4509 Springdale Rd, Austin, TX 78723 1030 Norwood Park Blvd , Austin , TX 78753 0.552083 0.58125 TripType.B
-Intrip: 4509 Springdale Rd, Austin, TX 78723 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.A
-Otrip: 3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702 0.510417 0.539583 TripType.B
-Intrip: 110 Inner Campus Drive Austin,TX 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.INTER_A
-Otrip: 3908 Avenue B, Austin, TX 78751 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 110 Inner Campus Drive Austin,TX 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.INTER_A
-Otrip: 3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702 0.510417 0.539583 TripType.B
-Intrip: 1030 Norwood Park Blvd , Austin , TX 78753 3908 Avenue B, Austin, TX 78751 0.0 1.0 TripType.A
-Otrip: 3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702 0.510417 0.539583 TripType.B
-Intrip: 835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751 0.583333 0.6125 TripType.D
-Otrip: 3908 Avenue B, Austin, TX 78751 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751 0.583333 0.6125 TripType.D
-Otrip: 3908 Avenue B, Austin, TX 78751 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.A
-Intrip: 835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751 0.583333 0.6125 TripType.D
-Otrip: 3908 Avenue B, Austin, TX 78751 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.C
-Intrip: 1030 Norwood Park Blvd , Austin , TX 78753 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.C
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751 0.583333 0.6125 TripType.D
-Intrip: 3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702 0.510417 0.539583 TripType.B
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.A
-Intrip: 3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702 0.510417 0.539583 TripType.B
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 1030 Norwood Park Blvd , Austin , TX 78753 0.0 1.0 TripType.C
-Intrip: 3908 Avenue B, Austin, TX 78751 835 N Pleasant Valley Rd , Austin , TX 78702 0.510417 0.539583 TripType.B
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 4509 Springdale Rd, Austin, TX 78723 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.C
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751 0.583333 0.6125 TripType.D
-Intrip: 110 Inner Campus Drive Austin,TX 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.INTER_A
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 4509 Springdale Rd, Austin, TX 78723 0.0 1.0 TripType.A
-Intrip: 110 Inner Campus Drive Austin,TX 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.INTER_A
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 110 Inner Campus Drive Austin,TX 0.0 1.0 TripType.INTER_B
-Intrip: 110 Inner Campus Drive Austin,TX 835 N Pleasant Valley Rd , Austin , TX 78702 0.0 1.0 TripType.INTER_A
-Otrip: 835 N Pleasant Valley Rd , Austin , TX 78702 3908 Avenue B, Austin, TX 78751 0.583333 0.6125 TripType.D
-Number of constraints after flow in before flow out 51
-Number of constraints after primary/secondary trips 55
-Number of constraints after driver home trips 57
-Number of constraints after wheelchair capacity 61
-Number of constraints after pickup time constraint 65
-Number of constraints after dropoff time constraint 69
-flowinout_1030 _0: y_0_0-y_0_2+y_0_5+y_0_7-y_0_8-y_0_9+y_0_13-y_0_15 == 0
-flowinout_4509 _0: -y_0_0+y_0_2-y_0_4+y_0_6-y_0_10+y_0_11-y_0_12+y_0_19 == 0
-flowinout_3908 _0: -y_0_1+y_0_3+y_0_4-y_0_5+y_0_8-y_0_11-y_0_16+y_0_18 == 0
-flowinout_110 I_0: y_0_12-y_0_13-y_0_14+y_0_15+y_0_16+y_0_17-y_0_18-y_0_19 == 0
-flowinout_835 N_0: y_0_1-y_0_3-y_0_6-y_0_7+y_0_9+y_0_10+y_0_14-y_0_17 == 0
-y_0_9 == 1 -> y_0_0 >= 1
-y_0_2 == 1 -> y_0_0+y_0_5+y_0_7+y_0_13 >= 1
-y_0_8 == 1 -> y_0_0 >= 1
-y_0_15 == 1 -> y_0_0+y_0_13 >= 1
-y_0_2+y_0_13 == 2 -> t_0_13+0.006 <= t_0_2
-y_0_8+y_0_13 == 2 -> t_0_13+0.006 <= t_0_8
-y_0_13+y_0_15 == 2 -> t_0_13+0.006 <= t_0_15
-y_0_2+y_0_7 == 2 -> t_0_7+0.006 <= t_0_2
-y_0_0+y_0_9 == 2 -> t_0_0+0.004 <= t_0_9
-y_0_0+y_0_8 == 2 -> t_0_0+0.004 <= t_0_8
-y_0_0+y_0_15 == 2 -> t_0_0+0.004 <= t_0_15
-y_0_2+y_0_5 == 2 -> t_0_5+0.004 <= t_0_2
-y_0_10 == 1 -> y_0_2 >= 1
-y_0_0 == 1 -> y_0_6+y_0_11+y_0_19 >= 1
-y_0_4 == 1 -> y_0_2 >= 1
-y_0_12 == 1 -> y_0_2+y_0_19 >= 1
-y_0_0+y_0_6 == 2 -> t_0_6+0.002 <= t_0_0
-y_0_0+y_0_19 == 2 -> t_0_19+0.004 <= t_0_0
-y_0_12+y_0_19 == 2 -> t_0_19+0.004 <= t_0_12
-y_0_2+y_0_10 == 2 -> t_0_2+0.004 <= t_0_10
-y_0_2+y_0_4 == 2 -> t_0_2+0.004 <= t_0_4
-y_0_2+y_0_12 == 2 -> t_0_2+0.004 <= t_0_12
-y_0_0+y_0_11 == 2 -> t_0_11+0.004 <= t_0_0
-y_0_16 == 1 -> y_0_3+y_0_18 >= 1
-y_0_11 == 1 -> y_0_3 >= 1
-y_0_1 == 1 -> y_0_4+y_0_8+y_0_18 >= 1
-y_0_5 == 1 -> y_0_3 >= 1
-y_0_1+y_0_4 == 2 -> t_0_4+0.004 <= t_0_1
-y_0_16+y_0_18 == 2 -> t_0_18+0.002 <= t_0_16
-y_0_1+y_0_18 == 2 -> t_0_18+0.002 <= t_0_1
-y_0_1+y_0_8 == 2 -> t_0_8+0.004 <= t_0_1
-y_0_3+y_0_16 == 2 -> t_0_3+0.004 <= t_0_16
-y_0_3+y_0_11 == 2 -> t_0_3+0.004 <= t_0_11
-y_0_3+y_0_5 == 2 -> t_0_3+0.004 <= t_0_5
-y_0_6 == 1 -> y_0_1 >= 1
-y_0_7 == 1 -> y_0_1 >= 1
-y_0_17 == 1 -> y_0_1+y_0_14 >= 1
-y_0_3 == 1 -> y_0_1+y_0_9+y_0_10+y_0_14 >= 1
-y_0_3+y_0_9 == 2 -> t_0_9+0.006 <= t_0_3
-y_0_1+y_0_6 == 2 -> t_0_1+0.004 <= t_0_6
-y_0_1+y_0_7 == 2 -> t_0_1+0.004 <= t_0_7
-y_0_1+y_0_17 == 2 -> t_0_1+0.004 <= t_0_17
-y_0_3+y_0_10 == 2 -> t_0_10+0.002 <= t_0_3
-y_0_6+y_0_14 == 2 -> t_0_14+0.003 <= t_0_6
-y_0_14+y_0_17 == 2 -> t_0_14+0.003 <= t_0_17
-y_0_3+y_0_14 == 2 -> t_0_14+0.003 <= t_0_3
-primaryTrip_0: y_0_0 == 1
-primaryTrip_1: y_0_1 == 1
-primaryTrip_2: y_0_2 == 1
-primaryTrip_3: y_0_3 == 1
-driverFromHome_0: y_0_13+y_0_14+y_0_18+y_0_19 == 1
-driverToHome_0: y_0_12+y_0_15+y_0_16+y_0_17 == 1
-capacity_0_0: y_0_0-1 <= 0
-capacity_0_1: y_0_1-1 <= 0
-capacity_0_2: y_0_2-1 <= 0
-capacity_0_3: y_0_3-1 <= 0
-pickup_0_0: -t_0_0+0.542 <= 0
-pickup_0_1: -t_0_1+0.500 <= 0
-pickup_0_2: -t_0_2+0.613 <= 0
-pickup_0_3: -t_0_3+0.573 <= 0
-dropoff_0_0: t_0_0-0.577 <= 0
-dropoff_0_1: t_0_1-0.536 <= 0
-dropoff_0_2: t_0_2-0.996 <= 0
-dropoff_0_3: t_0_3-0.609 <= 0
-Solve status: JobSolveStatus.OPTIMAL_SOLUTION
-Obj value: 29.50415354552059
-y_0_0: 1.0
-y_0_1: 1.0
-y_0_2: 1.0
-y_0_3: 1.0
-y_0_4: 0
-y_0_5: 1.0
-y_0_6: 1.0
-y_0_7: 0
-y_0_8: 0
-y_0_9: 1.0
-y_0_10: 0
-y_0_11: 0
-y_0_12: 1.0
-y_0_13: 0
-y_0_14: 0
-y_0_15: 0
-y_0_16: 0
-y_0_17: 0
-y_0_18: 1.0
-y_0_19: 0
-t_0_0: 0.5768040976035888
-t_0_1: 0.50000033334
-t_0_2: 0.9955540976035887
-t_0_3: 0.6086940825371311
-t_0_4: 0
-t_0_5: 0.9911999942623873
-t_0_6: 0.5743275216633339
-t_0_7: 0
-t_0_8: 0
-t_0_9: 0.6023997394578354
-t_0_10: 0
-t_0_11: 0
-t_0_12: 1.0
-t_0_13: 0
-t_0_14: 0
-t_0_15: 1.0
-t_0_16: 1.0
-t_0_17: 1.0
-t_0_18: 0
-t_0_19: 0
-Driver  A  goes from  4509 Springdale Rd, Austin, TX 78723  to  1030 Norwood Park Blvd , Austin , TX 78753  at  0.5768040976035888
-Driver  A  goes from  3908 Avenue B, Austin, TX 78751  to  835 N Pleasant Valley Rd , Austin , TX 78702  at  0.50000033334
-Driver  A  goes from  1030 Norwood Park Blvd , Austin , TX 78753  to  4509 Springdale Rd, Austin, TX 78723  at  0.9955540976035887
-Driver  A  goes from  835 N Pleasant Valley Rd , Austin , TX 78702  to  3908 Avenue B, Austin, TX 78751  at  0.6086940825371311
-Driver  A  goes from  3908 Avenue B, Austin, TX 78751  to  1030 Norwood Park Blvd , Austin , TX 78753  at  0.9911999942623873
-Driver  A  goes from  835 N Pleasant Valley Rd , Austin , TX 78702  to  4509 Springdale Rd, Austin, TX 78723  at  0.5743275216633339
-Driver  A  goes from  1030 Norwood Park Blvd , Austin , TX 78753  to  835 N Pleasant Valley Rd , Austin , TX 78702  at  0.6023997394578354
-Driver  A  goes from  4509 Springdale Rd, Austin, TX 78723  to  110 Inner Campus Drive Austin,TX  at  1.0
-Driver  A  goes from  110 Inner Campus Drive Austin,TX  to  3908 Avenue B, Austin, TX 78751  at  0
-Total miles traveled 29.50415354552059
-Ended 2019-12-27 09:27:15.911029
+901 Trinity St, Austin, TX 78701 801 W 38th St , Austin , TX 78705
+(30.2703114, -97.7376211) (30.3041725, -97.7419422)
+801 W 38th St , Austin , TX 78705 901 Trinity St, Austin, TX 78701
+(30.3041725, -97.7419422) (30.2703114, -97.7376211)
+1500 Royston Ln, Round Rock, TX 78664 1801 E 51st St , Bldg . G , Austin , TX 78723
+(30.458894, -97.653362) (30.305428, -97.702329)
+1801 E 51st St , Bldg . G , Austin , TX 78723 1500 Royston Ln, Round Rock, TX 78664
+(30.305428, -97.702329) (30.458894, -97.653362)
+1101 W New Hope Dr, Cedar Park, TX 78613 2800 S I H 35 , Austin , TX 78704-5700
+(30.528663, -97.850675) (30.3557599, -97.6890565)
+2800 S I H 35 , Austin , TX 78704-5700 1101 W New Hope Dr, Cedar Park, TX 78613
+(30.3557599, -97.6890565) (30.528663, -97.850675)
+216 W 3rd St, Elgin, TX 78621 6114 S First St , Austin , TX 78745-4008
+(30.349655, -97.37387) (30.202407, -97.784597)
+6114 S First St , Austin , TX 78745-4008 216 W 3rd St, Elgin, TX 78621
+(30.202407, -97.784597) (30.349655, -97.37387)
+3500 W Parmer Ln, Austin, TX 78727 1631 E 2nd St , Bldg . D , Austin , TX 78702
+(30.423816, -97.70903) (30.259142, -97.72774)
+1631 E 2nd St , Bldg . D , Austin , TX 78702 3500 W Parmer Ln, Austin, TX 78727
+(30.259142, -97.72774) (30.423816, -97.70903)
+2211 E Martin Luther King Jr Blvd, Austin, TX 78702 10000 Metric Blvd , Austin , TX 78758
+(30.2800985, -97.7175013) (30.3802058, -97.7165808)
+10000 Metric Blvd , Austin , TX 78758 2211 E Martin Luther King Jr Blvd, Austin, TX 78702
+(30.3802058, -97.7165808) (30.2800985, -97.7175013)
+9507 Dessau Rd, Austin, TX 78754 1801 E 51st St , Apt . 100 , Bldg . G , Austin , TX 78723
+(30.370386, -97.6673227) (30.305428, -97.702329)
+1801 E 51st St , Apt . 100 , Bldg . G , Austin , TX 78723 9507 Dessau Rd, Austin, TX 78754
+(30.305428, -97.702329) (30.370386, -97.6673227)
+5500 Avenue G, Austin, TX 78751 1631 E 2nd St , Bldg . A , Austin , TX 78702
+(30.319566, -97.718899) (30.259142, -97.72774)
+1631 E 2nd St , Bldg . A , Austin , TX 78702 5500 Avenue G, Austin, TX 78751
+(30.259142, -97.72774) (30.319566, -97.718899)
+606 W 15th St, Austin, TX 78701 1631 E 2nd St , Bldg . A C & D , Austin , TX 78702
+Traceback (most recent call last):
+  File "/Users/ribsthakkar/Documents/Fall-2019/ORI366/Project/iteration3final.py", line 66, in <module>
+    t = Trip(o, d, cap, id, type, start, end)
+  File "/Users/ribsthakkar/Documents/Fall-2019/ORI366/Project/Trip.py", line 22, in __init__
+    self.lp = LocationPair(o, d)
+  File "/Users/ribsthakkar/Documents/Fall-2019/ORI366/Project/Trip.py", line 49, in __init__
+    self.miles, self.time = self.computeDistance(self.o, self.d)
+  File "/Users/ribsthakkar/Documents/Fall-2019/ORI366/Project/Trip.py", line 60, in computeDistance
+    sleep(1)
+KeyboardInterrupt

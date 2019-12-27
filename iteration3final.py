@@ -33,8 +33,8 @@ homes = set()
 not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
-TRIPS_TO_DO = 4
-NUM_DRIVERS = 1
+TRIPS_TO_DO = 30
+NUM_DRIVERS = 6
 FIFTEEN = 0.01041666666
 THIRTY = FIFTEEN * 2
 TWENTY = FIFTEEN * (4/3)
@@ -250,7 +250,7 @@ for i, d in enumerate(drivers):
                 if otrip.type == TripType.A:
                     mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Dsum>=1)
                 if otrip.type == TripType.B:
-                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Asum + IAsum  >= 1)
+                    mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Asum + IAsum >= 1)
                 if otrip.type == TripType.C:
                     mdl.add_if_then(if_ct=x[i * valid_trips + indices[d][otrip]] == 1, then_ct= Dsum >= 1)
                 if otrip.type == TripType.INTER_B:
@@ -398,8 +398,8 @@ with open("modelsoln.txt", "w+") as o:
         for j, trip in enumerate(filter(f(driver), all_trips)):
             if x[i * valid_trips + j].solution_value == 1:
                 totalMiles += trip.lp.miles
-                o.write(driver.name + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.lp.miles) + "," + str(trip.lp.time) + "," + str(trip.type) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '"\n')
-                print("Driver ", driver.name, " goes from ", trip.lp.o, " to ", trip.lp.d, " at ", x[INT_VARS_OFFSET + i * valid_trips + j].solution_value)
+                o.write(str(driver.id) + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.lp.miles) + "," + str(trip.lp.time) + "," + str(trip.type) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '"\n')
+                print("Driver ", driver.id, " goes from ", trip.lp.o, " to ", trip.lp.d, " at ", x[INT_VARS_OFFSET + i * valid_trips + j].solution_value)
 
 print("Total miles traveled", totalMiles)
 print("Ended", datetime.now())

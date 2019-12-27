@@ -40,10 +40,13 @@ class LocationPair:
     def __init__(self, l1, l2):
         self.o = l1
         self.d = l2
-        if self.o[:-1] == self.d[:-1]:
-            self.miles, self.time = 0, 0
+        if l1[-1] == 'P' or l1[-1] == 'D':
+            if self.o[:-1] == self.d[:-1]:
+                self.miles, self.time = 0, 0
+            else:
+                self.miles, self.time = self.computeDistance(self.o[:-1], self.d[:-1])
         else:
-            self.miles, self.time = self.computeDistance(self.o[:-1], self.d[:-1])
+            self.miles, self.time = self.computeDistance(self.o, self.d)
 
 
     def computeDistance(self, l1, l2):
@@ -60,7 +63,7 @@ class LocationPair:
         else:
             loc2 = Location(l2)
             locations[l2] = loc2
-        speed = 35
+        speed = 30
         # c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
         # c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])
         # c1 = (l1loc[0]['geometry']['lat'] ,l1loc[0]['geometry']['lng'])
@@ -70,6 +73,9 @@ class LocationPair:
         print(c1, c2)
         miles = haversine(c1,c2, Unit.MILES)
         time = (miles/speed)/24
+        if time > 1:
+            print(miles, time, speed)
+            exit(1)
         return miles, time
         # url = "https://graphhopper.com/api/1/route?point=" + c1 + "&point=" + c2 + "&vehicle=car&locale=de&calc_points=false&key=" + api_key
         # resp = requests.get(url).json()
