@@ -41,12 +41,10 @@ class LocationPair:
         self.o = l1
         self.d = l2
         if l1[-1] == 'P' or l1[-1] == 'D':
-            if self.o[:-1] == self.d[:-1]:
-                self.miles, self.time = 0, 0
-            else:
-                self.miles, self.time = self.computeDistance(self.o[:-1], self.d[:-1])
-        else:
-            self.miles, self.time = self.computeDistance(self.o, self.d)
+            l1 = l1[:-1]
+        if l2[-1] == "P" or l2[-1] == "D":
+            l2 = l2[:-1]
+        self.miles, self.time = self.computeDistance(l1, l2)
 
 
     def computeDistance(self, l1, l2):

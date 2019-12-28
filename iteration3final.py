@@ -34,7 +34,7 @@ not_homes = set()
 inflow_trips = dict()
 outlfow_trips = dict()
 TRIPS_TO_DO = 10
-NUM_DRIVERS = 1
+NUM_DRIVERS = 2
 FIFTEEN = 0.01041666666
 THIRTY = FIFTEEN * 2
 TWENTY = FIFTEEN * (4/3)
@@ -392,14 +392,16 @@ with open("modeltrips.txt", "w+") as o:
         o.write(str(trip.id) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '",' + str(trip.start) + "," + str(trip.end) + "," + str(trip.lp.time) + "," + str(trip.type) + "," + str(trip.lp.miles) + "\n")
 
 totalMiles = 0
+count = 0
 with open("modelsoln.txt", "w+") as o:
     o.write("Driver_id, Trip_id, Time, Miles, Trip_Time, Trip_type, Trip_start, Trip_end\n")
     for i, driver in enumerate(drivers):
         for j, trip in enumerate(filter(f(driver), all_trips)):
             if x[i * valid_trips + j].solution_value == 1:
+                count += 1
                 totalMiles += trip.lp.miles
                 o.write(str(driver.id) + "," + str(trip.id) + "," + str(x[INT_VARS_OFFSET + i * valid_trips + j].solution_value) + "," + str(trip.lp.miles) + "," + str(trip.lp.time) + "," + str(trip.type) + ',"' + str(trip.lp.o) + '","' + str(trip.lp.d) + '"\n')
                 print("Driver ", driver.id, " goes from ", trip.lp.o, " to ", trip.lp.d, " at ", x[INT_VARS_OFFSET + i * valid_trips + j].solution_value)
-
+print("Number of trips", count)
 print("Total miles traveled", totalMiles)
 print("Ended", datetime.now())
