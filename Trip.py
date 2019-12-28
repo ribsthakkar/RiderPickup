@@ -51,7 +51,7 @@ class LocationPair:
 
     def computeDistance(self, l1, l2):
         # get lat,lon for l1 and l2
-        print(l1,l2)
+        # print(l1,l2)
         if l1 in locations:
             loc1 = locations[l1]
         else:
@@ -70,7 +70,7 @@ class LocationPair:
         # c2 = (l2loc[0]['geometry']['lat'],l2loc[0]['geometry']['lng'])
         c1 = loc1.coord
         c2 = loc2.coord
-        print(c1, c2)
+        # print(c1, c2)
         miles = haversine(c1,c2, Unit.MILES)
         time = (miles/speed)/24
         if time > 1:

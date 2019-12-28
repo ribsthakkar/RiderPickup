@@ -27,8 +27,8 @@ outlfow_trips = dict()
 ar = dict()
 idxes = dict()
 tripdex = dict()
-TRIPS_TO_DO = 30
-NUM_DRIVERS = 6
+TRIPS_TO_DO = 10
+NUM_DRIVERS = 2
 FIFTEEN = 0.01041666666
 
 last_trip = None
@@ -107,7 +107,7 @@ for index, row in trip_df.iterrows():
         cap = 1 if row['trip_los'] == 'A' else 1.5
 
         idxes[o] = count
-        idxes[d] = TRIPS_TO_DO * 2 + count
+        idxes[d] = TRIPS_TO_DO + count + NUM_DRIVERS
         P.append(o) # Add to Pickups
         D.append(d) # Add to Dropoffs
         Pe.append(start - FIFTEEN/2) # Add to Pickups open window
@@ -118,13 +118,13 @@ for index, row in trip_df.iterrows():
         Dq.append(-CAP) # Add to dropoff capacity
 
         PQ.append(mdl.continuous_var(lb=0, name='Q_'+str(count))) #Varaible for capacity at location pickup
-        DQ.append(mdl.continuous_var(lb=0, name='Q_'+str(TRIPS_TO_DO * 2 + count))) #Varaible for capacity at location dropoff
+        DQ.append(mdl.continuous_var(lb=0, name='Q_'+str(TRIPS_TO_DO + count + NUM_DRIVERS))) #Varaible for capacity at location dropoff
 
-        PB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(count * 2))) #Varaible for time at location pickup
-        DB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(TRIPS_TO_DO * 2 + count))) #Varaible for time at location dropoff
+        PB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(count))) #Varaible for time at location pickup
+        DB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(TRIPS_TO_DO + count + NUM_DRIVERS))) #Varaible for time at location dropoff
 
-        Pv.append(mdl.continuous_var(lb=0, name='v_' + str(count * 2))) #Varaible for index of first location on route pickup
-        Dv.append(mdl.continuous_var(lb=0, name='v_' + str(TRIPS_TO_DO * 2 + count))) #Varaible for undex of first location on route dropoff
+        Pv.append(mdl.continuous_var(lb=0, name='v_' + str(count))) #Varaible for index of first location on route pickup
+        Dv.append(mdl.continuous_var(lb=0, name='v_' + str(TRIPS_TO_DO + count + NUM_DRIVERS))) #Varaible for undex of first location on route dropoff
 
         id = row['trip_id']
         if 'A' in id:
@@ -155,7 +155,7 @@ id = 1
 
 count = 0
 temp = len(P)
-temp2 = max(idxes.values())
+temp2 = max(idxes.values()) + 1
 for index, row in driver_df.iterrows():
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
     add = row['Address']
@@ -164,15 +164,14 @@ for index, row in driver_df.iterrows():
     locations.add(add + "D")
     driverLocations.add(add + "P")
     driverLocations.add(add + "D")
-    count += 1
     DP.append(add + "P")
     DD.append(add + "D")
     DPe.append(0)  # Add to Pickups open window
     DDe.append(0)  # Add to Dropoffs open window
     DPl.append(1)  # Add to Pickups close window
     DDl.append(1)  # Add to Dropoffs close window
-    DPq.append(CAP)  # Add to Pickup capacity
-    DDq.append(-CAP)  # Add to dropoff capacity
+    DPq.append(0)  # Add to Pickup capacity
+    DDq.append(0)  # Add to dropoff capacity
 
     DPQ.append(mdl.continuous_var(lb=0, name='Q_' + str(temp + count)))  # Varaible for capacity at location pickup
     DDQ.append(mdl.continuous_var(lb=0, name='Q_' + str(temp2 + count)))  # Varaible for capacity at location dropoff
@@ -186,6 +185,7 @@ for index, row in driver_df.iterrows():
     idxes["DP" + row['Address']] = temp + count
     idxes["DD" + row['Address']] = temp2 + count
 
+    count += 1
 
     if count == NUM_DRIVERS:
         break
@@ -209,9 +209,12 @@ for i, o in enumerate(locations):
     for j, d in enumerate(locations):
         if o != d:
             if (o, d) in location_pair:
+                if d in not_homes:
+                    x.append(mdl.binary_var(name='B:' + o + '->' + d))
+                else:
+                    x.append(mdl.binary_var(name='D:' + o + '->' + d))
                 trp = ar[(o, d)]
-                x.append(mdl.binary_var(name= o +'->' + d))
-                tripdex[(o,d)] = len(x) - 1
+                tripdex[(o, d)] = len(x) - 1
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
             else:
@@ -229,32 +232,67 @@ for i, o in enumerate(locations):
                 driver_home_trips.add(trp)
                 id += 1
                 ar[(o, d)] = trp
-                x.append(mdl.binary_var(name= o +'->' + d))
-                tripdex[(o,d)] = len(x) - 1
+                if o in driverLocations:
+                    x.append(mdl.binary_var(name='InterA:' + o + '->' + d))
+                elif d in driverLocations:
+                    x.append(mdl.binary_var(name='InterB:' + o + '->' + d))
+                elif d in homes:
+                    x.append(mdl.binary_var(name='A:' + o + '->' + d))
+                else:
+                    x.append(mdl.binary_var(name='C:' + o + '->' + d))
+                tripdex[(o, d)] = len(x) - 1
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
+        # else:
+        #     if o in driverLocations:
+        #         trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0)
+        #         if o not in outlfow_trips:
+        #             outlfow_trips[o] = {trp}
+        #         else:
+        #             outlfow_trips[o].add(trp)
+        #         if d not in inflow_trips:
+        #             inflow_trips[d] = {trp}
+        #         else:
+        #             inflow_trips[d].add(trp)
+        #         id += 1
+        #         x.append(mdl.binary_var(name='SKIP:' + o + '->' + d))
+        #         tripdex[(o, d)] = len(x) - 1
+        #         t.append(trp.lp.time)
+        #         c.append(trp.lp.miles)
 print(x)
 print(t)
 print(c)
+print(len(P), len(DP), len(D), len(DD))
+print(len(N), len(B), len(v), len(Q))
+print(len(t), len(x))
 # exit(0)
 
 # Constraints
 """
 Each Node Visited Once
 """
-for j in P + D:
+for idx, j in enumerate(N):
     total = 0
     for intrip in inflow_trips[j]:
-        print((intrip.lp.o, intrip.lp.d))
+        # print((intrip.lp.o, intrip.lp.d))
         total += x[tripdex[(intrip.lp.o, intrip.lp.d)]]
-    mdl.add_constraint(total == 1, "Primary Location Entered " + j)
-
-for i in P + D:
+    if j in driverLocations:
+        # continue
+        # print(j)
+        mdl.add_constraint(total <= 1, "Driver Location Entered " + j)
+    else:
+        mdl.add_constraint(total == 1, "Primary Location Entered " + j)
+for idx, i in enumerate(N):
     total = 0
     for otrip in outlfow_trips[i]:
-        print((otrip.lp.o, otrip.lp.d))
+        # print((otrip.lp.o, otrip.lp.d))
         total += x[tripdex[(otrip.lp.o, otrip.lp.d)]]
-    mdl.add_constraint(total == 1, "Primary Location Exited " + i)
+    if i in driverLocations:
+        # continue
+        # print(i)
+        mdl.add_constraint(total <= 1, "Driver Location Exited " + i)
+    else:
+        mdl.add_constraint(total == 1, "Primary Location Exited " + i)
 
 """
 Time Consistency
@@ -306,7 +344,7 @@ total = 0.0
 for i,yes in enumerate(x):
     total += c[i] * yes
 
-print('\n'.join(str(c) for c in mdl.iter_constraints()))
+# print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
 
 mdl.minimize(total)
@@ -320,13 +358,18 @@ except Exception as e:
     pass
 
 try:
-    for var in x:
-        print(var.get_name() + ": "+ str(var.solution_value))
-    for var1, var2, var3 in zip(B, Q, v):
-        print(var1.get_name() + ": "+ str(var1.solution_value))
-        print(var2.get_name() + ": "+ str(var2.solution_value))
-        print(var3.get_name() + ": "+ str(var3.solution_value))
+    # for var in x:
+    #     print(var.get_name() + ": "+ str(var.solution_value))
+    for var0, var1, var2, var3 in zip(N, B, Q, v):
+        print('"' + var0 + '"' + ';' + str(var1.solution_value) +';' + str(var2.solution_value) + ';'+ str(var3.solution_value))
+        # print(var1.get_name() + ": "+ str(var1.solution_value))
+        # print(var2.get_name() + ": "+ str(var2.solution_value))
+        # print(var3.get_name() + ": "+ str(var3.solution_value))
 
+    for var in x:
+        if var.solution_value == 1:
+            print(var.get_name() + ": " + str(var.solution_value))
 except Exception as e:
     print(e)
     pass
+print("Ended", datetime.now())
