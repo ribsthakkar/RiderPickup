@@ -24,6 +24,9 @@ class Trip:
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
 
+    def __repr__(self):
+        return self.lp.o + "->" + self.lp.d
+
 class Location:
     def __init__(self, addr):
         self.addr = addr
@@ -42,8 +45,12 @@ class LocationPair:
         self.d = l2
         if l1[-1] == 'P' or l1[-1] == 'D':
             l1 = l1[:-1]
+        elif l1[:2] == 'O:' or l1[:2] == 'D:':
+            l1 = l1[2:]
         if l2[-1] == "P" or l2[-1] == "D":
             l2 = l2[:-1]
+        elif l2[:2] == 'O:' or l2[:2] == 'D:':
+            l2 = l2[2:]
         self.miles, self.time = self.computeDistance(l1, l2)
 
 
