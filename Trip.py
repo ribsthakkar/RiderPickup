@@ -74,16 +74,16 @@ class LocationPair:
             loc1 = locations[l1]
         else:
             loc1 = Location(l1)
-            with open('locations' + str(speed) + '.csv', 'a') as locs:
-                locs.write(l1 + "," + str(loc1.coord[0]) + "," + str(loc1.coord[1]) + '\n')
+            # with open('locations' + str(speed) + '.csv', 'a') as locs:
+            #     locs.write(l1 + "," + str(loc1.coord[0]) + "," + str(loc1.coord[1]) + '\n')
             locations[l1] = loc1
             sleep(1)
         if l2 in locations:
             loc2 = locations[l2]
         else:
             loc2 = Location(l2)
-            with open('locations' + str(speed) + '.csv', 'a') as locs:
-                locs.write(l1 + "," + str(loc2.coord[0]) + "," + str(loc2.coord[1]) + '\n')
+            # with open('locations' + str(speed) + '.csv', 'a') as locs:
+            #     locs.write(l1 + "," + str(loc2.coord[0]) + "," + str(loc2.coord[1]) + '\n')
             locations[l2] = loc2
         # c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
         # c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])

@@ -349,15 +349,20 @@ try:
     # for driver_trips in times.values():
     #     for t, var in driver_trips.items():
     #         print(var.get_name() + ": " + str(var.solution_value))
+    driverMiles = dict()
     with open('assignments.csv', 'w') as output:
-        output.write('driver_id, trip_id, time, cap\n')
+        output.write('driver_id, trip_id, time, cap, miles\n')
         for d, driver_trips in trips.items():
+            driverMiles[d] = 0
             for t, var in driver_trips.items():
                 if t not in primary_trips:
                     continue
                 if var.solution_value == 1:
+                    driverMiles[d] += t.lp.miles
                     output.write(str(d.id) + "," + str(t.id) + "," + str(times[d][t].solution_value) + "," +
-                          str(caps[d][t].solution_value) + "\n")
+                          str(caps[d][t].solution_value) +"," + str(t.lp.miles) + "\n")
+    print("Total Number of primary trip miles by each driver: ")
+    print(driverMiles)
 except Exception as e:
     print(e)
 

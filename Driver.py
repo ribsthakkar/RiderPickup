@@ -4,3 +4,5 @@ class Driver:
         self.name = name
         self.address = address
         self.capacity = cap
+    def __repr__(self):
+        return str(self.id)
