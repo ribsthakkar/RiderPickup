@@ -6,7 +6,15 @@ from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
 
 locations = dict()
-
+speed = 30
+try:
+    with open('locations' + str(speed) + '.csv', 'r') as locs:
+        line = locs.readline()
+        while line:
+            deets = line.split(',')
+            locations[deets[0]] = (float(deets[1]), deets[2])
+            line = locs.readline()
+except Exception: pass
 class TripType(Enum):
     A = 1 # Destination is a home without passenger Must be before B for a location
     B = 2 # Destination is a hospital with passenger Must be before C for a location
@@ -16,10 +24,10 @@ class TripType(Enum):
     INTER_B = 6 # From any location to driver home Must occur after all D trips
 
 class Trip:
-    def __init__(self, o, d, space, id, type, start, end):
+    def __init__(self, o, d, space, id, type, start, end, prefix):
         self.type = type
         self.id = id
-        self.lp = LocationPair(o, d)
+        self.lp = LocationPair(o, d, prefix)
         self.space = space
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
@@ -28,29 +36,34 @@ class Trip:
         return self.lp.o + "->" + self.lp.d
 
 class Location:
-    def __init__(self, addr):
+    def __init__(self, addr, coord = None):
         self.addr = addr
-        self.coord = self.find_coord(addr)
+        if coord is None:
+            self.coord = self.find_coord(addr)
+        else:
+            self.coord = coord
 
     def find_coord(self, addr):
-        geo_api = "78bdef6c2b254abaa78c55640925d3db"
+        geo_api = "3c8dd43d76194d28bf62f76a46b305c4"
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
         # print(addr, l1loc)
         return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
 
 class LocationPair:
-    def __init__(self, l1, l2):
+    def __init__(self, l1, l2, prefix):
         self.o = l1
         self.d = l2
-        if l1[-1] == 'P' or l1[-1] == 'D':
-            l1 = l1[:-1]
-        elif l1[:2] == 'O:' or l1[:2] == 'D:':
-            l1 = l1[2:]
-        if l2[-1] == "P" or l2[-1] == "D":
-            l2 = l2[:-1]
-        elif l2[:2] == 'O:' or l2[:2] == 'D:':
-            l2 = l2[2:]
+        if prefix:
+            l1 = l1[3:]
+        else:
+            if l1[-1] == 'P' or l1[-1] == 'D':
+                l1 = l1[:-1]
+        if prefix:
+            l2 = l2[3:]
+        else:
+            if l2[-1] == "P" or l2[-1] == "D":
+                l2 = l2[:-1]
         self.miles, self.time = self.computeDistance(l1, l2)
 
 
@@ -61,14 +74,17 @@ class LocationPair:
             loc1 = locations[l1]
         else:
             loc1 = Location(l1)
+            with open('locations' + str(speed) + '.csv', 'a') as locs:
+                locs.write(l1 + "," + str(loc1.coord[0]) + "," + str(loc1.coord[1]) + '\n')
             locations[l1] = loc1
             sleep(1)
         if l2 in locations:
             loc2 = locations[l2]
         else:
             loc2 = Location(l2)
+            with open('locations' + str(speed) + '.csv', 'a') as locs:
+                locs.write(l1 + "," + str(loc2.coord[0]) + "," + str(loc2.coord[1]) + '\n')
             locations[l2] = loc2
-        speed = 30
         # c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
         # c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])
         # c1 = (l1loc[0]['geometry']['lat'] ,l1loc[0]['geometry']['lng'])
