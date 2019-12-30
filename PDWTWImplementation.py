@@ -14,8 +14,8 @@ driver_df = pd.read_csv("Drivers.csv")
 1. Get all trip times/miles for each OD pair
 """
 drivers = set()
-locations = set()
-driverLocations = set()
+locations = list()
+driverLocations = list()
 driverstart = ""
 driverstop = ""
 location_pair = set()
@@ -26,7 +26,7 @@ outlfow_trips = dict()
 ar = dict()
 idxes = dict()
 tripdex = dict()
-TRIPS_TO_DO = 18
+TRIPS_TO_DO = 4
 DRIVER_IDX = 0
 FIFTEEN = 0.01041666666
 
@@ -67,7 +67,7 @@ Dl = [] # end window of node j; length of N
 Pq = [] # demand for each location j; length of N
 Dq = [] # demand for each location j; length of N
 
-CAP = 1.5
+CAP = 2.5
 BIGM = 100000
 # Formulate optimization problem
 """
@@ -117,9 +117,9 @@ for index, row in trip_df.iterrows():
             homes.add(d)
             not_homes.add(o)
             type = TripType.D
-        locations.add(o)
-        locations.add(d)
-        t = Trip(o, d, cap, id, type, start, end)
+        locations.append(o)
+        locations.append(d)
+        t = Trip(o, d, cap, id, type, start, end, False)
         location_pair.add((o,d))
         ar[(o,d)] = t
         if o not in outlfow_trips:
@@ -141,7 +141,7 @@ for index, row in driver_df.iterrows():
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
     add = row['Address']
     drivers.add(Driver(row['ID'], row['Driver'], add, cap))
-    locations.add(add)
+    locations.append(add)
     driverstart = add # + "P"
     driverstop = add #+ "D"
     break
@@ -177,7 +177,7 @@ for i, o in enumerate(locations):
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
             else:
-                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0)
+                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0, False)
                 if o not in outlfow_trips:
                     outlfow_trips[o] = {trp}
                 else:
@@ -270,6 +270,23 @@ for i, o in enumerate(N):
             mdl.add_constraint(v[j] <= v[i] + n * (1 - x[tripdex[(o,d)]]))
 
 """
+Temporary Validation
+"""
+# required = {"B:3908 Avenue B, Austin, TX 78751P->835 N Pleasant Valley Rd , Austin , TX 78702D",
+#             "InterB:4509 Springdale Rd, Austin, TX 78723D->110 Inner Campus Drive Austin,TX",
+#             "C:835 N Pleasant Valley Rd , Austin , TX 78702D->835 N Pleasant Valley Rd , Austin , TX 78702P",
+#             "InterB:3908 Avenue B, Austin, TX 78751D->110 Inner Campus Drive Austin,TX",
+#             "B:4509 Springdale Rd, Austin, TX 78723P->1030 Norwood Park Blvd , Austin , TX 78753D",
+#             "InterA:110 Inner Campus Drive Austin,TX->3908 Avenue B, Austin, TX 78751P",
+#             "InterA:110 Inner Campus Drive Austin,TX->4509 Springdale Rd, Austin, TX 78723P",
+#             "D:1030 Norwood Park Blvd , Austin , TX 78753P->4509 Springdale Rd, Austin, TX 78723D",
+#             "D:835 N Pleasant Valley Rd , Austin , TX 78702P->3908 Avenue B, Austin, TX 78751D",
+#             "C:1030 Norwood Park Blvd , Austin , TX 78753D->1030 Norwood Park Blvd , Austin , TX 78753P"}
+# for i, var in enumerate(x):
+#     if var.get_name() in required:
+#         mdl.add_constraint(ct=x[i] == 1)
+
+"""
 Objective
 """
 total = 0.0
@@ -290,6 +307,7 @@ except Exception as e:
     pass
 
 try:
+
     # for var in x:
     #     print(var.get_name() + ": "+ str(var.solution_value))
     for var0, var1, var2, var3 in zip(N, B, Q, v):
@@ -299,9 +317,20 @@ try:
         # print(var3.get_name() + ": "+ str(var3.solution_value))
     count = 0
     for var in x:
-        if var.solution_value == 1:
-            count += 1
-            print(var.get_name() + ": " + str(var.solution_value))
+        count += 1
+        print("'" + var.get_name() + "';" + str(var.solution_value))
+    for var in N:
+        count += 1
+        print(var)
+    for var in Q:
+        count += 1
+        print(var.get_name() + ": " + str(var.solution_value))
+    for var in B:
+        count += 1
+        print(var.get_name() + ": " + str(var.solution_value))
+    for var in v:
+        count += 1
+        print(var.get_name() + ": " + str(var.solution_value))
     print("Number of trips ", count)
 except Exception as e:
     print(e)
