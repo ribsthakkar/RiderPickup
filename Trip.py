@@ -24,10 +24,10 @@ class TripType(Enum):
     INTER_B = 6 # From any location to driver home Must occur after all D trips
 
 class Trip:
-    def __init__(self, o, d, space, id, type, start, end, prefix):
+    def __init__(self, o, d, space, id, type, start, end, prefix=False, suffix=False, prefixLen=3, suffixLen=4):
         self.type = type
         self.id = id
-        self.lp = LocationPair(o, d, prefix)
+        self.lp = LocationPair(o, d, prefix, suffix, prefixLen, suffixLen)
         self.space = space
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
@@ -51,19 +51,17 @@ class Location:
         return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
 
 class LocationPair:
-    def __init__(self, l1, l2, prefix):
+    def __init__(self, l1, l2, prefix, suffix, plen, slen):
         self.o = l1
         self.d = l2
         if prefix:
-            l1 = l1[3:]
-        else:
-            if l1[-1] == 'P' or l1[-1] == 'D':
-                l1 = l1[:-1]
+            l1 = l1[plen:]
+        if suffix:
+            l1 = l1[:-slen]
         if prefix:
-            l2 = l2[3:]
-        else:
-            if l2[-1] == "P" or l2[-1] == "D":
-                l2 = l2[:-1]
+            l2 = l2[plen:]
+        if suffix:
+            l2 = l2[:-slen]
         self.miles, self.time = self.computeDistance(l1, l2)
 
 

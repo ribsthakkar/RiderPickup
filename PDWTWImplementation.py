@@ -1,4 +1,5 @@
 import pandas as pd
+
 from Driver import Driver
 from Trip import Trip, TripType
 from docplex.mp.model import Model
@@ -26,7 +27,7 @@ outlfow_trips = dict()
 ar = dict()
 idxes = dict()
 tripdex = dict()
-TRIPS_TO_DO = 4
+TRIPS_TO_DO = 30
 DRIVER_IDX = 0
 FIFTEEN = 0.01041666666
 
@@ -80,34 +81,13 @@ mdl = Model(name="Patient Transport")
 count = 0
 for index, row in trip_df.iterrows():
     if not row['trip_status'] == "CANCELED":
-        o = row['scrub_trip_pickup_address'] + "P"
-        d = row['scrub_trip_dropoff_address'] + "D"
+        o = row['scrub_trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
+        d = row['scrub_trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
         start = float(row['trip_pickup_time'])
         end = float(row['trip_dropoff_time'])
         if end == 0.0:
             end = 1.0
         cap = 1 if row['trip_los'] == 'A' else 1.5
-
-        idxes[o] = count
-        idxes[d] = TRIPS_TO_DO + count
-        P.append(o) # Add to Pickups
-        D.append(d) # Add to Dropoffs
-        Pe.append(start - FIFTEEN/2) # Add to Pickups open window
-        De.append(start - FIFTEEN/2) # Add to Dropoffs open window
-        Pl.append(end + FIFTEEN/2) # Add to Pickups close window
-        Dl.append(end + FIFTEEN/2) # Add to Dropoffs close window
-        Pq.append(CAP) # Add to Pickup capacity
-        Dq.append(-CAP) # Add to dropoff capacity
-
-        PQ.append(mdl.continuous_var(lb=0, name='Q_'+str(count))) #Varaible for capacity at location pickup
-        DQ.append(mdl.continuous_var(lb=0, name='Q_'+str(TRIPS_TO_DO + count))) #Varaible for capacity at location dropoff
-
-        PB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(count))) #Varaible for time at location pickup
-        DB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(TRIPS_TO_DO + count))) #Varaible for time at location dropoff
-
-        Pv.append(mdl.continuous_var(lb=0, name='v_' + str(count))) #Varaible for index of first location on route pickup
-        Dv.append(mdl.continuous_var(lb=0, name='v_' + str(TRIPS_TO_DO + count))) #Varaible for undex of first location on route dropoff
-
         id = row['trip_id']
         if 'A' in id:
             type = TripType.B
@@ -119,7 +99,29 @@ for index, row in trip_df.iterrows():
             type = TripType.D
         locations.append(o)
         locations.append(d)
-        t = Trip(o, d, cap, id, type, start, end, False)
+        t = Trip(o, d, cap, id, type, start, end, False, True)
+        if type == TripType.D and start == 0:
+            start = last_trip.end + (1 / 24)
+        idxes[o] = count
+        idxes[d] = TRIPS_TO_DO + count
+        P.append(o) # Add to Pickups
+        D.append(d) # Add to Dropoffs
+        Pe.append(start - FIFTEEN/2) # Add to Pickups open window
+        De.append(start - FIFTEEN/2) # Add to Dropoffs open window
+        Pl.append(end + FIFTEEN/2) # Add to Pickups close window
+        Dl.append(end + FIFTEEN/2) # Add to Dropoffs close window
+        Pq.append(cap) # Add to Pickup capacity
+        Dq.append(-cap) # Add to dropoff capacity
+
+        PQ.append(mdl.continuous_var(lb=0, name='Q_'+str(count))) #Varaible for capacity at location pickup
+        DQ.append(mdl.continuous_var(lb=0, name='Q_'+str(TRIPS_TO_DO + count))) #Varaible for capacity at location dropoff
+
+        PB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(count))) #Varaible for time at location pickup
+        DB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(TRIPS_TO_DO + count))) #Varaible for time at location dropoff
+
+        Pv.append(mdl.continuous_var(lb=0, name='v_' + str(count))) #Varaible for index of first location on route pickup
+        Dv.append(mdl.continuous_var(lb=0, name='v_' + str(TRIPS_TO_DO + count))) #Varaible for undex of first location on route dropoff
+
         location_pair.add((o,d))
         ar[(o,d)] = t
         if o not in outlfow_trips:
@@ -139,7 +141,7 @@ for index, row in driver_df.iterrows():
         count += 1
         continue
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
-    add = row['Address']
+    add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
     drivers.add(Driver(row['ID'], row['Driver'], add, cap))
     locations.append(add)
     driverstart = add # + "P"
@@ -177,7 +179,7 @@ for i, o in enumerate(locations):
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
             else:
-                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0, False)
+                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0, False, True)
                 if o not in outlfow_trips:
                     outlfow_trips[o] = {trp}
                 else:
@@ -316,9 +318,16 @@ try:
         # print(var2.get_name() + ": "+ str(var2.solution_value))
         # print(var3.get_name() + ": "+ str(var3.solution_value))
     count = 0
-    for var in x:
-        count += 1
-        print("'" + var.get_name() + "';" + str(var.solution_value))
+    for i, o in enumerate(locations):
+        for j, d in enumerate(locations):
+            if o != d:
+                var = x[tripdex[(o,d)]]
+                t = ar[(o,d)]
+                print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start)+ ';'  + str(t.end)+ ';'  + str(t.lp.miles))
+
+    # for var in x:
+    #     count += 1
+    #     print("'" + var.get_name() + "';" + str(var.solution_value))
     for var in N:
         count += 1
         print(var)
