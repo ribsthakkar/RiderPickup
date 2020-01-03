@@ -6,7 +6,7 @@ from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
 
 locations = dict()
-speed = 30
+speed = 50
 try:
     with open('locations' + str(speed) + '.csv', 'r') as locs:
         line = locs.readline()
@@ -31,7 +31,7 @@ class Trip:
         self.space = space
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
-
+        self.los = 'W' if space == 1.5 else 'A'
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d
 

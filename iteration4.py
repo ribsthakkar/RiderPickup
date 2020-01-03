@@ -1,21 +1,45 @@
 import pandas as pd
 from Driver import Driver
-from Trip import Trip, TripType
+from Trip import Trip, TripType, speed
 from docplex.mp.model import Model
+from docplex.mp.progress import ProgressListener
 
 from datetime import datetime
 
-NUM_TRIPS = 32
-NUM_DRIVERS = 2
+NUM_TRIPS = float('inf')
+NUM_DRIVERS = float('inf')
 FIFTEEN = 0.01041666666
 
 def filtered(d, iter):
-    return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (t.lp.d in driverNodes and t.lp.d[3:] != d.address)),iter)
+    return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (t.lp.d in driverNodes and t.lp.d[3:] != d.address)) and t.los in d.los,iter)
+
+class Listener(ProgressListener):
+    """
+    Sample Listener found on IBM DoCPLEX Forums
+    """
+    def __init__(self, time, gap):
+        ProgressListener.__init__(self)
+        self._time = time
+        self._gap = gap
+
+    def notify_progress(self, data):
+        print('Elapsed time: %.2f' % data.time)
+        if data.has_incumbent:
+            print('Current incumbent: %f' % data.current_objective)
+            print('Current gap: %.2f%%' % (100. * data.mip_gap))
+            # If we are solving for longer than the specified time then
+            # stop if we reach the predefined alternate MIP gap.
+            if data.time > self._time or data.mip_gap < self._gap:
+                print('ABORTING')
+                self.abort()
+        else:
+            print('No incumbent yet')
 
 print("Started", datetime.now())
+print("Average Speed assumed: ",speed)
 t = datetime.now()
-trip_df = pd.read_csv("Trips.csv")
-driver_df = pd.read_csv("Drivers.csv")
+trip_df = pd.read_csv("../Data/in_trips.csv", keep_default_na=False)
+driver_df = pd.read_csv("../Data/in_drivers.csv", keep_default_na=False)
 mdl = Model(name="Patient Transport")
 
 # Input Data Structures
@@ -49,8 +73,10 @@ Driver Locations
 """
 count = 0
 for index, row in driver_df.iterrows():
-    cap = 2 if row['Vehicle_Type'] == 'A' else 2.5
-    drivers.append(Driver(row['ID'], row['Driver'], row['Address'], cap))
+    if row['Available?'] != 1:
+        continue
+    cap = 2
+    drivers.append(Driver(row['ID'], row['Name'], row['Address'], cap, row['Vehicle_Type']))
     start = str(hash(row['ID']))[:0] + "Or:" + row['Address']
     end = str(hash(row['ID']))[:0] + "De:" + row['Address']
     # start = "O:" + row['Address']
@@ -66,11 +92,12 @@ for index, row in driver_df.iterrows():
     count += 1
     if count == NUM_DRIVERS:
         break
+print("Number of Drivers:", count)
 count = 0
 for index, row in trip_df.iterrows():
     if not row['trip_status'] == "CANCELED":
-        start = str(hash(row['trip_id']))[1:3] + ":" + row['scrub_trip_pickup_address']
-        end = str(hash(row['trip_id']))[1:3] + ":" + row['scrub_trip_dropoff_address']
+        start = str(hash(row['trip_id']))[1:4] + ":" + row['trip_pickup_address']
+        end = str(hash(row['trip_id']))[1:4] + ":" + row['trip_dropoff_address']
         # start = "O:" + row['scrub_trip_pickup_address']
         # end = "D:" + row['scrub_trip_dropoff_address']
         # print(start, end)
@@ -85,11 +112,19 @@ for index, row in trip_df.iterrows():
             requestStart.add(start)
             requestEnd.add(end)
             requestPair[start] = end
+            a = len(requestNodes)
             requestNodes.add(start)
+            if a == len(requestNodes):
+                print(start, end)
+                exit(1)
+            b = len(requestNodes)
             requestNodes.add(end)
+            if b == len(requestNodes):
+                print(start, end)
+                exit(1)
             nodeCaps[start] = cap
             nodeCaps[end] = -cap
-            t = Trip(start, end, cap, id, type, pick, drop, True)
+            t = Trip(start, end, cap, id, type, pick, drop, True, prefixLen=4)
             all_trips[id] = t
             primary_trips.add(t)
             if start not in outtrips:
@@ -106,11 +141,19 @@ for index, row in trip_df.iterrows():
             requestStart.add(start)
             requestEnd.add(end)
             requestPair[start] = end
+            a = len(requestNodes)
             requestNodes.add(start)
+            if a == len(requestNodes):
+                print(start, end)
+                exit(1)
+            b = len(requestNodes)
             requestNodes.add(end)
+            if b == len(requestNodes):
+                print(start, end)
+                exit(1)
             nodeCaps[start] = cap
             nodeCaps[end] = -cap
-            t = Trip(start, end, cap, id, type, pick, drop, True)
+            t = Trip(start, end, cap, id, type, pick, drop, True,prefixLen=4)
             all_trips[id] = t
             primary_trips.add(t)
             if start not in outtrips:
@@ -129,6 +172,7 @@ if len(requestNodes) != 2 * count:
     print("Not enough nodes", len(requestNodes), count )
     exit(1)
 
+print("Number of Trips:", count)
 id = 1
 """
 Trips from Driver Start locations to Start location of any request
@@ -211,6 +255,8 @@ for d in drivers:
         # if (t.lp.o in driverNodes and t.lp.o[2:] != d.address) or (t.lp.d in driverNodes and t.lp.d[2:] != d.address):
         #     continue
         trips[d][t] = mdl.binary_var(name='y' +'_' + str(d.id) +'_' + str(t.id))
+        # if d.los == 'A' and t.los != 'A':
+        #     mdl.add_constraint(ct=trips[d][t] == 0)
         times[d][t] = mdl.continuous_var(lb=0, ub=1, name='t' +'_' + str(d.id) +'_' + str(t.id))
         caps[d][t] = mdl.continuous_var(lb=0, ub=d.capacity, name='q' +'_' + str(d.id) +'_' + str(t.id))
 
@@ -226,7 +272,7 @@ for driver_trips in trips.values():
     for t, var in driver_trips.items():
         obj += t.lp.miles * var
 mdl.minimize(obj)
-
+print("Defined Objective Function")
 """
 Request Requirements
 """
@@ -234,9 +280,10 @@ for trp in all_trips:
     if isinstance(trp, str):
         total = 0
         for d in drivers:
-            total += trips[d][all_trips[trp]]
+            if all_trips[trp].los in d.los:
+                total += trips[d][all_trips[trp]]
         mdl.add_constraint(ct=total == 1)
-
+print("Set Primary Trip Requirement Constraint")
 """
 Flow Conservation
 """
@@ -251,6 +298,7 @@ for rN in requestNodes:
     mdl.add_constraint(ct= totalin <= 1, ctname='flowin' + '_' + str(rN)[:5])
     mdl.add_constraint(ct= totalout >= -1, ctname='flowout' + '_' + str(rN)[:5])
     mdl.add_constraint(ct= totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
+
 for d in drivers:
     for dS in driverStart:
         if dS[3:] != d.address:
@@ -268,6 +316,7 @@ for d in drivers:
             total += trips[d][intrip]
         mdl.add_constraint(ct= total == 1, ctname='driverin' + '_'  + str(d.id))
 
+print("Set flow conservation constraints")
 
 """
 Time Constraints
@@ -276,29 +325,36 @@ for d in drivers:
     for loc in requestEnd.union(driverEnd):
         for intrip in filtered(d, intrips[loc]):
             mdl.add_constraint(ct=times[d][intrip] + intrip.lp.time <= intrip.end)
+print("Set arrival time constriants")
+
 for trp in all_trips:
     if isinstance(trp, str):
         trip = all_trips[trp]
         for d in drivers:
-            mdl.add_constraint(ct=times[d][trip] >= trip.start - FIFTEEN)
+            if all_trips[trp].los in d.los:
+                mdl.add_constraint(ct=times[d][trip] >= trip.start - FIFTEEN)
+print("Set departure time constraints")
 
 """
 Precedence Constraints
 """
 for trp in all_trips:
     if isinstance(trp, str):
-        if trp.endswith('A'):
+        if trp.endswith('A') and (trp[:-1] + 'B') in all_trips:
             main_trip = all_trips[trp]
             alt_trip = all_trips[trp[:-1] + "B"]
             for d in drivers:
-                mdl.add_constraint(ct=times[d][main_trip] + main_trip.lp.time <= times[d][alt_trip])
+                if all_trips[trp].los in d.los:
+                    mdl.add_constraint(ct=times[d][main_trip] + main_trip.lp.time <= times[d][alt_trip])
+print("Set primary trip precedence constraints")
+
 for d in drivers:
     for loc in requestNodes:
         incount = 0
         for intrip in filtered(d, intrips[loc]):
             for otrip in filtered(d, outtrips[loc]):
-                mdl.add_if_then(if_ct= trips[d][intrip] == 1, then_ct=times[d][intrip] + intrip.lp.time <= times[d][otrip])
-
+                mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d][otrip])
+print("Set incoming trip before outgoing trip constraints")
 
 for loc in requestNodes:
     total = 0
@@ -318,6 +374,7 @@ for rS in requestStart:
         for otrip in filtered(d, outtrips[rS]):
             total -= d.id * trips[d][otrip]
     mdl.add_constraint(ct= total == 0)
+print("Set incoming driver is the same as outgoing driver constraints")
 
 """
 Capacity Constraints
@@ -326,7 +383,9 @@ for d in drivers:
     for loc in requestNodes:
         for otrip in filtered(d, outtrips[loc]):
             for intrip in filtered(d, intrips[loc]):
-                mdl.add_if_then(if_ct= trips[d][intrip] == 1, then_ct=caps[d][intrip] + nodeCaps[loc] == caps[d][otrip])
+                mdl.add_indicator(trips[d][intrip], caps[d][intrip] + nodeCaps[loc] == caps[d][otrip])
+print("Set capacity value constraints")
+
 for d in drivers:
     for loc in driverStart:
         for otrip in filtered(d, outtrips[loc]):
@@ -334,9 +393,14 @@ for d in drivers:
     for loc in driverEnd:
         for intrip in filtered(d, intrips[loc]):
             mdl.add_constraint(ct=caps[d][intrip] == 0)
+print("Set initial and final trip capacity constraints")
 
 print("Num variables:", mdl.number_of_variables)
 print("Num constraints:", mdl.number_of_constraints)
+
+pL = Listener(3600, 0.01)
+mdl.add_progress_listener(pL)
+
 mdl.solve()
 print("Solve status: " + str(mdl.get_solve_status()))
 try:
@@ -361,6 +425,19 @@ try:
                     driverMiles[d] += t.lp.miles
                     output.write(str(d.id) + "," + str(t.id) + "," + str(times[d][t].solution_value) + "," +
                           str(caps[d][t].solution_value) +"," + str(t.lp.miles) + "\n")
+    def tripGen():
+        for d, driver_trips in trips.items():
+            for t, var in driver_trips.items():
+                if t not in primary_trips or var.solution_value != 1:
+                    continue
+                yield (d, t)
+
+    with open('final_output.csv', 'w') as output:
+        output.write('trip_id, driver_id,driver_name ,trip_pickup_address, trip_pickup_time, est_pickup_time, trip_dropoff_adress, trip_dropoff_time, est_dropoff_time, trip_los, est_miles, est_time\n')
+        for d, t in sorted(tripGen(), key=lambda x: times[x[0]][x[1]].solution_value):
+                output.write(str(t.id) + "," + str(d.id) + "," + str(d.name) + ",\"" + str(t.lp.o[4:]) + "\"," + str(t.start) + "," + str(times[d][t].solution_value) + ",\"" +
+                             str(t.lp.d[4:]) + "\"," + str(t.end) + "," + str(times[d][t].solution_value + t.lp.time) + "," +
+                      str(t.los) +"," + str(t.lp.miles) +"," + str(t.lp.time) + "\n")
     print("Total Number of primary trip miles by each driver: ")
     print(driverMiles)
 except Exception as e:

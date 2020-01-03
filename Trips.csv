@@ -1,4 +1,4 @@
-date,trip_id,trip_status,scrub_name,trip_pickup_time,scrub_trip_pickup_address,trip_dropoff_time,scrub_trip_dropoff_address,trip_los,trip_miles
+date,trip_id,trip_status,scrub_name,trip_pickup_time,trip_pickup_address,trip_dropoff_time,trip_dropoff_address,trip_los,trip_miles
 10/17/2019,01-116251-A,NEW,Samuel Vincent,0.552083,"4509 Springdale Rd, Austin, TX 78723",0.581250,"1030 Norwood Park Blvd , Austin , TX 78753",A,2
 10/17/2019,01-116251-B,NEW,Samuel Vincent,0.000000,"1030 Norwood Park Blvd , Austin , TX 78753",0.000000,"4509 Springdale Rd, Austin, TX 78723",A,2
 10/17/2019,01-116383-A,NEW,Giorgio Camacho,0.510417,"3908 Avenue B, Austin, TX 78751",0.539583,"835 N Pleasant Valley Rd , Austin , TX 78702",A,5

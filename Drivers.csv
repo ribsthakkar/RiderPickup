@@ -1,13 +1,13 @@
-Driver,ID,Address,Vehicle_Type
-A,101,"110 Inner Campus Drive Austin,TX",W
-B,102,"1001 Penny Ln Round Rock, TX 78681",W
-K,111,"3201 Twin Creeks Club Dr, Cedar Park, TX 78613",W
-L,112,"2398 Fair Oaks Dr Austin, TX 78745",W
-C,103,"1840 Burton Dr, Austin, TX 78741",A
-D,104,"5717 Wellington Dr Austin, TX",W
-E,105,"299 Blueridge Trail Austin, TX 78746",A
-F,106,"2398 Granberry Dr Austin, TX 78745",W
-G,107,"1611 W 5th St Austin, TX 78703",A
-H,108,"1298 Lenoa St Austin, TX 78702",W
-I,109,"1305 Summer Oak Dr Austin, TX 78704",A
-J,110,"1917 Richcreek Rd Austin, TX 78757",A
+Available?,Name,ID,Address,Vehicle_Type
+1,A,101,"110 Inner Campus Drive Austin,TX",A/W
+1,B,102,"1001 Penny Ln Round Rock, TX 78681",A/W
+1,K,111,"3201 Twin Creeks Club Dr, Cedar Park, TX 78613",A/W
+1,L,112,"2398 Fair Oaks Dr Austin, TX 78745",A/W
+1,C,103,"1840 Burton Dr, Austin, TX 78741",A
+1,D,104,"5717 Wellington Dr Austin, TX",A/W
+1,E,105,"299 Blueridge Trail Austin, TX 78746",A
+1,F,106,"2398 Granberry Dr Austin, TX 78745",A/W
+1,G,107,"1611 W 5th St Austin, TX 78703",A
+1,H,108,"1298 Lenoa St Austin, TX 78702",A/W
+1,I,109,"1305 Summer Oak Dr Austin, TX 78704",A
+1,J,110,"1917 Richcreek Rd Austin, TX 78757",A
