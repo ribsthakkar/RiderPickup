@@ -4,6 +4,8 @@ from opencage.geocoder import OpenCageGeocode
 from time import sleep
 from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
+# FIFTEEN = 0.01041666666
+# BUFFER = FIFTEEN * (5/3)
 
 locations = dict()
 # try:
@@ -35,16 +37,22 @@ class Trip:
         self.end = 1.0 if end == 0 else end
         # sp = max(sp, self.lp.miles/((self.end-self.start) * 24))
         # # print("speed needed", self.lp.miles/((self.end-self.start) * 24))
-        if self.lp.time > self.end-self.start >= 0:
-            # print("not enough time")
-            raise InvalidTripException()
-            # print("Not enough speed", self.start, self.end, self.lp.miles, self.lp.time)
-            # print(self.lp.o, self.lp.d)
-            # print(self.lp.c1, self.lp.c2)
-            # exit(1)
-        if self.end < self.start:
-            # print("starts too late")
-            raise InvalidTripException()
+        # if self.lp.time > self.end-self.start >= 0:
+        #     # print("not enough time")
+        #     raise InvalidTripException()
+        #     # print("Not enough speed", self.start, self.end, self.lp.miles, self.lp.time)
+        #     # print(self.lp.o, self.lp.d)
+        #     # print(self.lp.c1, self.lp.c2)
+        #     # exit(1)
+        # if self.lp.time > self.end - self.start >= 0:
+        #     print(o, d)
+        #     if self.type == TripType.B or self.type == TripType.D:
+        #         print("Not enough time for primary trip")
+        #         exit(1)
+        #     raise InvalidTripException()
+        # if self.end < self.start:
+        #     # print("starts too late")
+        #     raise InvalidTripException()
         self.los = 'W' if space == 1.5 else 'A'
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d
@@ -58,7 +66,8 @@ class Location:
             self.coord = coord
 
     def find_coord(self, addr):
-        geo_api = "78bdef6c2b254abaa78c55640925d3db"
+        # geo_api = "78bdef6c2b254abaa78c55640925d3db"
+        geo_api = "3c8dd43d76194d28bf62f76a46b305c4"
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
         # print(addr, l1loc)
@@ -66,12 +75,10 @@ class Location:
 
 class LocationPair:
     def get_speed(self, miles):
-        # print(miles, sep=" ", end=" ")
-        # if miles < 20:
-        #     # print(40)
-        #     return 40
         # return 800
-        if miles < 25:
+        if miles < 10:
+            return 40
+        if miles < 30:
             # print(50)
             return 50
         if miles < 50:
