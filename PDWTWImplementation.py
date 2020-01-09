@@ -1,4 +1,6 @@
 import pandas as pd
+from docplex.mp.progress import ProgressListener
+from docplex.mp.utils import DOcplexException
 
 from Driver import Driver
 from Trip import Trip, TripType
@@ -7,9 +9,10 @@ from datetime import datetime
 
 print("Started", datetime.now())
 # Read input data
-trip_df = pd.read_csv("Trips.csv")
-driver_df = pd.read_csv("Drivers.csv")
-
+# trip_df = pd.read_csv("Trips.csv")
+# driver_df = pd.read_csv("Drivers.csv")
+trip_df = pd.read_csv("../Data/in_trips.csv", keep_default_na=False)
+driver_df = pd.read_csv("../Data/in_drivers.csv", keep_default_na=False)
 # Preprocess input data
 """
 1. Get all trip times/miles for each OD pair
@@ -27,13 +30,36 @@ outlfow_trips = dict()
 ar = dict()
 idxes = dict()
 tripdex = dict()
-TRIPS_TO_DO = 30
+primaryTID = set()
+TRIPS_TO_DO = 47
 DRIVER_IDX = 0
 FIFTEEN = 0.01041666666
 
 last_trip = None
 P = [] # Pickup locations
 D = [] # Dropoff locations
+class Listener(ProgressListener):
+    """
+    Sample Listener found on IBM DoCPLEX Forums
+    """
+    def __init__(self, time, gap):
+        ProgressListener.__init__(self)
+        self._time = time
+        self._gap = gap
+
+    def notify_progress(self, data):
+        print('Elapsed time: %.2f' % data.time)
+        if data.has_incumbent:
+            print('Current incumbent: %f' % data.current_objective)
+            print('Current gap: %.2f%%' % (100. * data.mip_gap))
+            # If we are solving for longer than the specified time then
+            # stop if we reach the predefined alternate MIP gap.
+            if data.time > self._time or data.mip_gap < self._gap:
+                print('ABORTING')
+                self.abort()
+        else:
+            # print('No incumbent yet')
+            pass
 
 """
 The following varialbes have the prefixes signifying which location they relate to:
@@ -68,7 +94,7 @@ Dl = [] # end window of node j; length of N
 Pq = [] # demand for each location j; length of N
 Dq = [] # demand for each location j; length of N
 
-CAP = 2.5
+CAP = 2
 BIGM = 100000
 # Formulate optimization problem
 """
@@ -81,8 +107,8 @@ mdl = Model(name="Patient Transport")
 count = 0
 for index, row in trip_df.iterrows():
     if not row['trip_status'] == "CANCELED":
-        o = row['scrub_trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
-        d = row['scrub_trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
+        o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
+        d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
         start = float(row['trip_pickup_time'])
         end = float(row['trip_dropoff_time'])
         if end == 0.0:
@@ -100,6 +126,7 @@ for index, row in trip_df.iterrows():
         locations.append(o)
         locations.append(d)
         t = Trip(o, d, cap, id, type, start, end, False, True)
+        primaryTID.add(id)
         if type == TripType.D and start == 0:
             start = last_trip.end + (1 / 24)
         idxes[o] = count
@@ -142,7 +169,7 @@ for index, row in driver_df.iterrows():
         continue
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
     add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
-    drivers.add(Driver(row['ID'], row['Driver'], add, cap))
+    drivers.add(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type']))
     locations.append(add)
     driverstart = add # + "P"
     driverstop = add #+ "D"
@@ -157,10 +184,10 @@ e = Pe + De
 l = Pl + Dl
 q = Pq + Dq
 n = len(P)
-print(N)
-print(e)
-print(l)
-print(q)
+# print(N)
+# print(e)
+# print(l)
+# print(q)
 
 id = 1
 x = [] # binary whether trip ij is taken; length of A
@@ -205,9 +232,9 @@ for i, o in enumerate(locations):
                 tripdex[(o, d)] = len(x) - 1
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
-print(x)
-print(t)
-print(c)
+# print(x)
+# print(t)
+# print(c)
 
 
 # Constraints
@@ -297,8 +324,11 @@ for i,yes in enumerate(x):
 
 # print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
-
+print("Number of variables: ", mdl.number_of_variables)
+print("Number of constraints: ", mdl.number_of_constraints)
 mdl.minimize(total)
+pL = Listener(3600, 0.01)
+mdl.add_progress_listener(pL)
 mdl.solve()
 print("Solve status: " + str(mdl.get_solve_status()))
 
@@ -324,7 +354,24 @@ try:
                 var = x[tripdex[(o,d)]]
                 t = ar[(o,d)]
                 print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start)+ ';'  + str(t.end)+ ';'  + str(t.lp.miles))
-
+    with open('final_output' + str(datetime.now()) + '.csv', 'w') as output:
+        output.write(
+            'trip_id, driver_id, trip_pickup_address, trip_pickup_time, est_pickup_time, trip_dropoff_adress, trip_dropoff_time, est_dropoff_time, trip_los, est_miles, est_time\n')
+        for i, o in enumerate(locations):
+            for j, d in enumerate(locations):
+                if o != d:
+                    var = x[tripdex[(o, d)]]
+                    t = ar[(o, d)]
+                    if t.id not in primaryTID:
+                        continue
+                    arrival = idxes[o]
+                    dep  = arrival + TRIPS_TO_DO
+                    output.write(str(t.id) + "," + str(round(v[arrival].solution_value)) + ",\"" + str(t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(B[arrival].solution_value) + ",\"" +
+                                 str(t.lp.d[:-4]) + "\"," + str(t.end) + "," + str(
+                        B[dep].solution_value) + "," +
+                                 str(t.los) + "," + str(t.lp.miles) + "," + str(t.lp.time) + "\n")
+                    print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start) + ';' + str(
+                        t.end) + ';' + str(t.lp.miles))
     # for var in x:
     #     count += 1
     #     print("'" + var.get_name() + "';" + str(var.solution_value))
@@ -341,7 +388,7 @@ try:
         count += 1
         print(var.get_name() + ": " + str(var.solution_value))
     print("Number of trips ", count)
-except Exception as e:
+except RecursionError as e:
     print(e)
     pass
 print("Ended", datetime.now())
