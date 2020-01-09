@@ -35,24 +35,6 @@ class Trip:
         self.space = space
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
-        # sp = max(sp, self.lp.miles/((self.end-self.start) * 24))
-        # # print("speed needed", self.lp.miles/((self.end-self.start) * 24))
-        # if self.lp.time > self.end-self.start >= 0:
-        #     # print("not enough time")
-        #     raise InvalidTripException()
-        #     # print("Not enough speed", self.start, self.end, self.lp.miles, self.lp.time)
-        #     # print(self.lp.o, self.lp.d)
-        #     # print(self.lp.c1, self.lp.c2)
-        #     # exit(1)
-        # if self.lp.time > self.end - self.start >= 0:
-        #     print(o, d)
-        #     if self.type == TripType.B or self.type == TripType.D:
-        #         print("Not enough time for primary trip")
-        #         exit(1)
-        #     raise InvalidTripException()
-        # if self.end < self.start:
-        #     # print("starts too late")
-        #     raise InvalidTripException()
         self.los = 'W' if space == 1.5 else 'A'
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d
@@ -66,8 +48,8 @@ class Location:
             self.coord = coord
 
     def find_coord(self, addr):
-        # geo_api = "78bdef6c2b254abaa78c55640925d3db"
-        geo_api = "3c8dd43d76194d28bf62f76a46b305c4"
+        geo_api = "78bdef6c2b254abaa78c55640925d3db"
+        # geo_api = "3c8dd43d76194d28bf62f76a46b305c4"
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
         # print(addr, l1loc)
@@ -76,8 +58,6 @@ class Location:
 class LocationPair:
     def get_speed(self, miles):
         # return 800
-        if miles < 10:
-            return 40
         if miles < 30:
             # print(50)
             return 50
@@ -109,21 +89,13 @@ class LocationPair:
             loc1 = locations[l1]
         else:
             loc1 = Location(l1)
-            # with open('locations' + str(speed) + '.csv', 'a') as locs:
-            #     locs.write(l1 + "," + str(loc1.coord[0]) + "," + str(loc1.coord[1]) + '\n')
             locations[l1] = loc1
             sleep(1)
         if l2 in locations:
             loc2 = locations[l2]
         else:
             loc2 = Location(l2)
-            # with open('locations' + str(speed) + '.csv', 'a') as locs:
-            #     locs.write(l1 + "," + str(loc2.coord[0]) + "," + str(loc2.coord[1]) + '\n')
             locations[l2] = loc2
-        # c1 = str(l1loc[0]['geometry']['lat']) + "," + str(l1loc[0]['geometry']['lng'])
-        # c2 = str(l2loc[0]['geometry']['lat']) + "," + str(l2loc[0]['geometry']['lng'])
-        # c1 = (l1loc[0]['geometry']['lat'] ,l1loc[0]['geometry']['lng'])
-        # c2 = (l2loc[0]['geometry']['lat'],l2loc[0]['geometry']['lng'])
         c1 = loc1.coord
         c2 = loc2.coord
         self.c1 = c1
@@ -136,9 +108,4 @@ class LocationPair:
             print(miles, time, speed)
             exit(1)
         return miles, time
-        # url = "https://graphhopper.com/api/1/route?point=" + c1 + "&point=" + c2 + "&vehicle=car&locale=de&calc_points=false&key=" + api_key
-        # resp = requests.get(url).json()
-        # # print(resp["paths"][0]['distance']/1609.344, resp['paths'][0]['time']/60000.0)
-        # sleep(1)
-        # return resp["paths"][0]['distance']/1609.344, (resp['paths'][0]['time']/60000.0)/(24*60)
 

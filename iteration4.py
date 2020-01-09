@@ -9,10 +9,10 @@ from docplex.mp.progress import ProgressListener
 
 from datetime import datetime
 
-NUM_TRIPS =   float('inf')
+NUM_TRIPS =  15 # float('inf')
 NUM_DRIVERS = float('inf')
 FIFTEEN = 0.01041666666
-BUFFER = FIFTEEN * (3/3)
+BUFFER = FIFTEEN * (4/3)
 
 def filtered(d, iter):
     return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (t.lp.d in driverNodes and t.lp.d[3:] != d.address)) and t.los in d.los,iter)
@@ -33,11 +33,12 @@ class Listener(ProgressListener):
             print('Current gap: %.2f%%' % (100. * data.mip_gap))
             # If we are solving for longer than the specified time then
             # stop if we reach the predefined alternate MIP gap.
-            if data.time > self._time and data.mip_gap < self._gap:
+            if data.time > self._time or data.mip_gap < self._gap:
                 print('ABORTING')
                 self.abort()
         else:
-            print('No incumbent yet')
+            #print('No incumbent yet')
+            pass
 
 print("Started", datetime.now())
 t = datetime.now()
@@ -112,6 +113,7 @@ for index, row in trip_df.iterrows():
         if drop == 0.0:
             drop = 1.0
         id = row['trip_id']
+        type = None
         if id.endswith('A'):
             type = TripType.B
         elif id.endswith('B'):
@@ -132,10 +134,10 @@ for index, row in trip_df.iterrows():
         nodeCaps[start] = cap
         nodeCaps[end] = -cap
         t = Trip(start, end, cap, id, type, pick, drop, True, prefixLen=4)
-        nodeArrs[start] = drop - t.lp.time
+        nodeArrs[start] = drop - t.lp.time # 0
         nodeDeps[start] = pick  # max(0, pick - BUFFER)
         nodeArrs[end] = drop
-        nodeDeps[end] = pick + t.lp.time  # max(0, pick - BUFFER) + t.lp.time
+        nodeDeps[end] = pick + t.lp.time # 0 # max(0, pick - BUFFER) + t.lp.time
         # nodeArrs[start] = 1
         # nodeDeps[start] = 0
         # nodeArrs[end] = 1
@@ -203,8 +205,7 @@ for rS in requestNodes:
         if rS == rE or (rS in requestPair and requestPair[rS] == rE) or (rE in requestPair and requestPair[rE] == rS):
             continue
         try:
-            # t = Trip(rS, rE, 0, id, TripType.C, nodeDeps[rS], nodeArrs[rE], True)
-            t = Trip(rS, rE, 0, id, TripType.C, 0, 1, True)
+            t = Trip(rS, rE, 0, id, TripType.C, nodeDeps[rS], nodeArrs[rE], True)
         except InvalidTripException:
             # print(rS, rE, nodeDeps[rS], nodeArrs[rE])
             continue
@@ -270,13 +271,26 @@ print("Defined Objective Function")
 """
 Request Requirements
 """
-# for trp in all_trips:
-#     if isinstance(trp, str):
-#         total = 0
-#         for d in drivers:
-#             if all_trips[trp].los in d.los:
-#                 total += trips[d][all_trips[trp]]
-#         mdl.add_constraint(ct=total == 1)
+for trp in all_trips:
+    if isinstance(trp, str):
+        total = 0
+        for d in drivers:
+            if all_trips[trp].los in d.los:
+                total += trips[d][all_trips[trp]]
+        mdl.add_constraint(ct=total == 1)
+# for rS in requestStart:
+#     flowout = 0
+#     for d in drivers:
+#         for otirp in filtered(d, outtrips[rS]):
+#             flowout += trips[d][otirp]
+#     mdl.add_constraint(flowout == 1)
+#
+# for rE in requestEnd:
+#     flowin = 0
+#     for d in drivers:
+#         for intrip in filtered(d, intrips[rE]):
+#             flowin += trips[d][intrip]
+#     mdl.add_constraint(flowin == 1)
 # print("Set Primary Trip Requirement Constraint")
 """
 Flow Conservation
@@ -319,16 +333,17 @@ Time Constraints
 #         for intrip in filtered(d, intrips[loc]):
 #             mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= intrip.end)
 dropOffPenalty = 800
-for d in drivers:
-    for loc in requestEnd.union(driverEnd):
-        intripSum = 0
-        intripTimes = 0
-        intripEnds = 0
+# for loc in requestEnd.union(driverEnd):
+for loc in requestNodes:
+    intripSum = 0
+    intripTimes = 0
+    intripEnds = 0
+    for d in drivers:
         for intrip in filtered(d, intrips[loc]):
             intripSum += times[d][intrip]
             intripTimes += intrip.lp.time * trips[d][intrip]
             intripEnds += intrip.end * trips[d][intrip]
-        mdl.add_constraint(intripSum + intripTimes <= intripEnds)
+    mdl.add_constraint(intripSum + intripTimes <= intripEnds)
         # obj += dropOffPenalty * ((intripSum + intripTimes) - intripEnds)
 print("Set arrival time constriants")
 
@@ -340,16 +355,17 @@ print("Set arrival time constriants")
 #             # mdl.add_indicator(trips[d][otrip], times[d][otrip] <= otrip.start + BUFFER)
 pickupEarlyPenalty = 600
 pickupLatePenalty = 200
-for d in drivers:
-    for loc in requestStart:
-        otripSum = 0
-        otripStarts = 0
+# for loc in requestStart:
+for loc in requestNodes:
+    otripSum = 0
+    otripStarts = 0
+    for d in drivers:
         for otrip in filtered(d, outtrips[loc]):
             otripSum += times[d][otrip]
             otripStarts += otrip.start * trips[d][otrip]
         # obj += pickupEarlyPenalty * (otripStarts - (otripSum + BUFFER))
         # obj += pickupLatePenalty * (otripStarts - (otripSum - BUFFER))
-        mdl.add_constraint(otripSum + BUFFER >= otripStarts)
+    mdl.add_constraint(otripSum + BUFFER >= otripStarts)
 #         mdl.add_constraint(otripSum  <= otripStarts + BUFFER)
 print("Set departure time constraints")
 
@@ -363,28 +379,30 @@ for trp in all_trips:
             main_trip_loc = all_trips[trp].lp.d
             alt_trip_loc = all_trips[trp[:-1] + "B"].lp.o
             isum = 0
+            itimeSum = 0
             for d in drivers:
                 for intrip in filtered(d, intrips[main_trip_loc]):
                     isum += times[d][intrip]
+                    itimeSum += intrip.lp.time * trips[d][intrip]
             osum = 0
             for d2 in drivers:
                 for otrip in filtered(d2, outtrips[alt_trip_loc]):
                     osum += times[d2][otrip]
                             # print(d.id, d2.id, repr(intrip), repr(otrip))
                             # mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d2][otrip])
-            mdl.add_constraint(isum + main_trip.lp.time <= osum)
+            mdl.add_constraint(isum + itimeSum <= osum)
 print("Set primary trip precedence constraints")
 
-for d in drivers:
-    for loc in requestNodes:
-        insum, osum = 0, 0
-        timeSum = 0
+for loc in requestNodes:
+    insum, osum = 0, 0
+    timeSum = 0
+    for d in drivers:
         for intrip in filtered(d, intrips[loc]):
             insum += times[d][intrip]
             timeSum += trips[d][intrip] * intrip.lp.time
         for otrip in filtered(d, outtrips[loc]):
             osum += times[d][otrip]
-        mdl.add_constraint(insum + timeSum <= osum)
+    mdl.add_constraint(insum + timeSum <= osum)
 print("Set incoming trip before outgoing trip constraints")
 
 for loc in requestNodes:
@@ -415,17 +433,16 @@ Capacity Constraints
 #         for otrip in filtered(d, outtrips[loc]):
 #             for intrip in filtered(d, intrips[loc]):
 #                 mdl.add_if_then(trips[d][intrip] + trips[d][otrip] == 2, then_ct= nodeCaps[loc] == caps[d][otrip] - caps[d][intrip]) # !!!! MAJOR FIX
-for d in drivers:
-    for loc in requestNodes:
-        incaps = 0
-        ocaps = 0
-        tripsum = 0
+for loc in requestNodes:
+    incaps = 0
+    ocaps = 0
+    tripsum = 0
+    for d in drivers:
         for otrip in filtered(d, outtrips[loc]):
             ocaps += caps[d][otrip]
         for intrip in filtered(d, intrips[loc]):
             incaps += caps[d][intrip]
-            tripsum += trips[d][intrip]
-        mdl.add_constraint(ocaps == incaps + tripsum * nodeCaps[loc])
+    mdl.add_constraint(ocaps == incaps + nodeCaps[loc])
 print("Set capacity value constraints")
 
 for d in drivers:
@@ -501,10 +518,11 @@ finally:
                 if end_time < 0:
                     print("Something wrong")
                 required_end = all_trips[primaryTID[t.lp.o]].end
+                ptrip = all_trips[primaryTID[t.lp.o]]
                 output.write(str(primaryTID[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + ",\"" + str(
                     t.lp.o[4:]) + "\"," + str(t.start) + "," + str(times[d][t].solution_value) + ",\"" +
                              str(t.lp.d[4:]) + "\"," + str(rE) + "," + str(required_end) + "," + str(end_time) + "," +
-                             str(t.los) + "," + str(t.lp.miles) + "," + str(t.lp.time) + "\n")
+                             str(t.los) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "\n")
         print("Total Number of primary trip miles by each driver: ")
         print(driverMiles)
 print("Ended", datetime.now())
