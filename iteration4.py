@@ -1,5 +1,6 @@
 import pandas as pd
 from docloud.status import JobSolveStatus
+from docplex.mp.basic import Priority
 from docplex.mp.utils import DOcplexException
 
 from Driver import Driver
@@ -9,7 +10,7 @@ from docplex.mp.progress import ProgressListener
 
 from datetime import datetime
 
-NUM_TRIPS =  15 # float('inf')
+NUM_TRIPS =  55 # float('inf')
 NUM_DRIVERS = float('inf')
 FIFTEEN = 0.01041666666
 BUFFER = FIFTEEN * (4/3)
@@ -271,13 +272,14 @@ print("Defined Objective Function")
 """
 Request Requirements
 """
-for trp in all_trips:
-    if isinstance(trp, str):
-        total = 0
-        for d in drivers:
-            if all_trips[trp].los in d.los:
-                total += trips[d][all_trips[trp]]
-        mdl.add_constraint(ct=total == 1)
+# for trp in all_trips:
+#     if isinstance(trp, str):
+#         total = 0
+#         for d in drivers:
+#             if all_trips[trp].los in d.los:
+#                 total += trips[d][all_trips[trp]]
+#         con = mdl.add_constraint(ct=total == 1)
+#         con.set_priority(Priority.VERY_LOW)
 # for rS in requestStart:
 #     flowout = 0
 #     for d in drivers:
@@ -337,12 +339,12 @@ dropOffPenalty = 800
 for loc in requestNodes:
     intripSum = 0
     intripTimes = 0
-    intripEnds = 0
+    intripEnds = nodeArrs[loc]
     for d in drivers:
         for intrip in filtered(d, intrips[loc]):
             intripSum += times[d][intrip]
             intripTimes += intrip.lp.time * trips[d][intrip]
-            intripEnds += intrip.end * trips[d][intrip]
+            # intripEnds += intrip.end * trips[d][intrip]
     mdl.add_constraint(intripSum + intripTimes <= intripEnds)
         # obj += dropOffPenalty * ((intripSum + intripTimes) - intripEnds)
 print("Set arrival time constriants")
@@ -358,11 +360,11 @@ pickupLatePenalty = 200
 # for loc in requestStart:
 for loc in requestNodes:
     otripSum = 0
-    otripStarts = 0
+    otripStarts = nodeDeps[loc]
     for d in drivers:
         for otrip in filtered(d, outtrips[loc]):
             otripSum += times[d][otrip]
-            otripStarts += otrip.start * trips[d][otrip]
+            # otripStarts += otrip.start * trips[d][otrip]
         # obj += pickupEarlyPenalty * (otripStarts - (otripSum + BUFFER))
         # obj += pickupLatePenalty * (otripStarts - (otripSum - BUFFER))
     mdl.add_constraint(otripSum + BUFFER >= otripStarts)
