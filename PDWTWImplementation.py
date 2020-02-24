@@ -31,7 +31,8 @@ ar = dict()
 idxes = dict()
 tripdex = dict()
 primaryTID = set()
-TRIPS_TO_DO = 47
+opposingTrip = dict()
+TRIPS_TO_DO = 53
 DRIVER_IDX = 0
 FIFTEEN = 0.01041666666
 
@@ -126,8 +127,11 @@ for index, row in trip_df.iterrows():
         locations.append(o)
         locations.append(d)
         t = Trip(o, d, cap, id, type, start, end, False, True)
+        if 'A' in id:
+            opposingTrip[id] = t
         primaryTID.add(id)
         if type == TripType.D and start == 0:
+            last_trip = opposingTrip[id[:-1] + 'A']
             start = last_trip.end + (1 / 24)
         idxes[o] = count
         idxes[d] = TRIPS_TO_DO + count
@@ -184,10 +188,10 @@ e = Pe + De
 l = Pl + Dl
 q = Pq + Dq
 n = len(P)
-# print(N)
-# print(e)
-# print(l)
-# print(q)
+# print(len(N))
+# print(len(Q))
+# print(len(B))
+# print(len(v))
 
 id = 1
 x = [] # binary whether trip ij is taken; length of A
@@ -327,7 +331,7 @@ for i,yes in enumerate(x):
 print("Number of variables: ", mdl.number_of_variables)
 print("Number of constraints: ", mdl.number_of_constraints)
 mdl.minimize(total)
-pL = Listener(3600, 0.01)
+pL = Listener(90, 0.01)
 mdl.add_progress_listener(pL)
 mdl.solve()
 print("Solve status: " + str(mdl.get_solve_status()))
@@ -343,17 +347,18 @@ try:
     # for var in x:
     #     print(var.get_name() + ": "+ str(var.solution_value))
     for var0, var1, var2, var3 in zip(N, B, Q, v):
-        print('"' + var0 + '"' + ';' + str(var1.solution_value) +';' + str(var2.solution_value) + ';'+ str(var3.solution_value))
+        # print('"' + var0 + '"' + ';' + str(var1.solution_value) +';' + str(var2.solution_value) + ';'+ str(var3.solution_value))
         # print(var1.get_name() + ": "+ str(var1.solution_value))
         # print(var2.get_name() + ": "+ str(var2.solution_value))
         # print(var3.get_name() + ": "+ str(var3.solution_value))
+        pass
     count = 0
     for i, o in enumerate(locations):
         for j, d in enumerate(locations):
             if o != d:
                 var = x[tripdex[(o,d)]]
                 t = ar[(o,d)]
-                print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start)+ ';'  + str(t.end)+ ';'  + str(t.lp.miles))
+                # print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start)+ ';'  + str(t.end)+ ';'  + str(t.lp.miles))
     with open('final_output' + str(datetime.now()) + '.csv', 'w') as output:
         output.write(
             'trip_id, driver_id, trip_pickup_address, trip_pickup_time, est_pickup_time, trip_dropoff_adress, trip_dropoff_time, est_dropoff_time, trip_los, est_miles, est_time\n')
@@ -366,12 +371,13 @@ try:
                         continue
                     arrival = idxes[o]
                     dep  = arrival + TRIPS_TO_DO
+                    print(arrival, dep)
                     output.write(str(t.id) + "," + str(round(v[arrival].solution_value)) + ",\"" + str(t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(B[arrival].solution_value) + ",\"" +
                                  str(t.lp.d[:-4]) + "\"," + str(t.end) + "," + str(
                         B[dep].solution_value) + "," +
                                  str(t.los) + "," + str(t.lp.miles) + "," + str(t.lp.time) + "\n")
-                    print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start) + ';' + str(
-                        t.end) + ';' + str(t.lp.miles))
+                    # print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start) + ';' + str(
+                    #     t.end) + ';' + str(t.lp.miles))
     # for var in x:
     #     count += 1
     #     print("'" + var.get_name() + "';" + str(var.solution_value))

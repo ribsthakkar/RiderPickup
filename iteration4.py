@@ -2,6 +2,7 @@ import pandas as pd
 from docloud.status import JobSolveStatus
 from docplex.mp.basic import Priority
 from docplex.mp.utils import DOcplexException
+from constants import *
 
 from Driver import Driver
 from Trip import Trip, TripType, InvalidTripException
@@ -10,36 +11,17 @@ from docplex.mp.progress import ProgressListener
 
 from datetime import datetime
 
-NUM_TRIPS =  55 # float('inf')
-NUM_DRIVERS = float('inf')
-FIFTEEN = 0.01041666666
-BUFFER = FIFTEEN * (4/3)
+from listeners import TimeListener, GapListener
+
+NUM_TRIPS =   55 # float('inf')
+NUM_DRIVERS =  float('inf')
+invalid_trips = {(-1, -1.5), (-1.5,-1), (1, 1.5), (1, -1.5)}
 
 def filtered(d, iter):
-    return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (t.lp.d in driverNodes and t.lp.d[3:] != d.address)) and t.los in d.los,iter)
+    return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (t.lp.d in driverNodes and t.lp.d[3:] != d.address)) and t.los in d.los
+                            and not ( abs(nodeCaps[t.lp.o] + nodeCaps[t.lp.d]) > d.capacity )  , iter)
+# ((abs(nodeCaps[t.lp.o]) <= d.capacity + nodeCaps[t.lp.d]) and (d.capacity >= nodeCaps[t.lp.o] + nodeCaps[t.lp.d]))
 
-class Listener(ProgressListener):
-    """
-    Sample Listener found on IBM DoCPLEX Forums
-    """
-    def __init__(self, time, gap):
-        ProgressListener.__init__(self)
-        self._time = time
-        self._gap = gap
-
-    def notify_progress(self, data):
-        print('Elapsed time: %.2f' % data.time)
-        if data.has_incumbent:
-            print('Current incumbent: %f' % data.current_objective)
-            print('Current gap: %.2f%%' % (100. * data.mip_gap))
-            # If we are solving for longer than the specified time then
-            # stop if we reach the predefined alternate MIP gap.
-            if data.time > self._time or data.mip_gap < self._gap:
-                print('ABORTING')
-                self.abort()
-        else:
-            #print('No incumbent yet')
-            pass
 
 print("Started", datetime.now())
 t = datetime.now()
@@ -89,9 +71,6 @@ for index, row in driver_df.iterrows():
     drivers.append(Driver(row['ID'], row['Name'], row['Address'], cap, row['Vehicle_Type']))
     start = str(hash(row['ID']))[:0] + "Or:" + row['Address']
     end = str(hash(row['ID']))[:0] + "De:" + row['Address']
-    # start = "O:" + row['Address']
-    # end = "D:" + row['Address']
-    # print(start, end)
     driverNodes.add(start)
     driverNodes.add(end)
     driverStart.add(start)
@@ -276,9 +255,19 @@ Request Requirements
 #     if isinstance(trp, str):
 #         total = 0
 #         for d in drivers:
-#             if all_trips[trp].los in d.los:
+#             if all_trips[trp].los in d.los and 1 > d.capacity - all_trips[trp].space >= 0:
 #                 total += trips[d][all_trips[trp]]
-#         con = mdl.add_constraint(ct=total == 1)
+#         if total is not 0:
+#             con = mdl.add_constraint(ct=total == 1)
+constraintsToRem = set()
+for trp in all_trips:
+    if isinstance(trp, str):
+        total = 0
+        for d in drivers:
+            if all_trips[trp].los in d.los:
+                total += trips[d][all_trips[trp]]
+        con = mdl.add_constraint(ct=total == 1)
+        constraintsToRem.add(con)
 #         con.set_priority(Priority.VERY_LOW)
 # for rS in requestStart:
 #     flowout = 0
@@ -305,9 +294,9 @@ for rN in requestNodes:
             totalin += trips[d][intrip]
         for otrip in filtered(d, outtrips[rN]):
             totalout -= trips[d][otrip]
-    mdl.add_constraint(ct= totalin == 1, ctname='flowin' + '_' + str(rN)[:5])
-    mdl.add_constraint(ct= totalout == -1, ctname='flowout' + '_' + str(rN)[:5])
-    # mdl.add_constraint(ct= totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
+    mdl.add_constraint(ct= totalin <= 1, ctname='flowin' + '_' + str(rN)[:5])
+    mdl.add_constraint(ct= totalout >= -1, ctname='flowout' + '_' + str(rN)[:5])
+    mdl.add_constraint(ct= totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
 for d in drivers:
     for dS in driverStart:
         if dS[3:] != d.address:
@@ -368,7 +357,7 @@ for loc in requestNodes:
         # obj += pickupEarlyPenalty * (otripStarts - (otripSum + BUFFER))
         # obj += pickupLatePenalty * (otripStarts - (otripSum - BUFFER))
     mdl.add_constraint(otripSum + BUFFER >= otripStarts)
-#         mdl.add_constraint(otripSum  <= otripStarts + BUFFER)
+    mdl.add_constraint(otripSum  <= otripStarts + BUFFER)
 print("Set departure time constraints")
 
 """
@@ -458,16 +447,28 @@ print("Set initial and final trip capacity constraints")
 
 print("Num variables:", mdl.number_of_variables)
 print("Num constraints:", mdl.number_of_constraints)
-
-pL = Listener(3600, 0.01)
-mdl.add_progress_listener(pL)
 mdl.minimize(obj)
-mdl.solve()
-print("Solve status: " + str(mdl.get_solve_status()))
+
 try:
-    print("Obj value: " + str(mdl.objective_value))
+    pL = TimeListener(3600)
+    mdl.add_progress_listener(pL)
+    first_solve = mdl.solve()
+    print("First solve status: " + str(mdl.get_solve_status()))
+    print("First solve obj value: " + str(mdl.objective_value))
+    print("Relaxing single rider requirements constraints")
+    mdl.remove_constraints(constraintsToRem)
+    print("Warm starting from single rider constraint solution")
+    mdl.add_mip_start(first_solve)
+    mdl.remove_progress_listener(pL)
+    pL = GapListener(3600*6, 0.01)
+    mdl.add_progress_listener(pL)
+    mdl.solve()
+    print("Final solve status: " + str(mdl.get_solve_status()))
+    print("Final Obj value: " + str(mdl.objective_value))
+
 except DOcplexException as e:
     print(e)
+
 finally:
     if mdl.get_solve_status() == JobSolveStatus.FEASIBLE_SOLUTION or mdl.get_solve_status() == JobSolveStatus.OPTIMAL_SOLUTION:
         totalMiles = 0
@@ -507,7 +508,7 @@ finally:
                     yield (d, t)
 
 
-        with open('final_output' + str(datetime.now()) + '.csv', 'w') as output:
+        with open('output/final_output' + str(datetime.now()) + '.csv', 'w') as output:
             output.write(
                 'trip_id, driver_id,driver_name ,trip_pickup_address, trip_pickup_time, est_pickup_time, trip_dropoff_adress, trip_dropoff_time, est_dropoff_time, trip_los, est_miles, est_time\n')
             for d, t in sorted(tripGen(), key=lambda x: times[x[0]][x[1]].solution_value):

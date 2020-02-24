@@ -4,8 +4,7 @@ from opencage.geocoder import OpenCageGeocode
 from time import sleep
 from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
-# FIFTEEN = 0.01041666666
-# BUFFER = FIFTEEN * (5/3)
+from constants import *
 
 locations = dict()
 # try:
@@ -36,6 +35,8 @@ class Trip:
         self.start = max(0.0, start)
         self.end = 1.0 if end == 0 else end
         self.los = 'W' if space == 1.5 else 'A'
+        if self.lp.time > end - max(0, start - BUFFER):
+            raise InvalidTripException()
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d
 
