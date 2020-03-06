@@ -18,7 +18,7 @@ driver_df = pd.read_csv("../Data/in_drivers.csv", keep_default_na=False)
 1. Get all trip times/miles for each OD pair
 """
 drivers = set()
-locations = list()
+N = list()
 driverLocations = list()
 driverstart = ""
 driverstop = ""
@@ -33,6 +33,7 @@ tripdex = dict()
 primaryTID = set()
 opposingTrip = dict()
 TRIPS_TO_DO = 53
+NUM_DRIVERS = 4
 DRIVER_IDX = 0
 FIFTEEN = 0.01041666666
 
@@ -124,8 +125,8 @@ for index, row in trip_df.iterrows():
             homes.add(d)
             not_homes.add(o)
             type = TripType.D
-        locations.append(o)
-        locations.append(d)
+        N.append(o)
+        N.append(d)
         t = Trip(o, d, cap, id, type, start, end, False, True)
         if 'A' in id:
             opposingTrip[id] = t
@@ -174,7 +175,8 @@ for index, row in driver_df.iterrows():
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
     add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
     drivers.add(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type']))
-    locations.append(add)
+    N.append(add)
+    driverLocations.append(add)
     driverstart = add # + "P"
     driverstop = add #+ "D"
     break
@@ -183,12 +185,13 @@ for index, row in driver_df.iterrows():
 Q = PQ + DQ
 B = PB + DB
 v = Pv + Dv
-N = P + D
+PuD = P + D
 e = Pe + De
 l = Pl + Dl
 q = Pq + Dq
 n = len(P)
-# print(len(N))
+# print(len(PuD))
+# print(PuD)
 # print(len(Q))
 # print(len(B))
 # print(len(v))
@@ -197,14 +200,16 @@ id = 1
 x = [] # binary whether trip ij is taken; length of A
 t = [] # time of traversing trip ij; length of A
 c = [] # cost of traversing trip ij; length of A
-for i, o in enumerate(locations):
-    for j, d in enumerate(locations):
+for i, o in enumerate(N):
+    for j, d in enumerate(N):
         if o != d:
             if (o, d) in location_pair:
                 if d in not_homes:
                     x.append(mdl.binary_var(name='B:' + o + '->' + d))
+                    # x.append(mdl.binary_var(name=str(id)))
                 else:
                     x.append(mdl.binary_var(name='D:' + o + '->' + d))
+                    # x.append(mdl.binary_var(name=str(id)))
                 trp = ar[(o, d)]
                 tripdex[(o, d)] = len(x) - 1
                 t.append(trp.lp.time)
@@ -239,7 +244,7 @@ for i, o in enumerate(locations):
 # print(x)
 # print(t)
 # print(c)
-
+obj = 0.0
 
 # Constraints
 """
@@ -250,22 +255,30 @@ for idx, j in enumerate(N):
     for intrip in inflow_trips[j]:
         # print((intrip.lp.o, intrip.lp.d))
         total += x[tripdex[(intrip.lp.o, intrip.lp.d)]]
-    if j in driverLocations: continue
-    mdl.add_constraint(total == 1, "Primary Location Entered " + j)
+    if j in driverLocations:
+        print("here")
+        # obj += 1000 * total
+        # mdl.add_constraint(total == NUM_DRIVERS, "Drivers returning to Depot")
+    else:
+        mdl.add_constraint(total == 1, "Primary Location Entered " + j)
 for idx, i in enumerate(N):
     total = 0
     for otrip in outlfow_trips[i]:
         # print((otrip.lp.o, otrip.lp.d))
         total += x[tripdex[(otrip.lp.o, otrip.lp.d)]]
-    if i in driverLocations: continue
-    mdl.add_constraint(total == 1, "Primary Location Exited " + i)
+    if i in driverLocations:
+        print("here")
+        obj +=  1000 * total
+        mdl.add_constraint(total >= NUM_DRIVERS, "Drivers leaving Depot")
+    else:
+        mdl.add_constraint(total == 1, "Primary Location Exited " + i)
 
 """
 Time Consistency
 """
 
-for i, o in enumerate(N):
-    for j, d in enumerate(N):
+for i, o in enumerate(PuD):
+    for j, d in enumerate(PuD):
         if o != d:
             mdl.add_constraint(ct= B[j] >= B[i] + t[tripdex[(o,d)]] - BIGM*(1- x[tripdex[(o,d)]]))
             mdl.add_constraint(ct= Q[j] >= Q[i] + q[j] - BIGM*(1- x[tripdex[(o,d)]]))
@@ -273,14 +286,14 @@ for i, o in enumerate(N):
 """
 Time Windows
 """
-for i, loc in enumerate(N):
+for i, loc in enumerate(PuD):
     mdl.add_constraint(e[i] <= B[i])
     mdl.add_constraint(l[i] >= B[i])
 
 """
 Capacity
 """
-for i, loc in enumerate(N):
+for i, loc in enumerate(PuD):
     mdl.add_constraint(max(0, q[i]) <= Q[i])
     mdl.add_constraint(min(CAP, CAP + q[i]) >= Q[i])
 
@@ -288,16 +301,16 @@ for i, loc in enumerate(N):
 Precedence and Pairing
 """
 for i, loc in enumerate(P):
-    mdl.add_constraint(B[n + i] >= B[i] + t[tripdex[(loc, N[i + n])]])
+    mdl.add_constraint(B[n + i] >= B[i] + t[tripdex[(loc, PuD[i + n])]])
 
 for i, loc in enumerate(P):
     mdl.add_constraint(v[i] == v[i + n])
 
-for j, loc in enumerate(N):
+for j, loc in enumerate(PuD):
     mdl.add_constraint(v[j] >= j * x[tripdex[(driverstart, loc)]])
     mdl.add_constraint(v[j] <= j * x[tripdex[(driverstart, loc)]] - n * (x[tripdex[(driverstart, loc)]] - 1))
-for i, o in enumerate(N):
-    for j, d in enumerate(N):
+for i, o in enumerate(PuD):
+    for j, d in enumerate(PuD):
         if o != d:
             mdl.add_constraint(v[j] >= v[i] + n * (x[tripdex[(o,d)]] - 1))
             mdl.add_constraint(v[j] <= v[i] + n * (1 - x[tripdex[(o,d)]]))
@@ -322,16 +335,16 @@ Temporary Validation
 """
 Objective
 """
-total = 0.0
+# total = 0.0
 for i,yes in enumerate(x):
-    total += c[i] * yes
+    obj += c[i] * yes
 
 # print('\n'.join(str(c) for c in mdl.iter_constraints()))
 
 print("Number of variables: ", mdl.number_of_variables)
 print("Number of constraints: ", mdl.number_of_constraints)
-mdl.minimize(total)
-pL = Listener(90, 0.01)
+mdl.minimize(obj)
+pL = Listener(900, 0.01)
 mdl.add_progress_listener(pL)
 mdl.solve()
 print("Solve status: " + str(mdl.get_solve_status()))
@@ -346,24 +359,32 @@ try:
 
     # for var in x:
     #     print(var.get_name() + ": "+ str(var.solution_value))
-    for var0, var1, var2, var3 in zip(N, B, Q, v):
+    for var0, var1, var2, var3 in zip(PuD, B, Q, v):
         # print('"' + var0 + '"' + ';' + str(var1.solution_value) +';' + str(var2.solution_value) + ';'+ str(var3.solution_value))
         # print(var1.get_name() + ": "+ str(var1.solution_value))
         # print(var2.get_name() + ": "+ str(var2.solution_value))
         # print(var3.get_name() + ": "+ str(var3.solution_value))
         pass
     count = 0
-    for i, o in enumerate(locations):
-        for j, d in enumerate(locations):
+    starters = list(var.solution_value for var in v)
+    for s in starters:
+        for var0, var1, var2, var3 in filter(lambda x: s == x[3].solution_value, zip(PuD, B, Q, v)):
+            print('"' + var0 + '"' + ';' + str(var1.solution_value) +';' + str(var2.solution_value) + ';'+ str(var3.solution_value))
+            # print(var1.get_name() + ": "+ str(var1.solution_value))
+            # print(var2.get_name() + ": "+ str(var2.solution_value))
+            # print(var3.get_name() + ": "+ str(var3.solution_value))
+            pass
+    for i, o in enumerate(N):
+        for j, d in enumerate(N):
             if o != d:
                 var = x[tripdex[(o,d)]]
                 t = ar[(o,d)]
                 # print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start)+ ';'  + str(t.end)+ ';'  + str(t.lp.miles))
-    with open('final_output' + str(datetime.now()) + '.csv', 'w') as output:
+    with open('output/pdwtw_final_output' + str(datetime.now()) + '.csv', 'w') as output:
         output.write(
             'trip_id, driver_id, trip_pickup_address, trip_pickup_time, est_pickup_time, trip_dropoff_adress, trip_dropoff_time, est_dropoff_time, trip_los, est_miles, est_time\n')
-        for i, o in enumerate(locations):
-            for j, d in enumerate(locations):
+        for i, o in enumerate(N):
+            for j, d in enumerate(N):
                 if o != d:
                     var = x[tripdex[(o, d)]]
                     t = ar[(o, d)]
@@ -381,7 +402,7 @@ try:
     # for var in x:
     #     count += 1
     #     print("'" + var.get_name() + "';" + str(var.solution_value))
-    for var in N:
+    for var in PuD:
         count += 1
         print(var)
     for var in Q:

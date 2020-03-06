@@ -1,6 +1,9 @@
 .idea
 __pycache__
-final_output*
+*final_output*
 assignments.csv
 locations30.csv
 temp.txt
+*log.txt
+*.DS_Store
+locations.py

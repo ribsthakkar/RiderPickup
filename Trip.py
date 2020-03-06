@@ -6,16 +6,13 @@ from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
 from constants import *
 
-locations = dict()
-# try:
-#     with open('locations' + str(speed) + '.csv', 'r') as locs:
-#         line = locs.readline()
-#         while line:
-#             deets = line.split(',')
-#             locations[deets[0]] = (float(deets[1]), deets[2])
-#             line = locs.readline()
-# except Exception: pass
-sp = 0
+try:
+    from locations import locations_cache
+    locations = locations_cache # cached dict mapping an address to its lat long, not in repository for privacy
+except:
+    locations = dict()
+    pass
+
 class TripType(Enum):
     A = 1 # Destination is a home without passenger Must be before B for a location
     B = 2 # Destination is a hospital with passenger Must be before C for a location
@@ -27,7 +24,6 @@ class InvalidTripException(Exception):
     pass
 class Trip:
     def __init__(self, o, d, space, id, type, start, end, prefix=False, suffix=False, prefixLen=3, suffixLen=4):
-        global sp
         self.type = type
         self.id = id
         self.lp = LocationPair(o, d, prefix, suffix, prefixLen, suffixLen)
@@ -89,16 +85,16 @@ class LocationPair:
         if l1 in locations:
             loc1 = locations[l1]
         else:
-            loc1 = Location(l1)
+            loc1 = Location(l1).coord
             locations[l1] = loc1
             sleep(1)
         if l2 in locations:
             loc2 = locations[l2]
         else:
-            loc2 = Location(l2)
+            loc2 = Location(l2).coord
             locations[l2] = loc2
-        c1 = loc1.coord
-        c2 = loc2.coord
+        c1 = loc1
+        c2 = loc2
         self.c1 = c1
         self.c2 = c2
         # print(c1, c2)
