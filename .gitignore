@@ -1,5 +1,6 @@
 .idea
 __pycache__
-final_output.csv
+final_output*
 assignments.csv
 locations30.csv
+temp.txt
