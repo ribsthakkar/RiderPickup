@@ -278,7 +278,6 @@ class PDWTWOptimizer:
         self.e = Pe + De
         self.l = Pl + Dl
         self.q = Pq + Dq
-        print(locations)
 
     def solve(self, sol_file):
 
@@ -303,7 +302,6 @@ class PDWTWOptimizer:
                             continue
                         arrival = self.idxes[o]
                         dep = arrival + self.TRIPS_TO_DO
-                        print(arrival, dep)
                         output.write(str(t.id) + "," + str(round(self.v[arrival].solution_value)) + ",\"" + str(
                             t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(self.B[arrival].solution_value) + ",\"" +
                                      str(t.lp.d[:-4]) + "\"," + str(t.end) + "," + str(
