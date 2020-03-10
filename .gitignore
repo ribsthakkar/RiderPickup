@@ -7,3 +7,5 @@ temp.txt
 *log.txt
 *.DS_Store
 locations.py
+cost.csv
+time.csv
