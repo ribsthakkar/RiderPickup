@@ -1,4 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
+import geopandas as gpd
+# from geopandas import GeoDataFrame
+from shapely.geometry import Point, LineString
+import matplotlib.pyplot as plt
+import adjustText
 
 from docplex.mp.model import Model
 
@@ -292,7 +299,7 @@ class PDWTWOptimizer:
 
         with open(sol_file, 'w') as output:
             output.write(
-                'trip_id, driver_id, trip_pickup_address, trip_pickup_time, est_pickup_time, trip_dropoff_adress, trip_dropoff_time, est_dropoff_time, trip_los, est_miles, est_time\n')
+                'trip_id,driver_id,trip_pickup_address,trip_pickup_time,est_pickup_time,trip_dropoff_adress,trip_dropoff_time,est_dropoff_time,trip_los,est_miles,est_time\n')
             for i, o in enumerate(self.N):
                 for j, d in enumerate(self.N):
                     if o != d:
@@ -309,6 +316,71 @@ class PDWTWOptimizer:
                                      str(t.los) + "," + str(t.lp.miles) + "," + str(t.lp.time) + "\n")
                         # print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start) + ';' + str(
                         #     t.end) + ';' + str(t.lp.miles))
-
+        #self.__plot_map(sol_file)
         driver_route = dict()
         primary_trip_assignments = dict()
+
+    def visualize(self, sfile, save=False):
+        sol_df = pd.read_csv(sfile)
+
+        def plot_line(ax, ob, id):
+            x, y = ob.xy
+            x = np.array(x)
+            y = np.array(y)
+            ax.quiver(x[:-1], y[:-1], x[1:]-x[:-1], y[1:]-y[:-1], scale_units='xy', angles='xy', scale=1 , color=np.random.rand(3,), alpha=0.7, linewidth=3, label = str(id))
+
+        def plot_coords(ax, ob, labs, texts):
+            x, y = ob.xy
+            ax.plot(x, y, 'o', color='#000000', zorder=1)
+            for i, pt in enumerate(zip(x, y)):
+                x, y = pt[0], pt[1]
+                txt = plt.annotate(labs[i],  # this is the text
+                             (x, y),  # this is the point to label
+                             textcoords="offset points",  # how to position the text
+                             xytext=(0.001, 0.01),  # distance from text to points (x,y)
+                             ha='center')  # horizontal alignment can be left, right or center
+                txt.set_fontsize('xx-small')
+                texts.append(txt)
+
+        for d_id in set(sol_df['driver_id']):
+            street_map = gpd.read_file('mapfiles/tl_2017_48453_faces.shp')
+            fig = plt.figure()
+            ax = fig.add_subplot(1,1,1)
+            street_map.plot(ax=ax, color='gray')
+            points, labs = zip(*self.__get_driver_coords(d_id))
+            geometry = [Point(coord) for coord in points]
+            t = []
+            ls = LineString(geometry)
+            plot_coords(ax, ls, labs, t)
+            plot_line(ax, LineString(geometry), d_id)
+            adjustText.adjust_text(t)
+            fig.legend()
+            fig.show()
+            plt.show()
+            if save:
+                fig.savefig('driver' + str(d_id) + 'route.png')
+
+
+    def __get_driver_coords(self, id):
+        def __filterTrips(id):
+            def filt(t):
+                try:
+                    idx = self.tripdex[(t.lp.o, t.lp.d)]
+                    idx2 = self.idxes[t.lp.o]
+                    return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
+                except:
+                    return False
+
+            return filt
+
+        def __sortTrips(t):
+            idx = self.idxes[t.lp.o]
+            return self.B[idx].solution_value
+        depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, False, True)
+        yield (depot.lp.c1[1], depot.lp.c1[0]), ""
+
+
+        for trip in sorted(filter(__filterTrips(id), self.trip_map.values()), key=__sortTrips):
+            yield (trip.lp.c1[1], trip.lp.c1[0]), str(timedelta(days=self.B[self.idxes[trip.lp.o]].solution_value))[:-4]
+
+        yield (depot.lp.c2[1], depot.lp.c2[0]), ""

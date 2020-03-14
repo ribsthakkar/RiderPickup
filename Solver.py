@@ -16,20 +16,27 @@ class TripCalculator:
         self.drivers = list(self.__prepare_drivers())
 
     def __prepare_trips(self):
-        for index, row in self.trip_df.iterrows():
-            if not row['trip_status'] == "CANCELED":
-                o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
-                d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-                start = float(row['trip_pickup_time'])
-                end = float(row['trip_dropoff_time'])
-                if end == 0.0:
-                    end = 1.0
-                cap = 1 if row['trip_los'] == 'A' else 1.5
-                id = row['trip_id']
-                t = Trip(o, d, cap, id, type, start, end, False, True)
-                if id == None:
-                    print(o,d)
-                yield t
+        with open("calc_trips.csv", "w") as ct:
+            ct.write("trip_pickup_time,trip_id,customer_name,trip_pickup_address,trip_dropoff_address,trip_los,"
+                     "trip_miles,trip_rev,orig_lat,orig_log,dest_lat,dest_long,duration\n")
+            for index, row in self.trip_df.iterrows():
+                if not row['trip_status'] == "CANCELED":
+                    o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
+                    d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
+                    start = float(row['trip_pickup_time'])
+                    end = float(row['trip_dropoff_time'])
+                    if end == 0.0:
+                        end = 1.0
+                    cap = 1 if row['trip_los'] == 'A' else 1.5
+                    id = row['trip_id']
+                    t = Trip(o, d, cap, id, type, start, end, False, True)
+                    if id == None:
+                        print(o,d)
+                    ct.write(",".join([str(row['trip_pickup_time']), t.id, '"' +  " ".join(row["customer_name"].split(",")) + '"',
+                                       '"' + row['trip_pickup_address'] + '"', '"' + row['trip_dropoff_address'] + '"',
+                                       row['trip_los'], str(t.lp.miles), '0',str(t.lp.c1[0]), str(t.lp.c1[1]),
+                                       str(t.lp.c2[0]), str(t.lp.c2[1]), str(t.lp.time)]) + "\n")
+                    yield t
 
     def __prepare_drivers(self):
         for index, row in self.driver_df.iterrows():
@@ -44,6 +51,8 @@ class TripCalculator:
     def solve(self, solution_file=None):
         return self.optimzer.solve(solution_file)
 
+    def visualize(self, solution_file, save_maps=False):
+        self.optimzer.visualize(solution_file, save_maps)
 
 class TripSolution:
     def __init__(self, trips):

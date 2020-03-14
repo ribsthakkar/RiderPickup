@@ -17,4 +17,6 @@ opt_params = {
     "MODEL_NAME": "PDTWT"
 }
 optimizer = tc.prepare_model(PDWTWOptimizer, opt_params)
-tc.solve('output/pdwtw_final_output' + str(datetime.now()) + '.csv')
+outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
+tc.solve(outfile)
+tc.visualize(outfile, False)
