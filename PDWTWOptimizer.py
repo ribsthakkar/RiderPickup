@@ -330,17 +330,16 @@ class PDWTWOptimizer:
         def names(id):
             return "Driver " + str(id) + " Route"
         driver_ids = set(sol_df['driver_id'])
-        num_cols = 1
-        fig = make_subplots(rows=len(driver_ids) //num_cols + 1, cols=num_cols,
-                            subplot_titles=tuple(map(names, range(len(driver_ids)))),
-                            specs=[[{"type":"scattermapbox"}] * num_cols for _ in range(len(driver_ids) // num_cols + 1)],
-                            vertical_spacing=0.01)
-
+        fig = go.Figure()
+        all_x = []
+        all_y = []
         for i, d_id in enumerate(driver_ids):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
             points, labs = zip(*self.__get_driver_coords(d_id))
             x, y = zip(*points)
+            all_x += x
+            all_y += y
             fig.add_trace(go.Scattermapbox(
                 lon=x,
                 lat=y,
@@ -351,17 +350,16 @@ class PDWTWOptimizer:
                     size=8,
                     color=col,
                 ),
-            ),row=i//num_cols + 1, col=i % num_cols + 1
-            )
-            fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
-            lat=np.mean(y),
-            lon=np.mean(x)
-            ), style='open-street-map',row=i//num_cols + 1, col=i % num_cols + 1)
+                name= names(i)
+            ))
+        fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
+        lat=np.mean(all_y),
+        lon=np.mean(all_x)
+        ), style='open-street-map')
 
         fig.update_layout(
             title_text=self.mdl.name,
             showlegend=True,
-            height= (len(driver_ids) // num_cols + 1) * 720,
         )
         fig.write_html('visualized.html', auto_open=True)
 
