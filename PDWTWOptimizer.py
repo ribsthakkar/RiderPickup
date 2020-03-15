@@ -6,6 +6,10 @@ import geopandas as gpd
 from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
 import adjustText
+import plotly.graph_objects as go
+import plotly.express as px
+import chart_studio.plotly as py
+from plotly.subplots import make_subplots
 
 from docplex.mp.model import Model
 
@@ -321,45 +325,45 @@ class PDWTWOptimizer:
         primary_trip_assignments = dict()
 
     def visualize(self, sfile, save=False):
+        import random
         sol_df = pd.read_csv(sfile)
+        def names(id):
+            return "Driver " + str(id) + " Route"
+        driver_ids = set(sol_df['driver_id'])
+        num_cols = 1
+        fig = make_subplots(rows=len(driver_ids) //num_cols + 1, cols=num_cols,
+                            subplot_titles=tuple(map(names, range(len(driver_ids)))),
+                            specs=[[{"type":"scattermapbox"}] * num_cols for _ in range(len(driver_ids) // num_cols + 1)],
+                            vertical_spacing=0.01)
 
-        def plot_line(ax, ob, id):
-            x, y = ob.xy
-            x = np.array(x)
-            y = np.array(y)
-            ax.quiver(x[:-1], y[:-1], x[1:]-x[:-1], y[1:]-y[:-1], scale_units='xy', angles='xy', scale=1 , color=np.random.rand(3,), alpha=0.7, linewidth=3, label = str(id))
-
-        def plot_coords(ax, ob, labs, texts):
-            x, y = ob.xy
-            ax.plot(x, y, 'o', color='#000000', zorder=1)
-            for i, pt in enumerate(zip(x, y)):
-                x, y = pt[0], pt[1]
-                txt = plt.annotate(labs[i],  # this is the text
-                             (x, y),  # this is the point to label
-                             textcoords="offset points",  # how to position the text
-                             xytext=(0.001, 0.01),  # distance from text to points (x,y)
-                             ha='center')  # horizontal alignment can be left, right or center
-                txt.set_fontsize('xx-small')
-                texts.append(txt)
-
-        for d_id in set(sol_df['driver_id']):
-            street_map = gpd.read_file('mapfiles/tl_2017_48453_faces.shp')
-            fig = plt.figure()
-            ax = fig.add_subplot(1,1,1)
-            street_map.plot(ax=ax, color='gray')
+        for i, d_id in enumerate(driver_ids):
+            r = lambda: random.randint(0, 255)
+            col = '#%02X%02X%02X' % (r(), r(), r())
             points, labs = zip(*self.__get_driver_coords(d_id))
-            geometry = [Point(coord) for coord in points]
-            t = []
-            ls = LineString(geometry)
-            plot_coords(ax, ls, labs, t)
-            plot_line(ax, LineString(geometry), d_id)
-            adjustText.adjust_text(t)
-            fig.legend()
-            fig.show()
-            plt.show()
-            if save:
-                fig.savefig('driver' + str(d_id) + 'route.png')
+            x, y = zip(*points)
+            fig.add_trace(go.Scattermapbox(
+                lon=x,
+                lat=y,
+                hoverinfo='text',
+                text=labs,
+                mode='lines+markers',
+                marker=dict(
+                    size=8,
+                    color=col,
+                ),
+            ),row=i//num_cols + 1, col=i % num_cols + 1
+            )
+            fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
+            lat=np.mean(y),
+            lon=np.mean(x)
+            ), style='open-street-map',row=i//num_cols + 1, col=i % num_cols + 1)
 
+        fig.update_layout(
+            title_text=self.mdl.name,
+            showlegend=True,
+            height= (len(driver_ids) // num_cols + 1) * 720,
+        )
+        fig.write_html('visualized.html', auto_open=True)
 
     def __get_driver_coords(self, id):
         def __filterTrips(id):
@@ -377,10 +381,10 @@ class PDWTWOptimizer:
             idx = self.idxes[t.lp.o]
             return self.B[idx].solution_value
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, False, True)
-        yield (depot.lp.c1[1], depot.lp.c1[0]), ""
+        yield (depot.lp.c1[1], depot.lp.c1[0]), "Depot"
 
 
         for trip in sorted(filter(__filterTrips(id), self.trip_map.values()), key=__sortTrips):
             yield (trip.lp.c1[1], trip.lp.c1[0]), str(timedelta(days=self.B[self.idxes[trip.lp.o]].solution_value))[:-4]
 
-        yield (depot.lp.c2[1], depot.lp.c2[0]), ""
+        yield (depot.lp.c2[1], depot.lp.c2[0]), "Depot"
