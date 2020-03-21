@@ -40,6 +40,8 @@ class TripCalculator:
 
     def __prepare_drivers(self):
         for index, row in self.driver_df.iterrows():
+            if row['Available?'] != str(1):
+                continue
             cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
             add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
             yield Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type'])
