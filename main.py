@@ -1,9 +1,19 @@
 from PDWTWOptimizer import PDWTWOptimizer
-from Solver import TripCalculator
+from Solver import TripPreprocess as tp
 from datetime import datetime
 from constants import FIFTEEN
 
-tc = TripCalculator("../Data/in_trips.csv", "../Data/in_drivers.csv")
+assumptions = {
+ "UNKNOWN_TIME_BUFFER": FIFTEEN * 10,
+ "MERGE_ADDRESSES": {"1631 E 2nd St", "1110 W Willia"},
+ "MERGE_ADDRESS_WINDOW": FIFTEEN
+
+}
+#rev_table = tp.load_revenue_table('../Data/rev_table.csv')
+#trips = tp.prepare_and_load_trips('../Data/in_trips.csv',rev_table, assumptions)
+trips = tp.load_trips('calc_trips.csv')
+drivers = tp.load_drivers('../Data/in_drivers.csv')
+
 
 opt_params = {
    "TRIPS_TO_DO": 53,
@@ -12,11 +22,11 @@ opt_params = {
     "PICKUP_WINDOW": FIFTEEN/2,
     "DROP_WINDOW": FIFTEEN * 2/3,
     "DRIVER_CAP": 2,
-    "TIME_LIMIT": 900,
+    "TIME_LIMIT": 1500,
     "MIP_GAP": 0.01,
     "MODEL_NAME": "PDTWT"
 }
-optimizer = tc.prepare_model(PDWTWOptimizer, opt_params)
+optimizer = PDWTWOptimizer(trips, drivers, opt_params)
 outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
-tc.solve(outfile)
-tc.visualize(outfile, False)
+optimizer.solve(outfile)
+optimizer.visualize(outfile, False)

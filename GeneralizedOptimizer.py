@@ -138,7 +138,7 @@ class GeneralOptimizer:
         """
         for dS in self.driverStart:
             for rS in self.requestStart:
-                t = Trip(dS, rS, 0, id, None, 0.0, 1.0, True)
+                t = Trip(dS, rS, 0, id, None, 0.0, 1.0, prefix=True)
                 if dS not in self.outtrips:
                     self.outtrips[dS] = {t}
                 else:
@@ -155,7 +155,7 @@ class GeneralOptimizer:
         """
         for dE in self.driverEnd:
             for rE in self.requestEnd:
-                t = Trip(rE, dE, 0, id, None, 0.0, 1.0, True)
+                t = Trip(rE, dE, 0, id, None, 0.0, 1.0, prefix=True)
                 if rE not in self.outtrips:
                     self.outtrips[rE] = {t}
                 else:
@@ -176,7 +176,7 @@ class GeneralOptimizer:
                         rE in self.requestPair and self.requestPair[rE] == rS):
                     continue
                 try:
-                    t = Trip(rS, rE, 0, id, None, self.nodeDeps[rS], self.nodeArrs[rE], True)
+                    t = Trip(rS, rE, 0, id, None, self.nodeDeps[rS], self.nodeArrs[rE], prefix=True)
                 except InvalidTripException:
                     # print(rS, rE, nodeDeps[rS], nodeArrs[rE])
                     continue

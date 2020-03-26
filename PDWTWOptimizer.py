@@ -1,3 +1,4 @@
+from copy import copy
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
@@ -48,6 +49,7 @@ class PDWTWOptimizer:
         self.idxes = dict()  # mapping between location and associated
         self.tripdex = dict()  # mapping between location_pair and index of trip in trip time/cost/binary var containers
         self.primaryTID = set()  # set of IDs of primary trips
+        self.primaryOIDs = dict() # map from origin location to trip ID
         self.opposingTrip = dict()  # mapping between trip ID and trip
 
         # Constants
@@ -167,7 +169,7 @@ class PDWTWOptimizer:
                         self.t.append(trp.lp.time)
                         self.c.append(trp.lp.miles)
                     else:
-                        trp = Trip(o, d, 0, id, None, 0.0, 1.0, False, True)
+                        trp = Trip(o, d, 0, id, None, 0.0, 1.0, prefix=False, suffix=True)
                         if o not in self.outlfow_trips:
                             self.outlfow_trips[o] = {trp}
                         else:
@@ -267,7 +269,7 @@ class PDWTWOptimizer:
                 count)))  # Varaible for index of first location on route pickup
             Dv.append(self.mdl.continuous_var(lb=0, name='v_' + str(
                 self.TRIPS_TO_DO + count)))  # Varaible for undex of first location on route dropoff
-
+            self.primaryOIDs[o] = id
             self.location_pair.add((o, d))
             self.trip_map[(o, d)] = trip
             if o not in self.outlfow_trips:
@@ -282,6 +284,7 @@ class PDWTWOptimizer:
             last_trip = trip
             if count == self.TRIPS_TO_DO:
                 break
+
         self.Q = PQ + DQ
         self.B = PB + DB
         self.v = Pv + Dv
@@ -327,31 +330,67 @@ class PDWTWOptimizer:
     def visualize(self, sfile, save=False):
         import random
         sol_df = pd.read_csv(sfile)
-        def names(id):
-            return "Driver " + str(id) + " Route"
-        driver_ids = set(sol_df['driver_id'])
+        driver_ids = list(sol_df['driver_id'].unique())
+        def names(idx):
+            return "Driver " + str(driver_ids[idx]) + " Route"
         fig = go.Figure()
         all_x = []
         all_y = []
+        locations = dict()
+        def get_labels(trips):
+            data = "<br>".join(
+               "0" * (10 - len(str(t.id))) + str(t.id) + "  |  " + str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] +
+                "  |  " + str(int(self.v[self.idxes[t.lp.o]].solution_value)) for t in trips
+            )
+            return "<b>TripID,             Time,      DriverID </b><br>" + data
+        for i, d_id in enumerate(driver_ids):
+            points, trips = zip(*self.__get_driver_coords(d_id))
+            points = points[1:-1]
+            trips = trips[1:-1]
+            for idx, point in enumerate(points):
+                if point in locations:
+                    locations[point].append(trips[idx])
+                    locations[point] = list(sorted(locations[point], key=lambda x: self.B[self.idxes[x.lp.o]].solution_value))
+                else:
+                    locations[point] = [trips[idx]]
+        lon, lat = map(list, zip(*locations.keys()))
+        labels = [get_labels(locations[k]) for k in locations.keys()]
+        depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
+        lon.append(depot.lp.c1[1])
+        lat.append(depot.lp.c1[0])
+        labels.append("Depot")
+
         for i, d_id in enumerate(driver_ids):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
-            points, labs = zip(*self.__get_driver_coords(d_id))
+            points, _ = zip(*self.__get_driver_coords(d_id))
             x, y = zip(*points)
             all_x += x
             all_y += y
             fig.add_trace(go.Scattermapbox(
                 lon=x,
                 lat=y,
-                hoverinfo='text',
-                text=labs,
-                mode='lines+markers',
+                mode='lines',
                 marker=dict(
                     size=8,
                     color=col,
                 ),
                 name= names(i)
             ))
+
+        fig.add_trace(
+            go.Scattermapbox(
+                lon=lon,
+                lat=lat,
+                mode='markers',
+                marker=go.scattermapbox.Marker(
+                    size=9
+                ),
+                text=labels,
+                name="Locations"
+            )
+        )
+
         fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
         lat=np.mean(all_y),
         lon=np.mean(all_x)
@@ -378,11 +417,15 @@ class PDWTWOptimizer:
         def __sortTrips(t):
             idx = self.idxes[t.lp.o]
             return self.B[idx].solution_value
-        depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, False, True)
+        depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
         yield (depot.lp.c1[1], depot.lp.c1[0]), "Depot"
 
-
+        prev = 0.0
         for trip in sorted(filter(__filterTrips(id), self.trip_map.values()), key=__sortTrips):
-            yield (trip.lp.c1[1], trip.lp.c1[0]), str(timedelta(days=self.B[self.idxes[trip.lp.o]].solution_value))[:-4]
+            t = copy(trip)
+            if self.Q[self.idxes[t.lp.o]].solution_value > prev:
+                t.id = self.primaryOIDs[t.lp.o]
+            prev = self.Q[self.idxes[t.lp.o]].solution_value
+            yield (trip.lp.c1[1], trip.lp.c1[0]), t
 
         yield (depot.lp.c2[1], depot.lp.c2[0]), "Depot"

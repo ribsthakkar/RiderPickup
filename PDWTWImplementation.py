@@ -127,7 +127,7 @@ for index, row in trip_df.iterrows():
             type = TripType.D
         N.append(o)
         N.append(d)
-        t = Trip(o, d, cap, id, type, start, end, False, True)
+        t = Trip(o, d, cap, id, type, start, end, prefix=False, suffix=True)
         if 'A' in id:
             opposingTrip[id] = t
         primaryTID.add(id)
@@ -215,7 +215,7 @@ for i, o in enumerate(N):
                 t.append(trp.lp.time)
                 c.append(trp.lp.miles)
             else:
-                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0, False, True)
+                trp = Trip(o, d, 0, id, TripType.INTER_A, 0.0, 1.0, prefix=False, suffix=True)
                 if o not in outlfow_trips:
                     outlfow_trips[o] = {trp}
                 else:

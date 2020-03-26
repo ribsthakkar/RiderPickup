@@ -113,7 +113,7 @@ for index, row in trip_df.iterrows():
             exit(1)
         nodeCaps[start] = cap
         nodeCaps[end] = -cap
-        t = Trip(start, end, cap, id, type, pick, drop, True, prefixLen=4)
+        t = Trip(start, end, cap, id, type, pick, drop, prefix=True, prefixLen=4)
         nodeArrs[start] = drop - t.lp.time # 0
         nodeDeps[start] = pick  # max(0, pick - BUFFER)
         nodeArrs[end] = drop
@@ -148,7 +148,7 @@ Trips from Driver Start locations to Start location of any request
 """
 for dS in driverStart:
     for rS in requestStart:
-        t = Trip(dS, rS, 0, id, TripType.INTER_A, 0.0, 1.0, True)
+        t = Trip(dS, rS, 0, id, TripType.INTER_A, 0.0, 1.0, prefix=True)
         if dS not in outtrips:
             outtrips[dS] = {t}
         else:
@@ -165,7 +165,7 @@ Trips for End location of any request to Driver End locations
 """
 for dE in driverEnd:
     for rE in requestEnd:
-        t = Trip(rE, dE, 0, id, TripType.INTER_B, 0.0, 1.0, True)
+        t = Trip(rE, dE, 0, id, TripType.INTER_B, 0.0, 1.0, prefix=True)
         if rE not in outtrips:
             outtrips[rE] = {t}
         else:
@@ -185,7 +185,7 @@ for rS in requestNodes:
         if rS == rE or (rS in requestPair and requestPair[rS] == rE) or (rE in requestPair and requestPair[rE] == rS):
             continue
         try:
-            t = Trip(rS, rE, 0, id, TripType.C, nodeDeps[rS], nodeArrs[rE], True)
+            t = Trip(rS, rE, 0, id, TripType.C, nodeDeps[rS], nodeArrs[rE], prefix=True)
         except InvalidTripException:
             # print(rS, rE, nodeDeps[rS], nodeArrs[rE])
             continue
