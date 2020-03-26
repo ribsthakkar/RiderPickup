@@ -330,18 +330,26 @@ class PDWTWOptimizer:
         import random
         sol_df = pd.read_csv(sfile)
         driver_ids = list(sol_df['driver_id'].unique())
+        subplots = [[{"type":"table"}]] * len(driver_ids)
+        subplots.insert(0,[{"type": "scattermapbox"}])
+        fig = make_subplots(
+            rows=1 + len(driver_ids), cols=1,
+            vertical_spacing=0.03,
+            specs=subplots
+        )
         def names(idx):
             return "Driver " + str(driver_ids[idx]) + " Route"
-        fig = go.Figure()
-        all_x = []
-        all_y = []
-        locations = dict()
+
         def get_labels(trips):
             data = "<br>".join(
                "0" * (10 - len(str(t.id))) + str(t.id) + "  |  " + str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] +
                 "  |  " + str(int(self.v[self.idxes[t.lp.o]].solution_value)) for t in trips
             )
             return trips[0].lp.o[:-4] + "<br><b>TripID,             Time,      DriverID </b><br>" + data
+
+        all_x = []
+        all_y = []
+        locations = dict()
         for i, d_id in enumerate(driver_ids):
             points, trips = zip(*self.__get_driver_coords(d_id))
             points = points[1:-1]
@@ -355,15 +363,16 @@ class PDWTWOptimizer:
         lon, lat = map(list, zip(*locations.keys()))
         labels = [get_labels(locations[k]) for k in locations.keys()]
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
-        lon.append(depot.lp.c1[1])
-        lat.append(depot.lp.c1[0])
-        labels.append(self.driverstart + "<br>Depot")
+        # lon.append(depot.lp.c1[1])
+        # lat.append(depot.lp.c1[0])
+        # labels.append(self.driverstart + "<br>Depot")
 
         for i, d_id in enumerate(driver_ids):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
-            points, _ = zip(*self.__get_driver_coords(d_id))
+            points, trips = zip(*self.__get_driver_coords(d_id))
             x, y = zip(*points)
+            details = [[t.lp.o[:-4] for t in trips[1:-1]] ,x[1:-1],y[1:-1], [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in trips[1:-1]]]
             all_x += x
             all_y += y
             fig.add_trace(go.Scattermapbox(
@@ -374,8 +383,22 @@ class PDWTWOptimizer:
                     size=8,
                     color=col,
                 ),
-                name= names(i)
-            ))
+                name= names(i),
+
+            ),row=1, col=1)
+            fig.add_trace(
+                go.Table(
+                    header=dict(
+                        values=["Address", "Longitude", "Latitude", "Time"],
+                        font=dict(size=10),
+                        align="left"
+                    ),
+                    cells=dict(
+                        values=details,
+                        align="left")
+                ),
+                row=i + 2, col=1
+            )
 
         fig.add_trace(
             go.Scattermapbox(
@@ -386,9 +409,14 @@ class PDWTWOptimizer:
                     size=9
                 ),
                 text=labels,
-                name="Locations"
-            )
+                name="Locations",
+
+            ),
+            row=1,col=1
         )
+
+
+
 
         fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
         lat=np.mean(all_y),
@@ -398,6 +426,7 @@ class PDWTWOptimizer:
         fig.update_layout(
             title_text=self.mdl.name,
             showlegend=True,
+            height = 600 * (len(driver_ids) + 1)
         )
         fig.write_html('visualized.html', auto_open=True)
 
