@@ -323,7 +323,6 @@ class PDWTWOptimizer:
                                      str(t.los) + "," + str(t.lp.miles) + "," + str(t.lp.time) + "\n")
                         # print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start) + ';' + str(
                         #     t.end) + ';' + str(t.lp.miles))
-        #self.__plot_map(sol_file)
         driver_route = dict()
         primary_trip_assignments = dict()
 
@@ -342,7 +341,7 @@ class PDWTWOptimizer:
                "0" * (10 - len(str(t.id))) + str(t.id) + "  |  " + str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] +
                 "  |  " + str(int(self.v[self.idxes[t.lp.o]].solution_value)) for t in trips
             )
-            return "<b>TripID,             Time,      DriverID </b><br>" + data
+            return trips[0].lp.o[:-4] + "<br><b>TripID,             Time,      DriverID </b><br>" + data
         for i, d_id in enumerate(driver_ids):
             points, trips = zip(*self.__get_driver_coords(d_id))
             points = points[1:-1]
@@ -358,7 +357,7 @@ class PDWTWOptimizer:
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
         lon.append(depot.lp.c1[1])
         lat.append(depot.lp.c1[0])
-        labels.append("Depot")
+        labels.append(self.driverstart + "<br>Depot")
 
         for i, d_id in enumerate(driver_ids):
             r = lambda: random.randint(0, 255)
@@ -401,6 +400,7 @@ class PDWTWOptimizer:
             showlegend=True,
         )
         fig.write_html('visualized.html', auto_open=True)
+
 
     def __get_driver_coords(self, id):
         def __filterTrips(id):
