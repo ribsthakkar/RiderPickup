@@ -16,6 +16,7 @@ from docplex.mp.model import Model
 
 from Trip import Trip, locations
 from listeners import TimeListener, GapListener
+import random
 
 
 class PDWTWOptimizer:
@@ -108,6 +109,11 @@ class PDWTWOptimizer:
                 # print("here")
                 self.obj += 1000 * total
                 self.mdl.add_constraint(total >= self.NUM_DRIVERS, "Drivers leaving Depot")
+                in_total = 0
+                for intrip in self.inflow_trips[i]:
+                    # print((intrip.lp.o, intrip.lp.d))
+                    in_total += self.x[self.tripdex[(intrip.lp.o, intrip.lp.d)]]
+                self.mdl.add_constraint(total == in_total, "Drivers Returning to Depot" )
             else:
                 self.mdl.add_constraint(total == 1, "Primary Location Exited " + i)
         """
@@ -284,7 +290,6 @@ class PDWTWOptimizer:
             last_trip = trip
             if count == self.TRIPS_TO_DO:
                 break
-
         self.Q = PQ + DQ
         self.B = PB + DB
         self.v = Pv + Dv
@@ -327,18 +332,8 @@ class PDWTWOptimizer:
         primary_trip_assignments = dict()
 
     def visualize(self, sfile, save=False):
-        import random
-        sol_df = pd.read_csv(sfile)
-        driver_ids = list(sol_df['driver_id'].unique())
-        subplots = [[{"type":"table"}]] * len(driver_ids)
-        subplots.insert(0,[{"type": "scattermapbox"}])
-        fig = make_subplots(
-            rows=1 + len(driver_ids), cols=1,
-            vertical_spacing=0.03,
-            specs=subplots
-        )
-        def names(idx):
-            return "Driver " + str(driver_ids[idx]) + " Route"
+        def names(id):
+            return "Driver " + str(id) + " Route"
 
         def get_labels(trips):
             data = "<br>".join(
@@ -347,6 +342,21 @@ class PDWTWOptimizer:
             )
             return trips[0].lp.o[:-4] + "<br><b>TripID,             Time,      DriverID </b><br>" + data
 
+        sol_df = pd.read_csv(sfile)
+        driver_ids = list(sol_df['driver_id'].unique())
+        titles = [names(i) for i in driver_ids]
+        titles.insert(0, "Map")
+        subplots = [[{"type":"table"}]] * len(driver_ids)
+        subplots.insert(0,[{"type": "scattermapbox"}])
+        heights = [1/((len(driver_ids) + 1))] * (len(driver_ids) + 1)
+        # heights = [0.25]
+        fig = make_subplots(
+            rows=1 + len(driver_ids), cols=1,
+            vertical_spacing=0.004,
+            subplot_titles=titles,
+            specs=subplots,
+            row_heights=heights
+        )
         all_x = []
         all_y = []
         locations = dict()
@@ -363,9 +373,9 @@ class PDWTWOptimizer:
         lon, lat = map(list, zip(*locations.keys()))
         labels = [get_labels(locations[k]) for k in locations.keys()]
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
-        # lon.append(depot.lp.c1[1])
-        # lat.append(depot.lp.c1[0])
-        # labels.append(self.driverstart + "<br>Depot")
+        lon.append(depot.lp.c1[1])
+        lat.append(depot.lp.c1[0])
+        labels.append(self.driverstart + "<br>Depot")
 
         for i, d_id in enumerate(driver_ids):
             r = lambda: random.randint(0, 255)
@@ -383,10 +393,10 @@ class PDWTWOptimizer:
                     size=8,
                     color=col,
                 ),
-                name= names(i),
+                name= names(d_id),
 
             ),row=1, col=1)
-            fig.add_trace(
+            f = fig.add_trace(
                 go.Table(
                     header=dict(
                         values=["Address", "Longitude", "Latitude", "Time"],
@@ -397,7 +407,7 @@ class PDWTWOptimizer:
                         values=details,
                         align="left")
                 ),
-                row=i + 2, col=1
+                row=i + 2, col=1,
             )
 
         fig.add_trace(
@@ -415,9 +425,6 @@ class PDWTWOptimizer:
             row=1,col=1
         )
 
-
-
-
         fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
         lat=np.mean(all_y),
         lon=np.mean(all_x)
@@ -426,7 +433,7 @@ class PDWTWOptimizer:
         fig.update_layout(
             title_text=self.mdl.name,
             showlegend=True,
-            height = 600 * (len(driver_ids) + 1)
+            height = 6000
         )
         fig.write_html('visualized.html', auto_open=True)
 
@@ -439,22 +446,28 @@ class PDWTWOptimizer:
                     idx2 = self.idxes[t.lp.o]
                     return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
                 except:
-                    return False
+                    idx = self.tripdex[(t.lp.o, t.lp.d)]
+                    idx2 = self.idxes[t.lp.d]
+                    return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
 
             return filt
 
         def __sortTrips(t):
-            idx = self.idxes[t.lp.o]
-            return self.B[idx].solution_value
+            try:
+                idx = self.idxes[t.lp.o]
+                return self.B[idx].solution_value
+            except:
+                return 0.000000001
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
-        yield (depot.lp.c1[1], depot.lp.c1[0]), "Depot"
-
         prev = 0.0
         for trip in sorted(filter(__filterTrips(id), self.trip_map.values()), key=__sortTrips):
             t = copy(trip)
-            if self.Q[self.idxes[t.lp.o]].solution_value > prev:
-                t.id = self.primaryOIDs[t.lp.o]
-            prev = self.Q[self.idxes[t.lp.o]].solution_value
+            if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value > prev:
+                try:
+                    t.id = self.primaryOIDs[t.lp.o]
+                except:
+                    print(t.id, t.lp.o, t.lp.d,self.Q[self.idxes[t.lp.o]].solution_value, prev)
+                    exit(1)
+                prev = self.Q[self.idxes[t.lp.o]].solution_value
             yield (trip.lp.c1[1], trip.lp.c1[0]), t
-
         yield (depot.lp.c2[1], depot.lp.c2[0]), "Depot"
