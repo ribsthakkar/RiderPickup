@@ -331,7 +331,7 @@ class PDWTWOptimizer:
         driver_route = dict()
         primary_trip_assignments = dict()
 
-    def visualize(self, sfile, save=False):
+    def visualize(self, sfile, vfile='visualized.html'):
         def names(id):
             return "Driver " + str(id) + " Route"
 
@@ -346,12 +346,14 @@ class PDWTWOptimizer:
         driver_ids = list(sol_df['driver_id'].unique())
         titles = [names(i) for i in driver_ids]
         titles.insert(0, "Map")
-        subplots = [[{"type":"table"}]] * len(driver_ids)
+        titles.insert(1, "Driver Summary")
+        subplots = [[{"type":"table"}]] * (len(driver_ids) + 1)
         subplots.insert(0,[{"type": "scattermapbox"}])
-        heights = [1/((len(driver_ids) + 1))] * (len(driver_ids) + 1)
+        heights = [0.90/((len(driver_ids)) + 1)] * (len(driver_ids) +1)
+        heights.insert(0, 0.06)
         # heights = [0.25]
         fig = make_subplots(
-            rows=1 + len(driver_ids), cols=1,
+            rows=2 + len(driver_ids), cols=1,
             vertical_spacing=0.004,
             subplot_titles=titles,
             specs=subplots,
@@ -396,7 +398,7 @@ class PDWTWOptimizer:
                 name= names(d_id),
 
             ),row=1, col=1)
-            f = fig.add_trace(
+            fig.add_trace(
                 go.Table(
                     header=dict(
                         values=["Address", "Longitude", "Latitude", "Time"],
@@ -407,7 +409,7 @@ class PDWTWOptimizer:
                         values=details,
                         align="left")
                 ),
-                row=i + 2, col=1,
+                row=i + 3, col=1,
             )
 
         fig.add_trace(
@@ -424,6 +426,20 @@ class PDWTWOptimizer:
             ),
             row=1,col=1
         )
+        times, miles, rev = zip(*(self.__get_driver_times_miles_rev(id) for id in driver_ids))
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=["Driver", "Time", "Miles", "Revenue"],
+                    font=dict(size=10),
+                    align="left"
+                ),
+                cells=dict(
+                    values=[driver_ids, times, miles, rev],
+                    align="left")
+            ),
+            row=2, col=1,
+        )
 
         fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
         lat=np.mean(all_y),
@@ -433,34 +449,34 @@ class PDWTWOptimizer:
         fig.update_layout(
             title_text=self.mdl.name,
             showlegend=True,
-            height = 6000
+            height = 600 + 300 * (len(driver_ids) + 1)
         )
-        fig.write_html('visualized.html', auto_open=True)
+        fig.write_html(vfile, auto_open=True)
 
+    def __filterTrips(self, id):
+        def filt(t):
+            try:
+                idx = self.tripdex[(t.lp.o, t.lp.d)]
+                idx2 = self.idxes[t.lp.o]
+                return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
+            except:
+                idx = self.tripdex[(t.lp.o, t.lp.d)]
+                idx2 = self.idxes[t.lp.d]
+                return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
+
+        return filt
+
+    def __sortTrips(self, t):
+        try:
+            idx = self.idxes[t.lp.o]
+            return self.B[idx].solution_value
+        except:
+            return 0.000000001
 
     def __get_driver_coords(self, id):
-        def __filterTrips(id):
-            def filt(t):
-                try:
-                    idx = self.tripdex[(t.lp.o, t.lp.d)]
-                    idx2 = self.idxes[t.lp.o]
-                    return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
-                except:
-                    idx = self.tripdex[(t.lp.o, t.lp.d)]
-                    idx2 = self.idxes[t.lp.d]
-                    return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
-
-            return filt
-
-        def __sortTrips(t):
-            try:
-                idx = self.idxes[t.lp.o]
-                return self.B[idx].solution_value
-            except:
-                return 0.000000001
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
         prev = 0.0
-        for trip in sorted(filter(__filterTrips(id), self.trip_map.values()), key=__sortTrips):
+        for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
             t = copy(trip)
             if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value > prev:
                 try:
@@ -471,3 +487,9 @@ class PDWTWOptimizer:
                 prev = self.Q[self.idxes[t.lp.o]].solution_value
             yield (trip.lp.c1[1], trip.lp.c1[0]), t
         yield (depot.lp.c2[1], depot.lp.c2[0]), "Depot"
+
+
+    def __get_driver_times_miles_rev(self, id):
+        return str(timedelta(days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
+               str(sum(t.lp.miles for t in filter(self.__filterTrips(id), self.trip_map.values()))), \
+               str(sum(t.rev for t in filter(self.__filterTrips(id), self.trip_map.values())))
