@@ -9,9 +9,9 @@ assumptions = {
  "MERGE_ADDRESS_WINDOW": FIFTEEN
 
 }
-#rev_table = tp.load_revenue_table('../Data/rev_table.csv')
-#trips = tp.prepare_and_load_trips('../Data/in_trips.csv',rev_table, assumptions)
-trips = tp.load_trips('calc_trips.csv')
+rev_table = tp.load_revenue_table('../Data/rev_table.csv')
+trips = tp.prepare_and_load_trips('../Data/in_trips_010220.csv',rev_table, assumptions)
+# trips = tp.load_trips('calc_trips.csv')
 drivers = tp.load_drivers('../Data/in_drivers.csv')
 
 
@@ -29,4 +29,10 @@ opt_params = {
 optimizer = PDWTWOptimizer(trips, drivers, opt_params)
 outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
 optimizer.solve(outfile)
-optimizer.visualize(outfile, False)
+optimizer.visualize(outfile, 'vis-010220.html')
+
+trips2 = tp.prepare_and_load_trips('../Data/in_trips_022620.csv',rev_table, assumptions)
+optimizer2 = PDWTWOptimizer(trips2, drivers, opt_params)
+outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
+optimizer.solve(outfile)
+optimizer.visualize(outfile, 'vis-022620.html')

@@ -349,8 +349,9 @@ class PDWTWOptimizer:
         titles.insert(1, "Driver Summary")
         subplots = [[{"type":"table"}]] * (len(driver_ids) + 1)
         subplots.insert(0,[{"type": "scattermapbox"}])
-        heights = [0.90/((len(driver_ids)) + 1)] * (len(driver_ids) +1)
-        heights.insert(0, 0.06)
+        map_height = 600/ (600 + 400 * (len(driver_ids) + 1))
+        heights = [(1-map_height-0.05)/((len(driver_ids)) + 1)] * (len(driver_ids) +1)
+        heights.insert(0, map_height)
         # heights = [0.25]
         fig = make_subplots(
             rows=2 + len(driver_ids), cols=1,
@@ -449,7 +450,7 @@ class PDWTWOptimizer:
         fig.update_layout(
             title_text=self.mdl.name,
             showlegend=True,
-            height = 600 + 300 * (len(driver_ids) + 1)
+            height = (600 + 400 * (len(driver_ids) + 1))
         )
         fig.write_html(vfile, auto_open=True)
 
@@ -464,6 +465,14 @@ class PDWTWOptimizer:
                 idx2 = self.idxes[t.lp.d]
                 return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
 
+        return filt
+
+    def __filterPrimaryTrips(self, id):
+        def filt(t):
+            if t.id not in self.primaryTID:
+                return False
+            idx2 = self.idxes[t.lp.o]
+            return self.v[idx2].solution_value == id
         return filt
 
     def __sortTrips(self, t):
@@ -492,4 +501,4 @@ class PDWTWOptimizer:
     def __get_driver_times_miles_rev(self, id):
         return str(timedelta(days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
                str(sum(t.lp.miles for t in filter(self.__filterTrips(id), self.trip_map.values()))), \
-               str(sum(t.rev for t in filter(self.__filterTrips(id), self.trip_map.values())))
+               str(sum(t.rev for t in filter(self.__filterPrimaryTrips(id), self.trip_map.values())))
