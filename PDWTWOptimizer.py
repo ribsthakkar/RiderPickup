@@ -14,13 +14,14 @@ from plotly.subplots import make_subplots
 
 from docplex.mp.model import Model
 
-from Trip import Trip, locations
+from Trip import Trip, locations, TripType
 from listeners import TimeListener, GapListener
 import random
 
 
 class PDWTWOptimizer:
     BIGM = 100000
+    TOLERANCE = 0.0000001
 
     def __init__(self, trips, drivers, params):
         self.drivers = drivers
@@ -41,17 +42,19 @@ class PDWTWOptimizer:
         self.x = []  # binary whether trip ij is taken; length of A
         self.t = []  # time of traversing trip ij; length of A
         self.c = []  # cost of traversing trip ij; length of A
+        self.merges = [] # binary whether merge trip was satisfied
         self.location_pair = set() # Set of tuples of pickup and dropoff pairs
         self.homes = set()  # set of home locations
         self.not_homes = set()  # set of medical office locations
         self.inflow_trips = dict()  # mapping between a location and list of trips ending at the location
         self.outlfow_trips = dict()  # mapping between a location and list of trips starting at the location
         self.trip_map = dict()  # mapping between a location_pair and associated trip
-        self.idxes = dict()  # mapping between location and associated
+        self.idxes = dict()  # mapping between location and associated index
         self.tripdex = dict()  # mapping between location_pair and index of trip in trip time/cost/binary var containers
         self.primaryTID = set()  # set of IDs of primary trips
-        self.primaryOIDs = dict() # map from origin location to trip ID
+        self.primaryOIDs = dict() # map from origin location to primary trip ID
         self.opposingTrip = dict()  # mapping between trip ID and trip
+        self.mergeDict = dict() # Map between origins of two merge trip locations
 
         # Constants
         self.TRIPS_TO_DO = params["TRIPS_TO_DO"]
@@ -60,7 +63,9 @@ class PDWTWOptimizer:
         self.PICK_WINDOW = params["PICKUP_WINDOW"]
         self.DROP_WINDOW = params["DROP_WINDOW"]
         self.CAP = params["DRIVER_CAP"]
-
+        self.ROUTE_LIMIT = params["ROUTE_LIMIT"]
+        self.MERGE_PEN = params["MERGE_PENALTY"]
+        self.DRIVER_PEN = 10000
 
         # Prepare Model
         self.obj = 0.0
@@ -80,6 +85,8 @@ class PDWTWOptimizer:
     def __prepare_objective(self):
         for i, yes in enumerate(self.x):
             self.obj += self.c[i] * yes
+        for var in self.merges:
+            self.obj += self.MERGE_PEN * (1-var[0])
         self.mdl.minimize(self.obj)
 
     def __prepare_constraints(self):
@@ -107,7 +114,7 @@ class PDWTWOptimizer:
                 total += self.x[self.tripdex[(otrip.lp.o, otrip.lp.d)]]
             if i == self.driverstart:
                 # print("here")
-                self.obj += 1000 * total
+                self.obj += self.DRIVER_PEN * total
                 self.mdl.add_constraint(total >= self.NUM_DRIVERS, "Drivers leaving Depot")
                 in_total = 0
                 for intrip in self.inflow_trips[i]:
@@ -155,6 +162,36 @@ class PDWTWOptimizer:
                 if o != d:
                     self.mdl.add_constraint(self.v[j] >= self.v[i] + n * (self.x[self.tripdex[(o, d)]] - 1))
                     self.mdl.add_constraint(self.v[j] <= self.v[i] + n * (1 - self.x[self.tripdex[(o, d)]]))
+
+        """
+        Route Length Limitations
+        """
+        for i, loc1 in enumerate(self.P):
+            for j, loc2 in enumerate(self.P):
+                if loc1 == loc2 or abs(self.e[i] - self.e[j+n]) <= self.ROUTE_LIMIT: continue
+                z1 = self.mdl.binary_var(loc1+loc2+'z1')
+                z2 = self.mdl.binary_var(loc1+loc2+'z2')
+                m = self.v[i]
+                y = self.v[j]
+                self.mdl.add_constraint(y - m <= -0.5 * z1 + len(self.N) * z2)
+                self.mdl.add_constraint(y - m >= -len(self.N) * z1 + z2 * 0.5)
+                self.mdl.add_constraint(z1 + z2 == 1)
+                self.mdl.add_constraint(self.v[i] - self.v[j] >= 0.5)
+
+        """
+        Merge Trip Binary Var
+        """
+        for vars in self.merges:
+            loc1, tr = self.mergeDict[vars]
+            x = vars[0]
+            z1 = vars[1]
+            z2 = vars[2]
+            m = self.v[self.idxes[loc1]]
+            y = self.v[self.idxes[tr.lp.o]]
+            self.mdl.add_constraint(y - m <= -0.005 * z1 + len(self.N) * z2)
+            self.mdl.add_constraint(y - m >= -len(self.N)*z1 +  z2 * 0.005)
+            self.mdl.add_constraint(x + z1 + z2 == 1)
+
         print("Number of variables: ", self.mdl.number_of_variables)
         print("Number of constraints: ", self.mdl.number_of_constraints)
 
@@ -196,11 +233,13 @@ class PDWTWOptimizer:
                             self.x.append(self.mdl.binary_var(name='C:' + o + '->' + d))
                         else:
                             # Shouldn't happen
+                            print("OD not in main location categories")
                             print(o, d)
                             exit(1)
                         self.tripdex[(o, d)] = len(self.x) - 1
                         self.t.append(trp.lp.time)
                         self.c.append(trp.lp.miles)
+
         with open("time.csv", "w") as t, open("cost.csv", "w") as c:
             t.write("Start,End,Time")
             c.write("Start,End,Cost")
@@ -244,12 +283,8 @@ class PDWTWOptimizer:
                 self.not_homes.add(o)
             self.N.append(o)
             self.N.append(d)
-            if 'A' in id:
-                self.opposingTrip[id] = trip
+            self.opposingTrip[id] = trip
             self.primaryTID.add(id)
-            if 'B' in id and start == 0:
-                last_trip = self.opposingTrip[id[:-1] + 'A']
-                start = last_trip.end + (1 / 24)
             self.idxes[o] = count
             self.idxes[d] = self.TRIPS_TO_DO + count
             self.P.append(o)  # Add to Pickups
@@ -275,6 +310,17 @@ class PDWTWOptimizer:
                 count)))  # Varaible for index of first location on route pickup
             Dv.append(self.mdl.continuous_var(lb=0, name='v_' + str(
                 self.TRIPS_TO_DO + count)))  # Varaible for undex of first location on route dropoff
+            if trip.type == TripType.MERGE:
+                vars = (self.mdl.binary_var(name=trip.id), self.mdl.binary_var(name=trip.id + 'z1'), self.mdl.binary_var(name=trip.id + 'z2'))
+                self.merges.append(vars)
+                if 'B' in trip.id:
+                    self.mergeDict[self.merges[-1]] = (trip.lp.o, self.opposingTrip[trip.id[:-1] + 'A'])
+                elif 'C' in trip.id:
+                    self.mergeDict[self.merges[-1]] = (trip.lp.o, self.opposingTrip[trip.id[:-1] + 'B'])
+                else:
+                    print("Unexpected Trip ID", trip.id)
+                    exit(1)
+
             self.primaryOIDs[o] = id
             self.location_pair.add((o, d))
             self.trip_map[(o, d)] = trip
@@ -459,11 +505,11 @@ class PDWTWOptimizer:
             try:
                 idx = self.tripdex[(t.lp.o, t.lp.d)]
                 idx2 = self.idxes[t.lp.o]
-                return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
+                return self.x[idx].solution_value == 1 and int(round(self.v[idx2].solution_value)) == id
             except:
                 idx = self.tripdex[(t.lp.o, t.lp.d)]
                 idx2 = self.idxes[t.lp.d]
-                return self.x[idx].solution_value == 1 and self.v[idx2].solution_value == id
+                return self.x[idx].solution_value == 1 and int(round(self.v[idx2].solution_value)) == id
 
         return filt
 
@@ -472,7 +518,7 @@ class PDWTWOptimizer:
             if t.id not in self.primaryTID:
                 return False
             idx2 = self.idxes[t.lp.o]
-            return self.v[idx2].solution_value == id
+            return int(round(self.v[idx2].solution_value)) == id
         return filt
 
     def __sortTrips(self, t):
@@ -487,11 +533,11 @@ class PDWTWOptimizer:
         prev = 0.0
         for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
             t = copy(trip)
-            if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value > prev:
+            if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1:
                 try:
                     t.id = self.primaryOIDs[t.lp.o]
                 except:
-                    print(t.id, t.lp.o, t.lp.d,self.Q[self.idxes[t.lp.o]].solution_value, prev)
+                    print("Failed to get primary origin ID", t.id, t.lp.o, t.lp.d,self.Q[self.idxes[t.lp.o]].solution_value, prev)
                     exit(1)
                 prev = self.Q[self.idxes[t.lp.o]].solution_value
             yield (trip.lp.c1[1], trip.lp.c1[0]), t

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from Driver import Driver
-from Trip import Trip, LocationPair
+from Trip import Trip, LocationPair, TripType
 from constants import FIFTEEN
 
 
@@ -36,8 +36,10 @@ class TripPreprocess:
         trips = []
         if "UNKNOWN_TIME_BUFFER" in assumptions:
             buffer = assumptions["UNKNOWN_TIME_BUFFER"]
+            end_buffer = assumptions["UNKNOWN_TIME_DROP"]
         else:
             buffer = FIFTEEN * 10
+            end_buffer = FIFTEEN * 8
 
 
         with open(processed_file_name, "w") as ct:
@@ -56,16 +58,26 @@ class TripPreprocess:
                     # Uknown Time Assumption
                     if start == 0.0 or end == 0.0 or start > 1 - (1/24):
                         start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + buffer
-                        end = 1.0
+                        end = min(1 - (1/24), start + end_buffer)
 
                     # AB Merge Assumption
-                    if "MERGE_ADDRESSES" in assumptions and id[-1] == 'B' and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
-                        start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                    if "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
+                        if id[-1] == 'B':
+                            start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                        elif id[-1] == 'C':
+                            start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                        else:
+                            print("Error processing merge Trip", id)
+                            print(o, d, id, start, end)
+                            exit(1)
+                        typ = TripType.MERGE
+                    else:
+                        typ = None
 
                     # Revenue Calculation
                     rev = TripPreprocess.calc_revenue(revenue_table, int(row['trip_miles']), los)
 
-                    t = Trip(o, d, cap, id, type, start, end, rev, prefix=False, suffix=True)
+                    t = Trip(o, d, cap, id, typ, start, end, rev, prefix=False, suffix=True)
                     trips.append(t)
                     ct.write(",".join([t.id, '"' +  " ".join(row["customer_name"].split(",")) + '"', str(start),
                                        '"' + row['trip_pickup_address'] + '"',str(end) ,'"' + row['trip_dropoff_address'] + '"',
@@ -74,7 +86,7 @@ class TripPreprocess:
         return trips
 
     @staticmethod
-    def load_trips(processed_trips_file='calc_trips.csv'):
+    def load_trips(processed_trips_file='calc_trips.csv', assumptions=None):
         trip_df = pd.read_csv(processed_trips_file)
         trips = []
         for index, row in trip_df.iterrows():
@@ -86,7 +98,12 @@ class TripPreprocess:
             id = row['trip_id']
             rev = float(row['trip_rev'])
             lp = LocationPair(o,d, (float(row['orig_lat']), float(row['orig_long'])), (float(row['dest_lat']), float(row['dest_long'])))
-            trips.append(Trip(o, d, cap, id, type, start, end, rev, lp))
+            # AB Merge Assumption
+            if assumptions and "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any( ad in o for ad in assumptions['MERGE_ADDRESSES']):
+                typ = TripType.MERGE
+            else:
+                typ = None
+            trips.append(Trip(o, d, cap, id, typ, start, end, rev, lp))
         return trips
 
     @staticmethod

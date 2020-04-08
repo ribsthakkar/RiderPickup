@@ -20,6 +20,7 @@ class TripType(Enum):
     D = 4 # Destination is a home with a passenger
     INTER_A = 5 # From driver home to any other location Must occur before any A trips
     INTER_B = 6 # From any location to driver home Must occur after all D trips
+    MERGE = 7
 class InvalidTripException(Exception):
     pass
 class Trip:
