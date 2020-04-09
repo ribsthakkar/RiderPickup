@@ -431,7 +431,13 @@ class PDWTWOptimizer:
             col = '#%02X%02X%02X' % (r(), r(), r())
             points, trips = zip(*self.__get_driver_coords(d_id))
             x, y = zip(*points)
-            details = [[t.lp.o[:-4] for t in trips[1:-1]] ,x[1:-1],y[1:-1], [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in trips[1:-1]]]
+            details = [[str(t.id) for t in trips[1:-2]],
+                        [t.lp.o[:-4] for t in trips[1:-2]],
+                       [t.lp.d[:-4] for t in trips[1:-2]],
+                       [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in trips[1:-2]],
+                       [str(t.lp.miles) for t in trips[1:-2]],
+                       [str(t.los) for t in trips[1:-2]],
+                       ]
             all_x += x
             all_y += y
             fig.add_trace(go.Scattermapbox(
@@ -448,7 +454,7 @@ class PDWTWOptimizer:
             fig.add_trace(
                 go.Table(
                     header=dict(
-                        values=["Address", "Longitude", "Latitude", "Time"],
+                        values=["TripID", "Pickup Address", "Dropoff Address", "Time", "Miles", "LOS"],
                         font=dict(size=10),
                         align="left"
                     ),
@@ -473,16 +479,16 @@ class PDWTWOptimizer:
             ),
             row=1,col=1
         )
-        times, miles, rev = zip(*(self.__get_driver_times_miles_rev(id) for id in driver_ids))
+        ids, times, miles, rev = zip(*(self.__get_driver_trips_times_miles_rev(id) for id in driver_ids))
         fig.add_trace(
             go.Table(
                 header=dict(
-                    values=["Driver", "Time", "Miles", "Revenue"],
+                    values=["Driver", "Trips", "Time", "Miles", "Revenue"],
                     font=dict(size=10),
                     align="left"
                 ),
                 cells=dict(
-                    values=[driver_ids, times, miles, rev],
+                    values=[driver_ids, ids, times, miles, rev],
                     align="left")
             ),
             row=2, col=1,
@@ -544,7 +550,8 @@ class PDWTWOptimizer:
         yield (depot.lp.c2[1], depot.lp.c2[0]), "Depot"
 
 
-    def __get_driver_times_miles_rev(self, id):
-        return str(timedelta(days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
+    def __get_driver_trips_times_miles_rev(self, id):
+        return  ",".join(map(lambda t: str(t.id),filter(self.__filterPrimaryTrips(id), self.trip_map.values()))), \
+                str(timedelta(days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
                str(sum(t.lp.miles for t in filter(self.__filterTrips(id), self.trip_map.values()))), \
                str(sum(t.rev for t in filter(self.__filterPrimaryTrips(id), self.trip_map.values())))
