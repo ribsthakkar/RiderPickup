@@ -94,7 +94,7 @@ class LocationPair:
             return locations[l1]
 
     def get_speed(self, miles):
-        return 40
+        return 40       # Adjust speed if needed
         # if miles < 30:
         #     # print(50)
         #     return 50

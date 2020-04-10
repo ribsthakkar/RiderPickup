@@ -59,13 +59,22 @@ class PDWTWOptimizer:
         # Constants
         self.TRIPS_TO_DO = params["TRIPS_TO_DO"]
         self.DRIVER_IDX = params["DRIVER_IDX"]
-        self.NUM_DRIVERS = params["NUM_DRIVERS"]
+        self.MAX_DRIVERS = params["MAX_DRIVERS"]
+        self.MIN_DRIVERS = params["MIN_DRIVERS"]
+        # self.NUM_DRIVERS = params["NUM_DRIVERS"]
         self.PICK_WINDOW = params["PICKUP_WINDOW"]
         self.DROP_WINDOW = params["DROP_WINDOW"]
+        self.EARLY_PICK_WINDOW = params["EARLY_PICKUP_WINDOW"]
+        self.EARLY_DROP_WINDOW = params["EARLY_DROP_WINDOW"]
+        self.LATE_PICK_WINDOW = params["LATE_PICKUP_WINDOW"]
+        self.LATE_DROP_WINDOW = params["LATE_DROP_WINDOW"]
         self.CAP = params["DRIVER_CAP"]
         self.ROUTE_LIMIT = params["ROUTE_LIMIT"]
         self.MERGE_PEN = params["MERGE_PENALTY"]
         self.DRIVER_PEN = 10000
+        self.MIN_SPEED = params["MIN_DRIVING_SPEED"]
+        self.MAX_SPEED = params["MAX_DRIVING_SPEED"]
+        self.SPEED_PENALTY = params["SPEED_PENALTY"]
 
         # Prepare Model
         self.obj = 0.0
@@ -85,8 +94,6 @@ class PDWTWOptimizer:
     def __prepare_objective(self):
         for i, yes in enumerate(self.x):
             self.obj += self.c[i] * yes
-        for var in self.merges:
-            self.obj += self.MERGE_PEN * (1-var[0])
         self.mdl.minimize(self.obj)
 
     def __prepare_constraints(self):
@@ -114,8 +121,8 @@ class PDWTWOptimizer:
                 total += self.x[self.tripdex[(otrip.lp.o, otrip.lp.d)]]
             if i == self.driverstart:
                 # print("here")
-                self.obj += self.DRIVER_PEN * total
-                self.mdl.add_constraint(total >= self.NUM_DRIVERS, "Drivers leaving Depot")
+                self.obj += self.DRIVER_PEN * (total-self.MIN_DRIVERS)
+                self.mdl.add_constraint(total >= self.MIN_DRIVERS, "Drivers leaving Depot")
                 in_total = 0
                 for intrip in self.inflow_trips[i]:
                     # print((intrip.lp.o, intrip.lp.d))
@@ -163,6 +170,13 @@ class PDWTWOptimizer:
                     self.mdl.add_constraint(self.v[j] >= self.v[i] + n * (self.x[self.tripdex[(o, d)]] - 1))
                     self.mdl.add_constraint(self.v[j] <= self.v[i] + n * (1 - self.x[self.tripdex[(o, d)]]))
 
+        self.__prepare_custom_constraints()
+
+        print("Number of variables: ", self.mdl.number_of_variables)
+        print("Number of constraints: ", self.mdl.number_of_constraints)
+
+    def __prepare_custom_constraints(self):
+        n = len(self.P)
         """
         Route Length Limitations
         """
@@ -191,11 +205,17 @@ class PDWTWOptimizer:
             self.mdl.add_constraint(y - m <= -0.005 * z1 + len(self.N) * z2)
             self.mdl.add_constraint(y - m >= -len(self.N)*z1 +  z2 * 0.005)
             self.mdl.add_constraint(x + z1 + z2 == 1)
+            self.obj += self.MERGE_PEN * (1 - x)
 
-        print("Number of variables: ", self.mdl.number_of_variables)
-        print("Number of constraints: ", self.mdl.number_of_constraints)
+        """
+        Adjustable Speed Penalty
+        """
+        # self.obj += self.SPEED_PENALTY * (1/self.MIN_SPEED - self.SPEED)
+
 
     def __generate_trips(self):
+        # self.SPEED = self.mdl.continuous_var(1/80, 1/self.MIN_SPEED, "Speed")
+        # print(self.SPEED)
         id = 1
         for i, o in enumerate(self.N):
             for j, d in enumerate(self.N):
@@ -210,6 +230,7 @@ class PDWTWOptimizer:
                         trp = self.trip_map[(o, d)]
                         self.tripdex[(o, d)] = len(self.x) - 1
                         self.t.append(trp.lp.time)
+                        # self.t.append(trp.lp.miles * self.SPEED)
                         self.c.append(trp.lp.miles)
                     else:
                         trp = Trip(o, d, 0, id, None, 0.0, 1.0, prefix=False, suffix=True)
@@ -238,6 +259,7 @@ class PDWTWOptimizer:
                             exit(1)
                         self.tripdex[(o, d)] = len(self.x) - 1
                         self.t.append(trp.lp.time)
+                        # self.t.append(trp.lp.miles * self.SPEED)
                         self.c.append(trp.lp.miles)
 
         with open("time.csv", "w") as t, open("cost.csv", "w") as c:
@@ -289,10 +311,10 @@ class PDWTWOptimizer:
             self.idxes[d] = self.TRIPS_TO_DO + count
             self.P.append(o)  # Add to Pickups
             self.D.append(d)  # Add to Dropoffs
-            Pe.append(start - self.PICK_WINDOW)  # Add to Pickups open window
-            De.append(start - self.DROP_WINDOW)  # Add to Dropoffs open window
-            Pl.append(end + self.PICK_WINDOW)  # Add to Pickups close window
-            Dl.append(end + self.DROP_WINDOW)  # Add to Dropoffs close window
+            Pe.append(start - self.EARLY_PICK_WINDOW)  # Add to Pickups open window
+            De.append(start - self.EARLY_DROP_WINDOW)  # Add to Dropoffs open window
+            Pl.append(end + self.LATE_PICK_WINDOW)  # Add to Pickups close window
+            Dl.append(end + self.LATE_DROP_WINDOW)  # Add to Dropoffs close window
             Pq.append(cap)  # Add to Pickup capacity
             Dq.append(-cap)  # Add to dropoff capacity
 
