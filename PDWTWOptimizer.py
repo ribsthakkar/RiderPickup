@@ -71,10 +71,12 @@ class PDWTWOptimizer:
         self.CAP = params["DRIVER_CAP"]
         self.ROUTE_LIMIT = params["ROUTE_LIMIT"]
         self.MERGE_PEN = params["MERGE_PENALTY"]
-        self.DRIVER_PEN = 10000
-        self.MIN_SPEED = params["MIN_DRIVING_SPEED"]
-        self.MAX_SPEED = params["MAX_DRIVING_SPEED"]
-        self.SPEED_PENALTY = params["SPEED_PENALTY"]
+        self.DRIVER_PEN = params["DRIVER_PEN"]
+        self.W_DRIVER_PEN = params["W_DRIVER_PEN"]
+        # self.MIN_SPEED = params["MIN_DRIVING_SPEED"]
+        # self.MAX_SPEED = params["MAX_DRIVING_SPEED"]
+        # self.SPEED_PENALTY = params["SPEED_PENALTY"]
+        self.MAX_W_DRIVERS = params["MAX_WHEELCHAIR_DRIVERS"]
 
         # Prepare Model
         self.obj = 0.0
@@ -206,6 +208,37 @@ class PDWTWOptimizer:
             self.mdl.add_constraint(y - m >= -len(self.N)*z1 +  z2 * 0.005)
             self.mdl.add_constraint(x + z1 + z2 == 1)
             self.obj += self.MERGE_PEN * (1 - x)
+
+        """
+        Route Length Limitations
+        """
+        self.w_locs = []
+        for j, loc2 in enumerate(self.P):
+            if self.q[j] == 1: continue
+            idx_vars = []
+            for k in range(n):
+                var = self.mdl.binary_var(loc2 + "WTripValue" + str(k))
+                delta = self.mdl.binary_var(loc2 + "delta" + str(k))
+                x = self.v[j]
+                a = k - 0.4
+                b = k + 0.4
+                # print(a, b, x)
+                self.mdl.add_constraint(x <= a - 0.001 + self.BIGM * delta + self.BIGM * var)
+                self.mdl.add_constraint(x >= b + 0.001 - self.BIGM * (1- delta) - self.BIGM * var)
+                self.mdl.add_constraint(x >= a - self.BIGM * (1 - var))
+                self.mdl.add_constraint(x <= b + self.BIGM * (1 - var))
+                idx_vars.append(var)
+            self.w_locs.append(idx_vars)
+        unique_w_routes = 0
+        for k in range(n):
+            var = self.mdl.binary_var(str(k) + "IndexVar")
+            tot = 0
+            for loc_vars in self.w_locs:
+                tot += loc_vars[k]
+            self.mdl.add_constraint(self.BIGM * var >= tot)
+            unique_w_routes += var
+        # self.mdl.add_constraint(unique_w_routes <= self.MAX_W_DRIVERS)
+        self.obj += self.W_DRIVER_PEN * (unique_w_routes - self.MAX_W_DRIVERS)
 
         """
         Adjustable Speed Penalty
@@ -398,6 +431,9 @@ class PDWTWOptimizer:
                         #     t.end) + ';' + str(t.lp.miles))
         driver_route = dict()
         primary_trip_assignments = dict()
+        # for loc_vars in self.w_locs:
+        #     for k in range(len(self.P)):
+        #         print(k, loc_vars[k].solution_value)
 
     def visualize(self, sfile, vfile='visualized.html'):
         def names(id):
@@ -561,7 +597,7 @@ class PDWTWOptimizer:
         prev = 0.0
         for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
             t = copy(trip)
-            if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1:
+            if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1 and t.lp.d != self.driverstop:
                 try:
                     t.id = self.primaryOIDs[t.lp.o]
                 except:

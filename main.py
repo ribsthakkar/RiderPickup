@@ -15,8 +15,10 @@ opt_params = {
    "TRIPS_TO_DO": 53,
     "DRIVER_IDX": 1,
     "MIN_DRIVERS": 4,
-    "MAX_WHEELCHAIR_DRIVERS": 2,
     "MAX_DRIVERS": 4,
+    "DRIVER_PEN": 10000,
+    "MAX_WHEELCHAIR_DRIVERS": 2,
+    "W_DRIVER_PEN": 30000,
     "PICKUP_WINDOW": FIFTEEN/2,
     "EARLY_PICKUP_WINDOW": FIFTEEN * 2,
     "LATE_PICKUP_WINDOW": FIFTEEN * 3,
@@ -26,9 +28,9 @@ opt_params = {
     "DRIVER_CAP": 2.5,
     "ROUTE_LIMIT": FIFTEEN * 60,
     "MERGE_PENALTY": 1000,
-    "MIN_DRIVING_SPEED": 40,
-    "MAX_DRIVING_SPEED": 60,
-    "SPEED_PENALTY" : 100, # Penalty is applied to inverse of speed
+    # "MIN_DRIVING_SPEED": 40, # unused, not working
+    # "MAX_DRIVING_SPEED": 60, # unsued, not working
+    # "SPEED_PENALTY" : 100, # Penalty is applied to inverse of speed
     "TIME_LIMIT": 3600,
     "MIP_GAP": 0.03,
     "MODEL_NAME": "PDTWT",
@@ -42,8 +44,8 @@ outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
 optimizer.solve(outfile)
 optimizer.visualize(outfile, 'vis-010220.html')
 
-trips2 = tp.prepare_and_load_trips('../Data/in_trips_022620.csv',rev_table, preprocess_assumptions)
-optimizer2 = PDWTWOptimizer(trips2, drivers, opt_params)
-outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
-optimizer2.solve(outfile)
-optimizer2.visualize(outfile, 'vis-022620.html')
+# trips2 = tp.prepare_and_load_trips('../Data/in_trips_022620.csv',rev_table, preprocess_assumptions)
+# optimizer2 = PDWTWOptimizer(trips2, drivers, opt_params)
+# outfile = 'output/pdwtw_final_output' + str(datetime.now()) + '.csv'
+# optimizer2.solve(outfile)
+# optimizer2.visualize(outfile, 'vis-022620.html')
