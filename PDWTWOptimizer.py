@@ -489,12 +489,16 @@ class PDWTWOptimizer:
             col = '#%02X%02X%02X' % (r(), r(), r())
             points, trips = zip(*self.__get_driver_coords(d_id))
             x, y = zip(*points)
-            details = [[str(t.id) for t in trips[1:-2]],
-                        [t.lp.o[:-4] for t in trips[1:-2]],
-                       [t.lp.d[:-4] for t in trips[1:-2]],
-                       [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in trips[1:-2]],
-                       [str(t.lp.miles) for t in trips[1:-2]],
-                       [str(t.los) for t in trips[1:-2]],
+            filtered_trips = list(filter(lambda t: t.id in self.primaryOIDs.values(), trips[1:-1]))
+            details = [[str(t.id) for t in filtered_trips],
+                        [t.lp.o[:-4] for t in filtered_trips],
+                       [t.lp.d[:-4] for t in filtered_trips],
+                       [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in filtered_trips],
+                       [str(timedelta(days=self.opposingTrip[t.id].start)).split('.')[0] for t in filtered_trips],
+                       [str(timedelta(days=self.B[self.idxes[t.lp.o] + self.TRIPS_TO_DO].solution_value)).split('.')[0] for t in filtered_trips],
+                       [str(timedelta(days=self.opposingTrip[t.id].end)).split('.')[0] for t in filtered_trips],
+                       [str(t.lp.miles) for t in filtered_trips],
+                       [str(t.los) for t in filtered_trips],
                        ]
             all_x += x
             all_y += y
@@ -512,7 +516,7 @@ class PDWTWOptimizer:
             fig.add_trace(
                 go.Table(
                     header=dict(
-                        values=["TripID", "Pickup Address", "Dropoff Address", "Time", "Miles", "LOS"],
+                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time", "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles", "LOS"],
                         font=dict(size=10),
                         align="left"
                     ),
@@ -597,9 +601,11 @@ class PDWTWOptimizer:
         prev = 0.0
         for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
             t = copy(trip)
-            if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1 and t.lp.d != self.driverstop:
+            # if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1 and t.lp.d != self.driverstop:
+            if t.lp.o in self.primaryOIDs:
                 try:
                     t.id = self.primaryOIDs[t.lp.o]
+                    t.lp.d = self.opposingTrip[t.id].lp.d
                 except:
                     print("Failed to get primary origin ID", t.id, t.lp.o, t.lp.d,self.Q[self.idxes[t.lp.o]].solution_value, prev)
                     exit(1)
@@ -609,7 +615,7 @@ class PDWTWOptimizer:
 
 
     def __get_driver_trips_times_miles_rev(self, id):
-        return  ",".join(map(lambda t: str(t.id),filter(self.__filterPrimaryTrips(id), self.trip_map.values()))), \
+        return  ", ".join(map(lambda t: str(t.id),filter(self.__filterPrimaryTrips(id), self.trip_map.values()))), \
                 str(timedelta(days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
                str(sum(t.lp.miles for t in filter(self.__filterTrips(id), self.trip_map.values()))), \
                str(sum(t.rev for t in filter(self.__filterPrimaryTrips(id), self.trip_map.values())))
