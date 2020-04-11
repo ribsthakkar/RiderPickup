@@ -42,6 +42,7 @@ class PDWTWOptimizer:
         self.x = []  # binary whether trip ij is taken; length of A
         self.t = []  # time of traversing trip ij; length of A
         self.c = []  # cost of traversing trip ij; length of A
+        self.r = []  # driver revenue for doing a trip; length of P
         self.merges = [] # binary whether merge trip was satisfied
         self.location_pair = set() # Set of tuples of pickup and dropoff pairs
         self.homes = set()  # set of home locations
@@ -73,10 +74,11 @@ class PDWTWOptimizer:
         self.MERGE_PEN = params["MERGE_PENALTY"]
         self.DRIVER_PEN = params["DRIVER_PEN"]
         self.W_DRIVER_PEN = params["W_DRIVER_PEN"]
+        self.MAX_W_DRIVERS = params["MAX_WHEELCHAIR_DRIVERS"]
+        self.REVENUE_PEN = params["REVENUE_PENALTY"]
         # self.MIN_SPEED = params["MIN_DRIVING_SPEED"]
         # self.MAX_SPEED = params["MAX_DRIVING_SPEED"]
         # self.SPEED_PENALTY = params["SPEED_PENALTY"]
-        self.MAX_W_DRIVERS = params["MAX_WHEELCHAIR_DRIVERS"]
 
         # Prepare Model
         self.obj = 0.0
@@ -210,11 +212,10 @@ class PDWTWOptimizer:
             self.obj += self.MERGE_PEN * (1 - x)
 
         """
-        Route Length Limitations
+        Binary variables to represent which one of the n indices was set for v
         """
-        self.w_locs = []
+        self.loc_v_binary = {}
         for j, loc2 in enumerate(self.P):
-            if self.q[j] == 1: continue
             idx_vars = []
             for k in range(n):
                 var = self.mdl.binary_var(loc2 + "WTripValue" + str(k))
@@ -228,17 +229,38 @@ class PDWTWOptimizer:
                 self.mdl.add_constraint(x >= a - self.BIGM * (1 - var))
                 self.mdl.add_constraint(x <= b + self.BIGM * (1 - var))
                 idx_vars.append(var)
-            self.w_locs.append(idx_vars)
+            self.loc_v_binary[j] = idx_vars
+
+        """
+        Route Length Limitations
+        """
         unique_w_routes = 0
         for k in range(n):
             var = self.mdl.binary_var(str(k) + "IndexVar")
             tot = 0
-            for loc_vars in self.w_locs:
-                tot += loc_vars[k]
+            for loc_idx in filter(lambda idx: self.q[idx] == 1.5, self.loc_v_binary):
+                tot += self.loc_v_binary[loc_idx][k]
             self.mdl.add_constraint(self.BIGM * var >= tot)
             unique_w_routes += var
         # self.mdl.add_constraint(unique_w_routes <= self.MAX_W_DRIVERS)
         self.obj += self.W_DRIVER_PEN * (unique_w_routes - self.MAX_W_DRIVERS)
+
+
+        """
+        Equalizing Revenue Penalty
+        """
+        self.rev_max = self.mdl.continuous_var(0)
+        self.rev_min = self.mdl.continuous_var(0)
+        self.revens = []
+        for k in range(n):
+            bin_var = self.mdl.binary_var(str(k) + "RevenueZero")
+            tot = sum(self.loc_v_binary[loc_idx][k] * self.r[k] for loc_idx in self.loc_v_binary)
+            self.mdl.add_indicator(bin_var, tot >= 0.001)
+            self.mdl.add_indicator(bin_var, tot <= 0.001, active_value=0)
+            self.mdl.add_constraint(self.rev_max >= tot)
+            self.mdl.add_constraint(tot + (1-bin_var)*self.BIGM >= self.rev_min)
+        self.obj += self.REVENUE_PEN * (self.rev_max - self.rev_min)
+
 
         """
         Adjustable Speed Penalty
@@ -265,6 +287,10 @@ class PDWTWOptimizer:
                         self.t.append(trp.lp.time)
                         # self.t.append(trp.lp.miles * self.SPEED)
                         self.c.append(trp.lp.miles)
+                        if trp.rev <= 0:
+                            print("Revenue should be non zero for trip")
+                            exit(1)
+                        self.r.append(trp.rev)
                     else:
                         trp = Trip(o, d, 0, id, None, 0.0, 1.0, prefix=False, suffix=True)
                         if o not in self.outlfow_trips:
@@ -434,6 +460,8 @@ class PDWTWOptimizer:
         # for loc_vars in self.w_locs:
         #     for k in range(len(self.P)):
         #         print(k, loc_vars[k].solution_value)
+        print("Max Revenue", self.rev_max.solution_value)
+        print("Min Revenue", self.rev_min.solution_value)
 
     def visualize(self, sfile, vfile='visualized.html'):
         def names(id):

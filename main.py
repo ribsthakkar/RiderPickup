@@ -28,6 +28,7 @@ opt_params = {
     "DRIVER_CAP": 2.5,
     "ROUTE_LIMIT": FIFTEEN * 60,
     "MERGE_PENALTY": 1000,
+    "REVENUE_PENALTY": 500,
     # "MIN_DRIVING_SPEED": 40, # unused, not working
     # "MAX_DRIVING_SPEED": 60, # unsued, not working
     # "SPEED_PENALTY" : 100, # Penalty is applied to inverse of speed
