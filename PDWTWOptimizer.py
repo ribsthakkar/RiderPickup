@@ -2,14 +2,7 @@ from copy import copy
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
-import geopandas as gpd
-# from geopandas import GeoDataFrame
-from shapely.geometry import Point, LineString
-import matplotlib.pyplot as plt
-import adjustText
 import plotly.graph_objects as go
-import plotly.express as px
-import chart_studio.plotly as py
 from plotly.subplots import make_subplots
 
 from docplex.mp.model import Model
