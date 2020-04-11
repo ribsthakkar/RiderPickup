@@ -467,29 +467,15 @@ class PDWTWOptimizer:
         all_x = []
         all_y = []
         locations = dict()
-        for i, d_id in enumerate(driver_ids):
-            points, trips = zip(*self.__get_driver_coords(d_id))
-            points = points[1:-1]
-            trips = trips[1:-1]
-            for idx, point in enumerate(points):
-                if point in locations:
-                    locations[point].append(trips[idx])
-                    locations[point] = list(sorted(locations[point], key=lambda x: self.B[self.idxes[x.lp.o]].solution_value))
-                else:
-                    locations[point] = [trips[idx]]
-        lon, lat = map(list, zip(*locations.keys()))
-        labels = [get_labels(locations[k]) for k in locations.keys()]
-        depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
-        lon.append(depot.lp.c1[1])
-        lat.append(depot.lp.c1[0])
-        labels.append(self.driverstart + "<br>Depot")
+        # for i, d_id in enumerate(driver_ids[0:1]):
+        #     points, trips = zip(*self.__get_driver_coords(d_id))
 
         for i, d_id in enumerate(driver_ids):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
             points, trips = zip(*self.__get_driver_coords(d_id))
             x, y = zip(*points)
-            filtered_trips = list(filter(lambda t: t.id in self.primaryOIDs.values(), trips[1:-1]))
+            filtered_trips = list(filter(lambda t: t.id in self.primaryOIDs.values(), trips))
             details = [[str(t.id) for t in filtered_trips],
                         [t.lp.o[:-4] for t in filtered_trips],
                        [t.lp.d[:-4] for t in filtered_trips],
@@ -526,6 +512,21 @@ class PDWTWOptimizer:
                 ),
                 row=i + 3, col=1,
             )
+            points = points[1:-1]
+            trips = trips[1:-1]
+            for idx, point in enumerate(points):
+                if point in locations:
+                    locations[point].append(trips[idx])
+                    locations[point] = list(sorted(locations[point], key=lambda x: self.B[self.idxes[x.lp.o]].solution_value))
+                else:
+                    locations[point] = [trips[idx]]
+
+        lon, lat = map(list, zip(*locations.keys()))
+        labels = [get_labels(locations[k]) for k in locations.keys()]
+        depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
+        lon.append(depot.lp.c1[1])
+        lat.append(depot.lp.c1[0])
+        labels.append(self.driverstart + "<br>Depot")
 
         fig.add_trace(
             go.Scattermapbox(
@@ -600,7 +601,7 @@ class PDWTWOptimizer:
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
         prev = 0.0
         for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
-            t = copy(trip)
+            t = Trip(trip.lp.o, trip.lp.d, trip.los, trip.id, None, trip.start, trip.end,lp = trip.lp)
             # if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1 and t.lp.d != self.driverstop:
             if t.lp.o in self.primaryOIDs:
                 try:
@@ -611,7 +612,7 @@ class PDWTWOptimizer:
                     exit(1)
                 prev = self.Q[self.idxes[t.lp.o]].solution_value
             yield (trip.lp.c1[1], trip.lp.c1[0]), t
-        yield (depot.lp.c2[1], depot.lp.c2[0]), "Depot"
+        yield (depot.lp.c2[1], depot.lp.c2[0]), depot
 
 
     def __get_driver_trips_times_miles_rev(self, id):
