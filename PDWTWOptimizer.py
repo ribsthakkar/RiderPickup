@@ -68,6 +68,7 @@ class PDWTWOptimizer:
         self.DRIVER_PEN = params["DRIVER_PEN"]
         self.W_DRIVER_PEN = params["W_DRIVER_PEN"]
         self.MAX_W_DRIVERS = params["MAX_WHEELCHAIR_DRIVERS"]
+        self.MIN_W_DRIVERS = params["MIN_WHEELCHAIR_DRIVERS"]
         self.REVENUE_PEN = params["REVENUE_PENALTY"]
         # self.MIN_SPEED = params["MIN_DRIVING_SPEED"]
         # self.MAX_SPEED = params["MAX_DRIVING_SPEED"]
@@ -90,7 +91,8 @@ class PDWTWOptimizer:
 
     def __prepare_objective(self):
         for i, yes in enumerate(self.x):
-            self.obj += self.c[i] * yes
+            # self.obj += self.c[i] * yes
+            self.obj += 1440 * self.t[i] * yes
         self.mdl.minimize(self.obj)
 
     def __prepare_constraints(self):
@@ -118,7 +120,7 @@ class PDWTWOptimizer:
                 total += self.x[self.tripdex[(otrip.lp.o, otrip.lp.d)]]
             if i == self.driverstart:
                 # print("here")
-                self.obj += self.DRIVER_PEN * (total-self.MIN_DRIVERS)
+                self.obj += self.DRIVER_PEN * (total)
                 self.mdl.add_constraint(total >= self.MIN_DRIVERS, "Drivers leaving Depot")
                 in_total = 0
                 for intrip in self.inflow_trips[i]:
@@ -173,21 +175,20 @@ class PDWTWOptimizer:
         print("Number of constraints: ", self.mdl.number_of_constraints)
 
     def __prepare_custom_constraints(self):
-        n = len(self.P)
+        n = len(self.P) + 1
         """
         Route Length Limitations
         """
         for i, loc1 in enumerate(self.P):
             for j, loc2 in enumerate(self.P):
-                if loc1 == loc2 or abs(self.e[i] - self.e[j+n]) <= self.ROUTE_LIMIT: continue
+                if loc1 == loc2 or abs(self.e[i] - self.e[j+len(self.P)]) <= self.ROUTE_LIMIT: continue
                 z1 = self.mdl.binary_var(loc1+loc2+'z1')
                 z2 = self.mdl.binary_var(loc1+loc2+'z2')
                 m = self.v[i]
                 y = self.v[j]
-                self.mdl.add_constraint(y - m <= -0.5 * z1 + len(self.N) * z2)
-                self.mdl.add_constraint(y - m >= -len(self.N) * z1 + z2 * 0.5)
+                self.mdl.add_constraint(y - m <= -0.5 * z1 + n * z2)
+                self.mdl.add_constraint(y - m >= -n * z1 + z2 * 0.5)
                 self.mdl.add_constraint(z1 + z2 == 1)
-                self.mdl.add_constraint(self.v[i] - self.v[j] >= 0.5)
 
         """
         Merge Trip Binary Var
@@ -199,8 +200,8 @@ class PDWTWOptimizer:
             z2 = vars[2]
             m = self.v[self.idxes[loc1]]
             y = self.v[self.idxes[tr.lp.o]]
-            self.mdl.add_constraint(y - m <= -0.005 * z1 + len(self.N) * z2)
-            self.mdl.add_constraint(y - m >= -len(self.N)*z1 +  z2 * 0.005)
+            self.mdl.add_constraint(y - m <= -0.005 * z1 + n * z2)
+            self.mdl.add_constraint(y - m >= -n*z1 + z2 * 0.005)
             self.mdl.add_constraint(x + z1 + z2 == 1)
             self.obj += self.MERGE_PEN * (1 - x)
 
@@ -211,47 +212,59 @@ class PDWTWOptimizer:
         for j, loc2 in enumerate(self.P):
             idx_vars = []
             for k in range(n):
-                var = self.mdl.binary_var(loc2 + "WTripValue" + str(k))
-                delta = self.mdl.binary_var(loc2 + "delta" + str(k))
                 x = self.v[j]
+                var = self.mdl.binary_var(self.primaryOIDs[loc2] + "-TripValue-" + str(k))
                 a = k - 0.4
                 b = k + 0.4
-                # print(a, b, x)
-                self.mdl.add_constraint(x <= a - 0.001 + self.BIGM * delta + self.BIGM * var)
-                self.mdl.add_constraint(x >= b + 0.001 - self.BIGM * (1- delta) - self.BIGM * var)
+                delta = self.mdl.binary_var(self.primaryOIDs[loc2] + "-delta-" + str(k))
+                delta2 = self.mdl.binary_var(self.primaryOIDs[loc2] + "-delta2-" + str(k))
+                # self.mdl.add_indicator(delta, x <= a)
+                # self.mdl.add_indicator(delta2, x >= b)
+                # self.mdl.add_constraint(delta + delta2 + var == 1)
+                self.mdl.add_constraint(x <= a  + self.BIGM * delta + self.BIGM * var)
+                self.mdl.add_constraint(x >= b  - self.BIGM * (1 - delta) - self.BIGM * var)
                 self.mdl.add_constraint(x >= a - self.BIGM * (1 - var))
                 self.mdl.add_constraint(x <= b + self.BIGM * (1 - var))
                 idx_vars.append(var)
+            self.mdl.add_constraint(sum(idx_vars) == 1)
             self.loc_v_binary[j] = idx_vars
 
         """
-        Route Length Limitations
+        Wheelchair Route Limitations
         """
         unique_w_routes = 0
+        self.w_route_bin = []
         for k in range(n):
-            var = self.mdl.binary_var(str(k) + "IndexVar")
+            var = self.mdl.binary_var(str(k) + "WIndexVar")
             tot = 0
             for loc_idx in filter(lambda idx: self.q[idx] == 1.5, self.loc_v_binary):
                 tot += self.loc_v_binary[loc_idx][k]
             self.mdl.add_constraint(self.BIGM * var >= tot)
+            self.mdl.add_constraint(tot >= var)
+            self.w_route_bin.append(var)
             unique_w_routes += var
         # self.mdl.add_constraint(unique_w_routes <= self.MAX_W_DRIVERS)
-        self.obj += self.W_DRIVER_PEN * (unique_w_routes - self.MAX_W_DRIVERS)
+        self.mdl.add_constraint(unique_w_routes >= self.MIN_W_DRIVERS)
+        self.obj += self.W_DRIVER_PEN * (unique_w_routes - self.MIN_W_DRIVERS)
 
 
-        """
-        Equalizing Revenue Penalty
-        """
+        # """
+        # Equalizing Revenue Penalty
+        # """
         self.rev_max = self.mdl.continuous_var(0)
         self.rev_min = self.mdl.continuous_var(0)
         self.revens = []
         for k in range(n):
             bin_var = self.mdl.binary_var(str(k) + "RevenueZero")
-            tot = sum(self.loc_v_binary[loc_idx][k] * self.r[k] for loc_idx in self.loc_v_binary)
-            self.mdl.add_indicator(bin_var, tot >= 0.001)
-            self.mdl.add_indicator(bin_var, tot <= 0.001, active_value=0)
+            tot = sum(self.loc_v_binary[loc_idx][k] * self.r[loc_idx] for loc_idx in self.loc_v_binary)
+            sum_var = self.mdl.continuous_var(0,name=str(k) + "Revenue")
+            self.mdl.add_constraint(bin_var * self.BIGM >= tot)
+            self.mdl.add_constraint(tot >= bin_var)
             self.mdl.add_constraint(self.rev_max >= tot)
             self.mdl.add_constraint(tot + (1-bin_var)*self.BIGM >= self.rev_min)
+            self.mdl.add_constraint(sum_var == tot)
+            self.revens.append(sum_var)
+        self.mdl.add_constraint(self.rev_max >= self.rev_min)
         self.obj += self.REVENUE_PEN * (self.rev_max - self.rev_min)
 
 
@@ -285,7 +298,7 @@ class PDWTWOptimizer:
                             exit(1)
                         self.r.append(trp.rev)
                     else:
-                        trp = Trip(o, d, 0, id, None, 0.0, 1.0, prefix=False, suffix=True)
+                        trp = Trip(o, d, 0, id, None, 0.0, 1.0, 0.0, prefix=False, suffix=True)
                         if o not in self.outlfow_trips:
                             self.outlfow_trips[o] = {trp}
                         else:
@@ -432,10 +445,14 @@ class PDWTWOptimizer:
         with open(sol_file, 'w') as output:
             output.write(
                 'trip_id,driver_id,trip_pickup_address,trip_pickup_time,est_pickup_time,trip_dropoff_adress,trip_dropoff_time,est_dropoff_time,trip_los,est_miles,est_time\n')
+            miles = 0
+            time = 0
             for i, o in enumerate(self.N):
                 for j, d in enumerate(self.N):
                     if o != d:
                         var = self.x[self.tripdex[(o, d)]]
+                        miles += var.solution_value * self.c[self.tripdex[(o, d)]]
+                        time += var.solution_value * self.t[self.tripdex[(o, d)]]
                         t = self.trip_map[(o, d)]
                         if t.id not in self.primaryTID:
                             continue
@@ -453,8 +470,36 @@ class PDWTWOptimizer:
         # for loc_vars in self.w_locs:
         #     for k in range(len(self.P)):
         #         print(k, loc_vars[k].solution_value)
+        # for i, var in enumerate(self.revens):
+        #     print(i, var.solution_value)
+        print("Total Miles Traveled", miles)
+        print("Total Minutes Driving", time * 1440)
+
         print("Max Revenue", self.rev_max.solution_value)
         print("Min Revenue", self.rev_min.solution_value)
+        print("Revenue Penalty", self.REVENUE_PEN * (self.rev_max.solution_value - self.rev_min.solution_value))
+
+        driver_pen = 0
+        for idx, i in enumerate(self.N):
+            total = 0
+            for otrip in self.outlfow_trips[i]:
+                # print((otrip.lp.o, otrip.lp.d))
+                total += self.x[self.tripdex[(otrip.lp.o, otrip.lp.d)]].solution_value
+            if i == self.driverstart:
+                # print("here")
+                driver_pen = self.DRIVER_PEN * (total - self.MIN_DRIVERS)
+                break
+        print("Additional Driver Penalty", driver_pen)
+
+        w_routes = sum(v.solution_value for v in self.w_route_bin)
+        w_pen = self.W_DRIVER_PEN * (w_routes - self.MAX_W_DRIVERS)
+        print("Additional Wheelchair Driver Penalty", w_pen)
+
+        m_pen = 0
+        for vars in self.merges:
+            x = vars[0]
+            m_pen += self.MERGE_PEN * (1 - x.solution_value)
+        print("Merge Unsatisfaction Penalty", m_pen)
 
     def visualize(self, sfile, vfile='visualized.html'):
         def names(id):
@@ -506,6 +551,7 @@ class PDWTWOptimizer:
                        [str(timedelta(days=self.opposingTrip[t.id].end)).split('.')[0] for t in filtered_trips],
                        [str(t.lp.miles) for t in filtered_trips],
                        [str(t.los) for t in filtered_trips],
+                       [str(t.rev) for t in filtered_trips],
                        ]
             all_x += x
             all_y += y
@@ -523,7 +569,7 @@ class PDWTWOptimizer:
             fig.add_trace(
                 go.Table(
                     header=dict(
-                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time", "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles", "LOS"],
+                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time", "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles", "LOS", "Revenue"],
                         font=dict(size=10),
                         align="left"
                     ),
@@ -622,17 +668,18 @@ class PDWTWOptimizer:
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
         prev = 0.0
         for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
-            t = Trip(trip.lp.o, trip.lp.d, trip.los, trip.id, None, trip.start, trip.end,lp = trip.lp)
+            t = Trip(trip.lp.o, trip.lp.d, 1 if trip.los == 'A' else 1.5, trip.id, None, trip.start, trip.end, rev=0.0, lp = trip.lp)
             # if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1 and t.lp.d != self.driverstop:
             if t.lp.o in self.primaryOIDs:
                 try:
                     t.id = self.primaryOIDs[t.lp.o]
                     t.lp.d = self.opposingTrip[t.id].lp.d
+                    t.rev = self.r[self.idxes[t.lp.o]]
                 except:
                     print("Failed to get primary origin ID", t.id, t.lp.o, t.lp.d,self.Q[self.idxes[t.lp.o]].solution_value, prev)
                     exit(1)
                 prev = self.Q[self.idxes[t.lp.o]].solution_value
-            yield (trip.lp.c1[1], trip.lp.c1[0]), t
+            yield (t.lp.c1[1], t.lp.c1[0]), t
         yield (depot.lp.c2[1], depot.lp.c2[0]), depot
 
 

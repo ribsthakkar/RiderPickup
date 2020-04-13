@@ -24,7 +24,7 @@ class TripType(Enum):
 class InvalidTripException(Exception):
     pass
 class Trip:
-    def __init__(self, o, d, space, id, type, start, end, rev= 0, lp = None, prefix=False, suffix=False, prefixLen=3, suffixLen=4):
+    def __init__(self, o, d, space, id, type, start, end, rev= 0, preset_miles = 0, lp = None, prefix=False, suffix=False, prefixLen=3, suffixLen=4):
         self.type = type
         self.id = id
         if lp:
@@ -38,6 +38,7 @@ class Trip:
         self.rev = rev
         if self.lp.time > end - max(0, start - BUFFER):
             raise InvalidTripException()
+        self.preset_m = preset_miles
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d
 
@@ -94,7 +95,7 @@ class LocationPair:
             return locations[l1]
 
     def get_speed(self, miles):
-        return 40       # Adjust speed if needed
+        return 60       # Adjust speed if needed
         # if miles < 30:
         #     # print(50)
         #     return 50
