@@ -45,8 +45,12 @@ class Trip:
 class Location:
     def __init__(self, addr, coord = None):
         self.addr = addr
-        if coord is None:
-            self.coord = self.find_coord(addr)
+        if coord is None and self.addr in locations:
+            self.coord = locations[self.addr]
+        elif coord is None:
+            loc1 = self.find_coord(addr)
+            locations[self.addr] = loc1
+            self.coord = locations[self.addr]
         else:
             self.coord = coord
 
@@ -56,6 +60,9 @@ class Location:
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
         return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
+
+    def rev_coord(self):
+        return tuple(reversed(self.coord))
 
 class LocationPair:
     def __init__(self, l1, l2, c1=None, c2=None, prefix=False, suffix=False, plen=3, slen=4):
@@ -87,12 +94,7 @@ class LocationPair:
             exit(1)
 
     def getCoords(self, l1):
-        if l1 in locations:
-            return locations[l1]
-        else:
-            loc1 = Location(l1).coord
-            locations[l1] = loc1
-            return locations[l1]
+        return Location(l1).coord
 
     def get_speed(self, miles):
         return 60       # Adjust speed if needed
