@@ -625,8 +625,7 @@ class PDWTWOptimizer:
 
         fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
         lat=np.mean(all_y),
-        lon=np.mean(all_x)
-        ), style='open-street-map')
+        lon=np.mean(all_x)), style='open-street-map')
 
         fig.update_layout(
             title_text=self.mdl.name,

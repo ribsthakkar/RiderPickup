@@ -776,7 +776,9 @@ class GeneralOptimizer:
         fig.update_mapboxes(zoom=10,
          style='open-street-map')
 
-        fig.update_layout(
+        fig.update_layout(center=go.layout.mapbox.Center(
+                lat=np.mean(all_y),
+                lon=np.mean(all_x)),
             title_text=self.mdl.name,
             showlegend=True,
             height=(600 + 400 * (len(self.drivers) + 1))
