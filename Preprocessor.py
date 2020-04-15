@@ -44,7 +44,7 @@ class TripPreprocess:
 
         with open(processed_file_name, "w") as ct:
             ct.write("trip_id,customer_name,trip_pickup_time,trip_pickup_address,trip_dropoff_time,trip_dropoff_address,trip_los,"
-                     "trip_miles,trip_rev,orig_lat,orig_long,dest_lat,dest_long,duration\n")
+                     "scheduled_miles, trip_miles,trip_rev,orig_lat,orig_long,dest_lat,dest_long,duration\n")
             for index, row in trip_df.iterrows():
                 if not row['trip_status'] == "CANCELED":
                     o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
@@ -77,11 +77,11 @@ class TripPreprocess:
                     # Revenue Calculation
                     rev = TripPreprocess.calc_revenue(revenue_table, int(row['trip_miles']), los)
 
-                    t = Trip(o, d, cap, id, typ, start, end, rev, prefix=False, suffix=True)
+                    t = Trip(o, d, cap, id, typ, start, end, rev, preset_miles=row['trip_miles'],prefix=False, suffix=True)
                     trips.append(t)
                     ct.write(",".join([t.id, '"' +  " ".join(row["customer_name"].split(",")) + '"', str(start),
                                        '"' + row['trip_pickup_address'] + '"',str(end) ,'"' + row['trip_dropoff_address'] + '"',
-                                       los, str(t.lp.miles), str(rev),str(t.lp.c1[0]), str(t.lp.c1[1]),
+                                       los,str(row['trip_miles']), str(t.lp.miles), str(rev),str(t.lp.c1[0]), str(t.lp.c1[1]),
                                        str(t.lp.c2[0]), str(t.lp.c2[1]), str(t.lp.time)]) + "\n")
         return trips
 
@@ -103,7 +103,7 @@ class TripPreprocess:
                 typ = TripType.MERGE
             else:
                 typ = None
-            trips.append(Trip(o, d, cap, id, typ, start, end, rev, lp))
+            trips.append(Trip(o, d, cap, id, typ, start, end, rev, preset_miles=int(row['scheduled_miles']),lp=lp))
         return trips
 
     @staticmethod

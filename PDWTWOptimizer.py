@@ -121,6 +121,7 @@ class PDWTWOptimizer:
             if i == self.driverstart:
                 # print("here")
                 self.obj += self.DRIVER_PEN * (total)
+                # self.mdl.add_constraint(total <= self.MAX_DRIVERS)
                 self.mdl.add_constraint(total >= self.MIN_DRIVERS, "Drivers leaving Depot")
                 in_total = 0
                 for intrip in self.inflow_trips[i]:
@@ -217,10 +218,6 @@ class PDWTWOptimizer:
                 a = k - 0.4
                 b = k + 0.4
                 delta = self.mdl.binary_var(self.primaryOIDs[loc2] + "-delta-" + str(k))
-                delta2 = self.mdl.binary_var(self.primaryOIDs[loc2] + "-delta2-" + str(k))
-                # self.mdl.add_indicator(delta, x <= a)
-                # self.mdl.add_indicator(delta2, x >= b)
-                # self.mdl.add_constraint(delta + delta2 + var == 1)
                 self.mdl.add_constraint(x <= a  + self.BIGM * delta + self.BIGM * var)
                 self.mdl.add_constraint(x >= b  - self.BIGM * (1 - delta) - self.BIGM * var)
                 self.mdl.add_constraint(x >= a - self.BIGM * (1 - var))
@@ -248,15 +245,17 @@ class PDWTWOptimizer:
         self.obj += self.W_DRIVER_PEN * (unique_w_routes - self.MIN_W_DRIVERS)
 
 
-        # """
-        # Equalizing Revenue Penalty
-        # """
+        """
+        Equalizing Revenue Penalty
+        """
         self.rev_max = self.mdl.continuous_var(0)
         self.rev_min = self.mdl.continuous_var(0)
         self.revens = []
         for k in range(n):
             bin_var = self.mdl.binary_var(str(k) + "RevenueZero")
             tot = sum(self.loc_v_binary[loc_idx][k] * self.r[loc_idx] for loc_idx in self.loc_v_binary)
+            # bin_tot = sum(self.loc_v_binary[loc_idx][k] for loc_idx in self.loc_v_binary)
+            # self.mdl.add_equivalence(bin_var, bin_tot == 0)
             sum_var = self.mdl.continuous_var(0,name=str(k) + "Revenue")
             self.mdl.add_constraint(bin_var * self.BIGM >= tot)
             self.mdl.add_constraint(tot >= bin_var)
@@ -393,9 +392,9 @@ class PDWTWOptimizer:
                                               name='B_' + str(
                                                   self.TRIPS_TO_DO + count)))  # Varaible for time at location dropoff
 
-            Pv.append(self.mdl.continuous_var(lb=0, name='v_' + str(
+            Pv.append(self.mdl.integer_var(lb=0, ub=len(self.trips) + 1, name='v_' + str(
                 count)))  # Varaible for index of first location on route pickup
-            Dv.append(self.mdl.continuous_var(lb=0, name='v_' + str(
+            Dv.append(self.mdl.integer_var(lb=0, ub=len(self.trips) + 1, name='v_' + str(
                 self.TRIPS_TO_DO + count)))  # Varaible for undex of first location on route dropoff
             if trip.type == TripType.MERGE:
                 vars = (self.mdl.binary_var(name=trip.id), self.mdl.binary_var(name=trip.id + 'z1'), self.mdl.binary_var(name=trip.id + 'z2'))
@@ -549,7 +548,7 @@ class PDWTWOptimizer:
                        [str(timedelta(days=self.opposingTrip[t.id].start)).split('.')[0] for t in filtered_trips],
                        [str(timedelta(days=self.B[self.idxes[t.lp.o] + self.TRIPS_TO_DO].solution_value)).split('.')[0] for t in filtered_trips],
                        [str(timedelta(days=self.opposingTrip[t.id].end)).split('.')[0] for t in filtered_trips],
-                       [str(t.lp.miles) for t in filtered_trips],
+                       [str(t.preset_m) for t in filtered_trips],
                        [str(t.los) for t in filtered_trips],
                        [str(t.rev) for t in filtered_trips],
                        ]
