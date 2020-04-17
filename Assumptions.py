@@ -22,11 +22,11 @@ opt_params = {
     "W_DRIVER_PEN": 3000,
 
     "PICKUP_WINDOW": FIFTEEN/2, # general window unused
-    "EARLY_PICKUP_WINDOW": FIFTEEN * 2,
+    "EARLY_PICKUP_WINDOW": FIFTEEN * 3,
     "LATE_PICKUP_WINDOW": FIFTEEN * 3,
     "DROP_WINDOW": FIFTEEN * 2/3, #general window unused
     "EARLY_DROP_WINDOW": FIFTEEN * 4,
-    "LATE_DROP_WINDOW": FIFTEEN * 2/3,
+    "LATE_DROP_WINDOW": FIFTEEN * 1/3,
 
     "DRIVER_CAP": 2.5, # W trips take 1.5 space and A trips take 1 space
 
@@ -45,8 +45,8 @@ opt_params = {
     "MODEL_NAME": "PDWTW",
 
     # Generalized Optimizer params
-    "STAGE1_TIME": 3600 * 2,
+    "STAGE1_TIME": 900,
     "STAGE1_GAP": 0.05,
-    "STAGE2_TIME": 3600 * 2,
+    "STAGE2_TIME": 900,
     "STAGE2_GAP": 0.05
 }

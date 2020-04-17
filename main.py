@@ -24,8 +24,8 @@ outfile = 'output/gen_final_output' + str(datetime.now()) + '.csv'
 optimizer.solve(outfile)
 optimizer.visualize(outfile, 'vis-010220-genopt.html')
 
-trips2 = tp.prepare_and_load_trips('../Data/in_trips_022620.csv',rev_table, preprocess_assumptions)
-optimizer2 = GeneralOptimizer(trips2, drivers, opt_params)
-outfile = 'output/gen_final_output' + str(datetime.now()) + '.csv'
-optimizer2.solve(outfile)
-optimizer2.visualize(outfile, 'vis-022620-genopt.html')
+# trips2 = tp.prepare_and_load_trips('../Data/in_trips_022620.csv',rev_table, preprocess_assumptions)
+# optimizer2 = GeneralOptimizer(trips2, drivers, opt_params)
+# outfile = 'output/gen_final_output' + str(datetime.now()) + '.csv'
+# optimizer2.solve(outfile)
+# optimizer2.visualize(outfile, 'vis-022620-genopt.html')
