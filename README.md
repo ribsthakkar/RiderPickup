@@ -14,6 +14,7 @@ cd RiderPickup/
 pip install -r requirements.txt
 ```
 4. Get an OpenCage Geocoder API Key
+
 Visit [OpenCage Geocoder](https://opencagedata.com/api) to retrieve an API key and store it in a file
 
 ## How to Use
