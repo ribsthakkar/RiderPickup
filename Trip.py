@@ -55,8 +55,7 @@ class Location:
             self.coord = coord
 
     def find_coord(self, addr):
-        geo_api = "78bdef6c2b254abaa78c55640925d3db"
-        # geo_api = "3c8dd43d76194d28bf62f76a46b305c4"
+        geo_api = keys['geo_key']
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
         return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
@@ -97,7 +96,7 @@ class LocationPair:
         return Location(l1).coord
 
     def get_speed(self, miles):
-        return 60       # Adjust speed if needed
+        return SPEED       # Adjust speed if needed
         # if miles < 30:
         #     # print(50)
         #     return 50

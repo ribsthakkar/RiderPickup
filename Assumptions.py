@@ -50,3 +50,29 @@ opt_params = {
     "STAGE2_TIME": 900,
     "STAGE2_GAP": 0.05
 }
+
+gen_opt_params = {
+   "TRIPS_TO_DO": 1000, # if greater than total number of trips, then ignored
+
+    "NUM_DRIVERS": 4,
+
+    "EARLY_PICKUP_WINDOW": FIFTEEN * 3,
+    "LATE_PICKUP_WINDOW": FIFTEEN * 3,
+    "EARLY_DROP_WINDOW": FIFTEEN * 4,
+    "LATE_DROP_WINDOW": FIFTEEN * 1/3,
+
+    "DRIVER_CAP": 2.5, # W trips take 1.5 space and A trips take 1 space
+
+    "ROUTE_LIMIT": FIFTEEN * 60,  # Limits on the length of time of the route
+
+    "MERGE_PENALTY": 1000,  # Unused at the moment Penalty for not meeting AB or BC Trip Merge Requirements
+
+
+    "REVENUE_PENALTY": 250, # Unused at the moment
+    "MODEL_NAME": "PDWTW",
+
+    "STAGE1_TIME": 900, # Stage 1 Time
+    "STAGE1_GAP": 0.05, # Stage 1 Target MIP Gap
+    "STAGE2_TIME": 900, # Stage 2 Time
+    "STAGE2_GAP": 0.05 # Stage 2 Target MIP Gap
+}

@@ -57,12 +57,7 @@ class GeneralOptimizer:
 
         # Constants
         self.TRIPS_TO_DO = params["TRIPS_TO_DO"]
-        self.DRIVER_IDX = params["DRIVER_IDX"]
-        self.MAX_DRIVERS = params["MAX_DRIVERS"]
-        self.MIN_DRIVERS = params["MIN_DRIVERS"]
         self.NUM_DRIVERS = params["NUM_DRIVERS"]
-        self.PICK_WINDOW = params["PICKUP_WINDOW"]
-        self.DROP_WINDOW = params["DROP_WINDOW"]
         self.EARLY_PICK_WINDOW = params["EARLY_PICKUP_WINDOW"]
         self.EARLY_DROP_WINDOW = params["EARLY_DROP_WINDOW"]
         self.LATE_PICK_WINDOW = params["LATE_PICKUP_WINDOW"]
@@ -70,18 +65,12 @@ class GeneralOptimizer:
         self.CAP = params["DRIVER_CAP"]
         self.ROUTE_LIMIT = params["ROUTE_LIMIT"]
         self.MERGE_PEN = params["MERGE_PENALTY"]
-        self.DRIVER_PEN = params["DRIVER_PEN"]
-        self.W_DRIVER_PEN = params["W_DRIVER_PEN"]
-        self.MAX_W_DRIVERS = params["MAX_WHEELCHAIR_DRIVERS"]
-        self.MIN_W_DRIVERS = params["MIN_WHEELCHAIR_DRIVERS"]
         self.REVENUE_PEN = params["REVENUE_PENALTY"]
 
         self.STAGE1_TIME = params["STAGE1_TIME"]
         self.STAGE1_GAP = params["STAGE1_GAP"]
         self.STAGE2_TIME = params["STAGE2_TIME"]
         self.STAGE2_GAP = params["STAGE2_GAP"]
-        self.MIP_GAP = params["MIP_GAP"]
-        self.TIME_LIMIT = params["TIME_LIMIT"]
 
         # Prepare Model
         self.obj = 0.0
@@ -558,43 +547,6 @@ class GeneralOptimizer:
                     self.visualize(solution_file+'stage1', 'stage1vis.html')
                 else:
                     print("Stage 1 Infeasible")
-
-                # rx = Relaxer()
-                # rx.relax(self.mdl)
-                #
-                # print("number_of_relaxations= " + str(rx.number_of_relaxations))
-                # print(rx.relaxations())
-                #
-                # print(self.mdl.report())
-                # print(self.mdl.get_solve_status())
-                # print(self.mdl.solution)
-                #
-                # print()
-                # print("conflict")
-                # print()
-                #
-                # cr = ConflictRefiner()
-                # conflicts = cr.refine_conflict(self.mdl)
-                # print(self.mdl.get_solve_status())
-                #
-                # for conflict in conflicts:
-                #     st = conflict.status
-                #     ct = conflict.element
-                #     label = conflict.name
-                #     label_type = type(conflict.element)
-                #     if isinstance(conflict.element, VarLbConstraintWrapper) \
-                #             or isinstance(conflict.element, VarUbConstraintWrapper):
-                #         ct = conflict.element.get_constraint()
-                #
-                #     # Print conflict information in console
-                #     print("Conflict involving constraint: %s" % label)
-                #     print(" \tfor: %s" % ct)
-                #
-                #
-                #
-                #
-                #
-                # exit(1)
 
                 print("Relaxing single rider requirements constraints")
                 self.mdl.remove_constraints(self.constraintsToRem)
