@@ -4,6 +4,7 @@ Requires Python 3.6+ and IBM CPLEX 12+
 1. Make sure IBM CPLEX Solver is installed.
 Use the following link: [CPLEX](https://www.ibm.com/support/knowledgecenter/SSSA5P_12.7.1/ilog.odms.cplex.help/CPLEX/GettingStarted/topics/set_up/setup_synopsis.html)
 Follow the instructions on the website to prepare the CPLEX Installation with usage for Python.
+Make sure you do not re-install CPLEX using PIP or it will overwrite the licensed version from IBM
 2. Clone this repository: 
 ```
 git clone https://github.com/ribsthakkar/RiderPickup
