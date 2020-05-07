@@ -22,3 +22,4 @@ stage1vis.html
 vis-010220-genopt-best.html
 /geocode.key
 *.html
+*.pyc
