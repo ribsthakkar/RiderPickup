@@ -38,6 +38,15 @@ required named args:
   -v V, --vis V      File To Store Assignment HTML Visualization
 
 ```
+We have provided some sample input/scrubbed data with fake names and addresses.
+The command to run with the sample data is as follows:
+
+`python run.py -s 50 -r sample_data/sample_rev.csv -t sample_data/sample_trips.csv -d sample_data/sample_drivers.csv -k geocode.key -o sample_data/sample_out.csv -v sample_data/sample.html`
+
+You can compare the resulting output csv and html files to the expected output in the `sample_data/expsample_out.csv` and `sample_data/expsample.html` files to compare the results. The expected results 
+for stage 1 of the computation are found in `sample_data/expstage1vis.html` and `sample_data/expsample_out.csvstage1`
+
+The results assume the parameters are fixed to the default values as shown below.
 ## Parameter Tuning
 **Not reccommended to change these values for day to day use**
 
