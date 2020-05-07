@@ -1,8 +1,8 @@
-from GeneralizedOptimizer import GeneralOptimizer
-from Preprocessor import TripPreprocess as tp
+from lib.GeneralizedOptimizer import GeneralOptimizer
+from lib.Preprocessor import TripPreprocess as tp
 from datetime import datetime
-from Assumptions import preprocess_assumptions, gen_opt_params
-from constants import keys, SPEED
+from lib.Assumptions import preprocess_assumptions, gen_opt_params
+from lib.constants import keys, SPEED
 
 import argparse
 

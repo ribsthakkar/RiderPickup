@@ -1,8 +1,8 @@
 import pandas as pd
 
-from Driver import Driver
-from Trip import Trip, LocationPair, TripType
-from constants import FIFTEEN
+from lib.Driver import Driver
+from lib.Trip import Trip, LocationPair, TripType
+from lib.constants import FIFTEEN
 
 
 class TripPreprocess:

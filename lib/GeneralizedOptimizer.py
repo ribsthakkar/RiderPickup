@@ -11,9 +11,9 @@ from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
 from plotly.subplots import make_subplots
 
-from Trip import Trip, locations, InvalidTripException, TripType, Location
-from constants import FIFTEEN
-from listeners import TimeListener, GapListener
+from lib.Trip import Trip, locations, InvalidTripException, TripType, Location
+from lib.constants import FIFTEEN
+from lib.listeners import TimeListener, GapListener
 
 class GeneralOptimizer:
     def filtered(self, d, iter):

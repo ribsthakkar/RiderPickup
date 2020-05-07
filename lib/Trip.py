@@ -4,7 +4,7 @@ from opencage.geocoder import OpenCageGeocode
 from time import sleep
 from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
-from constants import *
+from lib.constants import *
 
 try:
     from locations import locations_cache

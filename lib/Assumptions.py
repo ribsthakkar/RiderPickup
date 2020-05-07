@@ -1,4 +1,4 @@
-from constants import FIFTEEN
+from .constants import FIFTEEN
 
 preprocess_assumptions = {
  "UNKNOWN_TIME_BUFFER": FIFTEEN * 10,

@@ -7,8 +7,8 @@ from plotly.subplots import make_subplots
 
 from docplex.mp.model import Model
 
-from Trip import Trip, locations, TripType
-from listeners import TimeListener, GapListener
+from lib.Trip import Trip, locations, TripType
+from lib.listeners import TimeListener, GapListener
 import random
 
 
