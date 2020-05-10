@@ -48,7 +48,7 @@ for stage 1 of the computation are found in `sample_data/expstage1vis.html` and 
 
 The results assume the parameters are fixed to the default values as shown below.
 ## Parameter Tuning
-**Not reccommended to change these values for day to day use**
+**Not recommended to change these values for day to day use**
 
 Below is a list of tunable optimization parameters. These parameters
 are on line 54 of the `Assumptions.py`
