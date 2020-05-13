@@ -51,23 +51,23 @@ class TripPreprocess:
                 if not row['trip_status'] == "CANCELED":
                     o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
                     d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-                    start = TripPreprocess.convert_time(row['trip_pickup_time'])
-                    end = TripPreprocess.convert_time(row['trip_dropoff_time'])
+                    start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
+                    end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
                     los = row['trip_los']
                     cap = 1 if los == 'A' else 1.5
                     id = row['trip_id']
 
                     # Uknown Time Assumption
                     if start == 0.0 or end == 0.0 or start > 1 - (1/24):
-                        start = TripPreprocess.convert_time(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + buffer
+                        start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time'])) + buffer
                         end = min(1 - (1/24), start + end_buffer)
 
                     # AB Merge Assumption
                     if "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
                         if id[-1] == 'B':
-                            start = TripPreprocess.convert_time(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A', 'trip_dropoff_time'].values[0])) + assumptions["MERGE_ADDRESS_WINDOW"]
                         elif id[-1] == 'C':
-                            start = TripPreprocess.convert_time(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B', 'trip_dropoff_time'].values[0])) + assumptions["MERGE_ADDRESS_WINDOW"]
                         else:
                             print("Error processing merge Trip", id)
                             print(o, d, id, start, end)
@@ -94,8 +94,8 @@ class TripPreprocess:
         for index, row in trip_df.iterrows():
             o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
             d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-            start = TripPreprocess.convert_time(row['trip_pickup_time'])
-            end = TripPreprocess.convert_time(row['trip_dropoff_time'])
+            start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
+            end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
             cap = 1 if row['trip_los'] == 'A' else 1.5
             id = row['trip_id']
             rev = float(row['trip_rev'])
@@ -125,7 +125,7 @@ class TripPreprocess:
         try:
             return float(time)
         except:
-            segments = [int(x) for x in str(time).split(':')]
+            segments = [int(x) for x in time.split(':')]
             if len(segments) <= 2:
                 segments.append(0)
                 segments.append(0)
