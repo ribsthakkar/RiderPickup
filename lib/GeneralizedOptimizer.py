@@ -585,7 +585,7 @@ class GeneralOptimizer:
             print("Total Number of trip miles by each driver: ")
             print(driverMiles)
 
-    def visualize(self, sfile, vfile='visualized.html'):
+    def visualize(self, sfile, vfile='visualized.html', open_after=False):
         def names(id):
             return "Driver " + str(id) + " Route"
         def get_labels(trips, addr):
@@ -733,7 +733,7 @@ class GeneralOptimizer:
             showlegend=True,
             height=(600 + 400 * (len(self.drivers) + 1))
         )
-        fig.write_html(vfile, auto_open=True)
+        fig.write_html(vfile, auto_open=open_after)
 
     def __get_driver_coords(self, filtered_trips, driver):
         pairs = []

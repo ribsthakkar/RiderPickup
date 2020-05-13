@@ -43,4 +43,4 @@ if __name__ == "__main__":
     optimizer = GeneralOptimizer(trips, drivers, gen_opt_params)
     outfile = args.o
     optimizer.solve(outfile)
-    optimizer.visualize(outfile, args.v)
+    optimizer.visualize(outfile, args.v, open_after=True)
