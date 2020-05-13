@@ -51,7 +51,7 @@ class TripPreprocess:
                 if not row['trip_status'] == "CANCELED":
                     o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
                     d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-                    start = TripPreprocess.convert_time(row['trip_dropoff_time'])
+                    start = TripPreprocess.convert_time(row['trip_pickup_time'])
                     end = TripPreprocess.convert_time(row['trip_dropoff_time'])
                     los = row['trip_los']
                     cap = 1 if los == 'A' else 1.5
