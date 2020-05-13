@@ -51,7 +51,7 @@ class TripPreprocess:
                 if not row['trip_status'] == "CANCELED":
                     o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
                     d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-                    start = TripPreprocess.convert_time('03:30')
+                    start = TripPreprocess.convert_time(row['trip_dropoff_time'])
                     end = TripPreprocess.convert_time(row['trip_dropoff_time'])
                     los = row['trip_los']
                     cap = 1 if los == 'A' else 1.5
@@ -59,7 +59,7 @@ class TripPreprocess:
 
                     # Uknown Time Assumption
                     if start == 0.0 or end == 0.0 or start > 1 - (1/24):
-                        start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + buffer
+                        start = TripPreprocess.convert_time(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + buffer
                         end = min(1 - (1/24), start + end_buffer)
 
                     # AB Merge Assumption
@@ -125,7 +125,7 @@ class TripPreprocess:
         try:
             return float(time)
         except:
-            segments = [int(x) for x in time.split(':')]
+            segments = [int(x) for x in str(time).split(':')]
             if len(segments) <= 2:
                 segments.append(0)
                 segments.append(0)
