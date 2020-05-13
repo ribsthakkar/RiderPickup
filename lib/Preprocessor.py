@@ -65,9 +65,9 @@ class TripPreprocess:
                     # AB Merge Assumption
                     if "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
                         if id[-1] == 'B':
-                            start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                            start = TripPreprocess.convert_time(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
                         elif id[-1] == 'C':
-                            start = float(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
+                            start = TripPreprocess.convert_time(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B']['trip_dropoff_time']) + assumptions["MERGE_ADDRESS_WINDOW"]
                         else:
                             print("Error processing merge Trip", id)
                             print(o, d, id, start, end)
