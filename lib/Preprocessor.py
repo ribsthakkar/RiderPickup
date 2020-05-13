@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 
 from lib.Driver import Driver
@@ -49,8 +51,8 @@ class TripPreprocess:
                 if not row['trip_status'] == "CANCELED":
                     o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
                     d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-                    start = float(row['trip_pickup_time'])
-                    end = float(row['trip_dropoff_time'])
+                    start = TripPreprocess.convert_time('03:30')
+                    end = TripPreprocess.convert_time(row['trip_dropoff_time'])
                     los = row['trip_los']
                     cap = 1 if los == 'A' else 1.5
                     id = row['trip_id']
@@ -92,8 +94,8 @@ class TripPreprocess:
         for index, row in trip_df.iterrows():
             o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
             d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
-            start = float(row['trip_pickup_time'])
-            end = float(row['trip_dropoff_time'])
+            start = TripPreprocess.convert_time(row['trip_pickup_time'])
+            end = TripPreprocess.convert_time(row['trip_dropoff_time'])
             cap = 1 if row['trip_los'] == 'A' else 1.5
             id = row['trip_id']
             rev = float(row['trip_rev'])
@@ -117,3 +119,16 @@ class TripPreprocess:
             add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
             drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type']))
         return drivers
+
+    @staticmethod
+    def convert_time(time):
+        try:
+            return float(time)
+        except:
+            segments = [int(x) for x in time.split(':')]
+            if len(segments) <= 2:
+                segments.append(0)
+                segments.append(0)
+                segments.append(0)
+            x = datetime.timedelta(hours=segments[0], minutes=segments[1], seconds=segments[2])
+            return x.total_seconds()/(60*60*24)
