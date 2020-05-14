@@ -3,7 +3,7 @@ from .constants import FIFTEEN
 preprocess_assumptions = {
  "UNKNOWN_TIME_BUFFER": FIFTEEN * 10,
  "UNKNOWN_TIME_DROP": FIFTEEN * 8,
- "MERGE_ADDRESSES": {"1631 E 2nd St", "1110 W Willia"},
+ "MERGE_ADDRESSES": {"1631 E 2nd St", "1110 W Willia", "1801 E 51st St , Austin , TX"},
  "MERGE_ADDRESS_WINDOW": FIFTEEN
 
 }
@@ -57,7 +57,7 @@ gen_opt_params = {
     "NUM_DRIVERS": 4,
 
     "EARLY_PICKUP_WINDOW": FIFTEEN * 3,
-    "LATE_PICKUP_WINDOW": FIFTEEN * 3,
+    "LATE_PICKUP_WINDOW": FIFTEEN,
     "EARLY_DROP_WINDOW": FIFTEEN * 4,
     "LATE_DROP_WINDOW": FIFTEEN * 1/3,
 

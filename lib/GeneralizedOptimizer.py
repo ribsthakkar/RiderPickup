@@ -236,8 +236,8 @@ class GeneralOptimizer:
             t.write("Start,End,Time")
             c.write("Start,End,Cost")
             for pair, trp in self.primary_trips.items():
-                t.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.time))
-                c.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.miles))
+                t.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.time) + "\n")
+                c.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.miles) + "\n")
 
 
     def __prepare_constraints(self):
@@ -388,7 +388,7 @@ class GeneralOptimizer:
         """
         for trp in self.all_trips:
             if isinstance(trp, str):
-                if trp.endswith('A') and (trp[:-1] + 'B') in self.all_trips or trp.endswith('B') and (trp[:-1] + 'C') in self.all_trips:
+                if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
                     main_trip = self.all_trips[trp]
                     main_trip_loc = self.all_trips[trp].lp.d
                     alt_trip_loc = None
@@ -505,6 +505,7 @@ class GeneralOptimizer:
         for d in self.drivers:
             for mer in self.filtered(d, self.merges):
                 self.mdl.add_constraint(ct = self.trips[d][mer] == self.trips[d][self.merges[mer]])
+                self.obj += self.MERGE_PEN * (self.times[d][mer] - (self.times[d][self.merges[mer]] + self.merges[mer].lp.time * self.trips[d][mer])) * (24)
                 # self.obj += self.MERGE_PEN * (self.trips[d][mer] - self.trips[d][self.merges[mer]])
         """
         Equalizing Revenue Penalty
@@ -538,7 +539,7 @@ class GeneralOptimizer:
                     pL = TimeListener(self.STAGE1_TIME)
                 self.mdl.add_progress_listener(pL)
                 first_solve = self.mdl.solve()
-                if first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION:
+                if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                     print("First solve status: " + str(self.mdl.get_solve_status()))
                     print("First solve obj value: " + str(self.mdl.objective_value))
                     driverMiles = self.__write_sol(solution_file+'stage1')
@@ -780,12 +781,20 @@ class GeneralOptimizer:
         with open(solution_file, 'w') as output:
             output.write(
                 'trip_id,driver_id,driver_name,trip_pickup_address,trip_pickup_time,est_pickup_time,trip_dropoff_address,trip_dropoff_time,est_dropoff_time,trip_los,est_miles,est_time,trip_rev\n')
+            count = 0
             for d, t in sorted(tripGen(), key=lambda x: self.times[x[0]][x[1]].solution_value):
+                count += 1
                 end_time = -1
                 rE = self.requestPair[t.lp.o]
                 for intrip in self.filtered(d, self.intrips[rE]):
                     if self.trips[d][intrip].solution_value == 1:
                         end_time = self.times[d][intrip].solution_value + intrip.lp.time
+                        if end_time < self.times[d][t].solution_value:
+                            print('Something wrong')
+                            print(rE)
+                            print(t.lp.o, t.lp.d)
+                            print(intrip.lp.o, intrip.lp.d)
+                            print(t.id, self.times[d][t].solution_value, self.times[d][intrip].solution_value, intrip.lp.time)
                         break
                 if end_time < 0:
                     print("Something wrong")
@@ -793,8 +802,7 @@ class GeneralOptimizer:
                 ptrip = self.all_trips[self.primaryTID[t.lp.o]]
                 output.write(str(self.primaryTID[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + ",\"" + str(
                     t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(self.times[d][t].solution_value) + ",\"" +
-                             str(rE[:-4]) + "\"," + str(required_end) + "," + str(
-                    end_time) + "," +
+                             str(rE[:-4]) + "\"," + str(required_end) + "," + str(end_time) + "," +
                              str(t.los) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "," + str(
                     self.revenues[t.lp.o]) + "\n")
         return driverMiles

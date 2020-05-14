@@ -59,7 +59,13 @@ class TripPreprocess:
 
                     # Uknown Time Assumption
                     if start == 0.0 or end == 0.0 or start > 1 - (1/24):
-                        start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A','trip_dropoff_time'].values[0])) + buffer
+                        if id[-1] == 'B':
+                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A','trip_dropoff_time'].values[0])) + buffer
+                        elif id[-1] == 'C':
+                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B','trip_dropoff_time'].values[0])) + buffer
+                        else:
+                            print('A Trip with Unkown Time', id)
+                            exit(1)
                         end = min(1 - (1/24), start + end_buffer)
 
                     # AB Merge Assumption
