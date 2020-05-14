@@ -65,7 +65,7 @@ gen_opt_params = {
 
     "ROUTE_LIMIT": FIFTEEN * 60,  # Limits on the length of time of the route
 
-    "MERGE_PENALTY": 1000,  # Unused at the moment Penalty for not meeting AB or BC Trip Merge Requirements
+    "MERGE_PENALTY": 1000,  # Penalty for not meeting AB or BC Trip Merge Requirements
 
 
     "REVENUE_PENALTY": 250, # Unused at the moment
