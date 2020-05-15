@@ -18,7 +18,9 @@ from lib.listeners import TimeListener, GapListener
 class GeneralOptimizer:
     def filtered(self, d, iter):
         return filter(lambda t: not ((t.lp.o in self.driverNodes and t.lp.o[:4] != d.address[:4]) or (
-                    t.lp.d in self.driverNodes and t.lp.d[:4] != d.address[:4])) and t.los in d.los
+                    t.lp.d in self.driverNodes and t.lp.d[:4] != d.address[:4]))
+                                and t.los in d.los
+                                # and
                                 and not (abs(self.nodeCaps[t.lp.o] + self.nodeCaps[t.lp.d]) > d.capacity), iter)
 
 
@@ -44,7 +46,7 @@ class GeneralOptimizer:
         self.primaryTID = dict()  # Map from starting location to ID of primary trip from that location
         self.merges = dict()  # Map from merge trip to incoming primary trip
         self.revenues = dict() # Map from start node to revenue of the trip
-
+        self.badPairs = dict() # Map from Pickup location of trip pair to dropoff of incoming trip pair
         # Decision Variable Structures
         self.trips = dict()  # Map from driver to map of trip to model variable
         self.times = dict()  # Map from driver to map of trip to model variable
@@ -133,6 +135,14 @@ class GeneralOptimizer:
                 else:
                     print("Unexpected Trip ID", trip.id)
                     exit(1)
+            if 'B' in trip.id:
+                prevtrip = self.all_trips[trip.id[:-1] + 'A']
+                self.badPairs[prevtrip.lp.o] = end
+                self.badPairs[start] = prevtrip.lp.d
+            elif 'C' in trip.id:
+                prevtrip = self.all_trips[trip.id[:-1] + 'B']
+                self.badPairs[prevtrip.lp.o] = end
+                self.badPairs[start] = prevtrip.lp.d
             if count == self.TRIPS_TO_DO:
                 break
         print("Number of Trips:", count)
@@ -199,7 +209,7 @@ class GeneralOptimizer:
         for rS in self.requestNodes:
             for rE in self.requestNodes:
                 if rS == rE or (rS in self.requestPair and self.requestPair[rS] == rE) or (
-                        rE in self.requestPair and self.requestPair[rE] == rS):
+                        rE in self.requestPair and self.requestPair[rE] == rS) or (rS in self.badPairs and self.badPairs[rS] == rE):
                     continue
                 try:
                     t = Trip(rS, rE, 0, id, None, self.nodeOpen[rS], self.nodeClose[rE], 0.0, prefix=False, suffix=True)
@@ -603,9 +613,11 @@ class GeneralOptimizer:
         titles.insert(1, "Driver Summary")
         subplots = [[{"type": "table"}]] * (len(self.drivers) + 1)
         subplots.insert(0, [{"type": "scattermapbox"}])
-        map_height = 600 / (600 + 400 * (len(self.drivers) + 1))
-        heights = [(1 - map_height - 0.05) / ((len(self.drivers)) + 1)] * (len(self.drivers) + 1)
+        map_height = 600 / (600 + 1000 + 400 * (len(self.drivers)))
+        summary_height = 600 / (600 + 1000 + 400 * (len(self.drivers)))
+        heights = [(1 - map_height - summary_height - 0.05) / ((len(self.drivers)))] * (len(self.drivers))
         heights.insert(0, map_height)
+        heights.insert(1, summary_height)
         fig = make_subplots(
             rows=2 + len(self.drivers), cols=1,
             vertical_spacing=0.006,
@@ -693,7 +705,8 @@ class GeneralOptimizer:
             ),
             row=1, col=1
         )
-        ids, times, ep, ld,  miles, rev = zip(*(self.__get_driver_trips_times_miles_rev(sol_df, id) for id in driver_ids))
+        names, ids, times, ep, ld,  miles, rev = zip(*(self.__get_driver_trips_times_miles_rev(sol_df, id) for id in driver_ids))
+        names = list(names)
         ids = list(ids)
         times = list(times)
         ep = list(ep)
@@ -719,7 +732,7 @@ class GeneralOptimizer:
                     align="left"
                 ),
                 cells=dict(
-                    values=[driver_ids, ids, times, ep, ld, miles, rev],
+                    values=[names, ids, times, ep, ld, miles, rev],
                     align="left")
             ),
             row=2, col=1,
@@ -757,11 +770,12 @@ class GeneralOptimizer:
             ld = (max(float(t['est_dropoff_time']) for _, t in filtered_trips.iterrows()))
         except:
             ld = '0'
+        name = ("".join(str(t['driver_name']) for _, t in filtered_trips.sample(1).iterrows())) + ";" + str(id)
         trps = ", ".join(t['trip_id'] for _, t in filtered_trips.iterrows())
         time = (sum(float(t['est_time']) for _, t in filtered_trips.iterrows()))
         m = (sum(float(t['est_miles']) for _, t in filtered_trips.iterrows()))
         r = (sum(float(t['trip_rev']) for _, t in filtered_trips.iterrows()))
-        return trps, time, ep, ld, m, r
+        return name, trps, time, ep, ld, m, r
 
     def __write_sol(self, solution_file):
         driverMiles = dict()
@@ -791,6 +805,7 @@ class GeneralOptimizer:
                         end_time = self.times[d][intrip].solution_value + intrip.lp.time
                         if end_time < self.times[d][t].solution_value:
                             print('Something wrong')
+                            print(sum(self.trips[d][intrip].solution_value for intrip in self.filtered(d, self.intrips[rE])))
                             print(rE)
                             print(t.lp.o, t.lp.d)
                             print(intrip.lp.o, intrip.lp.d)

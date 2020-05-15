@@ -23,3 +23,5 @@ vis-010220-genopt-best.html
 /geocode.key
 *.html
 *.pyc
+input/
+output/
