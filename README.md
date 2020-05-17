@@ -21,13 +21,15 @@ Visit [OpenCage Geocoder](https://opencagedata.com/api) to retrieve an API key a
 ## How to Use
 Run Using Python and providing arguments
 ```
-usage: python run.py [-h] [-s S] -r R -t T -d D -k K -o O -v V
+usage: run.py [-h] [-s S] [-n N] -r R -t T -d D -k K -o O -v V
 
 Run the Generalized Optimizer with given files
 
 optional arguments:
   -h, --help         show this help message and exit
-  -s S, --speed S    Speed in MPH to use for time calculations
+  -s S, --speed S    Speed in MPH to use for time calculations. Default is 60
+                     MPH
+  -n N, --name N     Name of the Model
 
 required named args:
   -r R, --rev R      Path to CSV with Revenue Table
@@ -36,6 +38,7 @@ required named args:
   -k K, --key K      Path to File With OpenCage GeoCode API Key
   -o O, --output O   File To Store Assignment CSV
   -v V, --vis V      File To Store Assignment HTML Visualization
+
 
 ```
 We have provided some sample input/scrubbed data with fake names and addresses.

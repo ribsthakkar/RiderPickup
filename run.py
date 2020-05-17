@@ -13,6 +13,9 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--speed', action='store', type=int, dest='s', default=60,
                     help='Speed in MPH to use for time calculations. Default is 60 MPH')
 
+    parser.add_argument('-n', '--name', action='store', type=str, dest='n', default=None,
+                    help='Name of the Model')
+
     rn.add_argument('-r', '--rev', action='store', type=str, dest='r',
                         help='Path to CSV with Revenue Table', required=True)
     rn.add_argument('-t','--trips', action='store', type=str, dest='t',
@@ -40,7 +43,7 @@ if __name__ == "__main__":
     rev_table = tp.load_revenue_table(args.r)
     trips = tp.prepare_and_load_trips(args.t, rev_table, preprocess_assumptions)
     drivers = tp.load_drivers(args.d)
-    optimizer = GeneralOptimizer(trips, drivers, gen_opt_params)
+    optimizer = GeneralOptimizer(trips, drivers, gen_opt_params, args.n)
     outfile = args.o
     optimizer.solve(outfile)
     optimizer.visualize(outfile, args.v, open_after=True)

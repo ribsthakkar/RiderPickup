@@ -24,10 +24,13 @@ class GeneralOptimizer:
                                 and not (abs(self.nodeCaps[t.lp.o] + self.nodeCaps[t.lp.d]) > d.capacity), iter)
 
 
-    def __init__(self, trips, drivers, params):
+    def __init__(self, trips, drivers, params, name = None):
         self.drivers_inp = drivers
         self.trips_inp = trips
-        self.mdl = Model(name=params["MODEL_NAME"])
+        if not name:
+            self.mdl = Model(name=params["MODEL_NAME"])
+        else:
+            self.mdl = Model(name=name)
 
         self.drivers = list()  # List of all Drivers
         self.primary_trips = dict() # Map Primary trip pair to trip object
@@ -610,7 +613,7 @@ class GeneralOptimizer:
         driver_ids = list(d.id for d in self.drivers)
         titles = [names(i) for i in driver_ids]
         titles.insert(0, "Map")
-        titles.insert(1, "Driver Summary")
+        titles.insert(1, "Driver Summary: " + self.mdl.name)
         subplots = [[{"type": "table"}]] * (len(self.drivers) + 1)
         subplots.insert(0, [{"type": "scattermapbox"}])
         map_height = 600 / (600 + 1000 + 400 * (len(self.drivers)))
