@@ -64,6 +64,8 @@ gen_opt_params = {
     "DRIVER_CAP": 2.5, # W trips take 1.5 space and A trips take 1 space
 
     "ROUTE_LIMIT": FIFTEEN * 60,  # Limits on the length of time of the route
+    "ROUTE_LIMIT_PENALTY": 500,  # Limits on the length of time of the route
+    "EARLY_DAY_TIME": FIFTEEN * 18,  # Limits on the length of time of the route
 
     "MERGE_PENALTY": 1000,  # Penalty for not meeting AB or BC Trip Merge Requirements
 
@@ -71,8 +73,8 @@ gen_opt_params = {
     "REVENUE_PENALTY": 250, # Unused at the moment
     "MODEL_NAME": "PDWTW",
 
-    "STAGE1_TIME": 900, # Stage 1 Time
+    "STAGE1_TIME": 120, # Stage 1 Time
     "STAGE1_GAP": 0.05, # Stage 1 Target MIP Gap
-    "STAGE2_TIME": 900, # Stage 2 Time
+    "STAGE2_TIME": 120, # Stage 2 Time
     "STAGE2_GAP": 0.05 # Stage 2 Target MIP Gap
 }

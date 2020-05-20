@@ -1,4 +1,5 @@
 import datetime
+import random
 
 import pandas as pd
 
@@ -123,7 +124,14 @@ class TripPreprocess:
                 continue
             cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
             add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
-            drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type']))
+            day_of_year = datetime.datetime.now().timetuple().tm_yday
+            ed = day_of_year % 2 != int(row['Early Day'])
+            drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type'], ed))
+        if not any(d.ed for d in drivers):
+            x = random.choice(drivers)
+            while x.ed:
+                x = random.choice(drivers)
+            x.ed = True
         return drivers
 
     @staticmethod

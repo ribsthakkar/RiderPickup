@@ -69,6 +69,8 @@ class GeneralOptimizer:
         self.LATE_DROP_WINDOW = params["LATE_DROP_WINDOW"]
         self.CAP = params["DRIVER_CAP"]
         self.ROUTE_LIMIT = params["ROUTE_LIMIT"]
+        self.ROUTE_LIMIT_PEN = params["ROUTE_LIMIT_PENALTY"]
+        self.EARLY_DAY_TIME = params["EARLY_DAY_TIME"]
         self.MERGE_PEN = params["MERGE_PENALTY"]
         self.REVENUE_PEN = params["REVENUE_PENALTY"]
 
@@ -79,6 +81,8 @@ class GeneralOptimizer:
 
         # Prepare Model
         self.obj = 0.0
+        self.constraintsToRem = set()
+        self.ed_constr = set()
         self.__prepare_trip_parameters()
         self.__prepare_driver_parameters()
         self.__generate_trips()
@@ -265,7 +269,6 @@ class GeneralOptimizer:
         #                 total += trips[d][all_trips[trp]]
         #         if total is not 0:
         #             con = mdl.add_constraint(ct=total == 1)
-        self.constraintsToRem = set()
         for trp in self.all_trips:
             if isinstance(trp, str):
                 total = 0
@@ -493,24 +496,33 @@ class GeneralOptimizer:
         print("Adding Custom Defined Constraints")
 
         """
-        Route Length Limitations
+        Route Length Penalty
         """
         for d in self.drivers:
             otime = 0
             itime = 0
             for dS in self.driverStart:
-                if dS[3:] != d.address:
+                if dS[:-4] != d.address:
                     continue
                 for otrip in self.filtered(d, self.outtrips[dS]):
                     otime += self.times[d][otrip]
                 break
             for dE in self.driverEnd:
-                if dE[3:] != d.address:
+                if dE[:-4] != d.address:
                     continue
                 for intrip in self.filtered(d, self.intrips[dE]):
                     itime += self.times[d][intrip]
                 break
-            self.mdl.add_constraint(ct= itime - otime <= self.ROUTE_LIMIT , ctname='Route limit' + '_' + str(d.id))
+            # self.mdl.add_constraint(ct= itime - otime <= self.ROUTE_LIMIT , ctname='Route limit' + '_' + str(d.id))
+            self.obj += self.ROUTE_LIMIT_PEN * (itime - otime)
+            if not d.ed:
+                try:
+                    c = self.mdl.add_constraint(otime >= self.EARLY_DAY_TIME)
+                    self.ed_constr.add(c)
+                except DOcplexException as e:
+                    if 'trivially' not in e.message:
+                        raise e
+                    print("Can't restrict early day for", d.name)
 
         """
         Merge Trip Requirements
@@ -561,7 +573,8 @@ class GeneralOptimizer:
                     self.visualize(solution_file+'stage1', 'stage1vis.html')
                 else:
                     print("Stage 1 Infeasible")
-
+                if first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
+                    self.mdl.remove_constraints(self.ed_constr)
                 print("Relaxing single rider requirements constraints")
                 self.mdl.remove_constraints(self.constraintsToRem)
                 print("Warm starting from single rider constrained solution")
@@ -616,14 +629,14 @@ class GeneralOptimizer:
         titles.insert(1, "Driver Summary: " + self.mdl.name)
         subplots = [[{"type": "table"}]] * (len(self.drivers) + 1)
         subplots.insert(0, [{"type": "scattermapbox"}])
-        map_height = 600 / (600 + 1000 + 400 * (len(self.drivers)))
-        summary_height = 600 / (600 + 1000 + 400 * (len(self.drivers)))
-        heights = [(1 - map_height - summary_height - 0.05) / ((len(self.drivers)))] * (len(self.drivers))
+        map_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
+        summary_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
+        heights = [(1 - map_height - summary_height - 0.12) / ((len(self.drivers)))] * (len(self.drivers))
         heights.insert(0, map_height)
         heights.insert(1, summary_height)
         fig = make_subplots(
             rows=2 + len(self.drivers), cols=1,
-            vertical_spacing=0.006,
+            vertical_spacing=0.01,
             subplot_titles=titles,
             specs=subplots,
             row_heights=heights
