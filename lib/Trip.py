@@ -37,7 +37,7 @@ class Trip:
         self.los = 'W' if space == 1.5 else 'A'
         self.rev = rev
         if self.lp.time > end - max(0, start - BUFFER):
-            raise InvalidTripException()
+            raise InvalidTripException("Trip ID:" + str(id) + " start:" + str(start) + " end:" + str(end) + " trip length: " + str(self.lp.time))
         self.preset_m = preset_miles
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d

@@ -65,7 +65,7 @@ class TripPreprocess:
                         elif id[-1] == 'C':
                             start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B','trip_dropoff_time'].values[0])) + buffer
                         else:
-                            print('A Trip with Unkown Time', id)
+                            print('A Trip with Unknown Time', id)
                             exit(1)
                         end = min(1 - (1/24), start + end_buffer)
 
@@ -83,6 +83,8 @@ class TripPreprocess:
                     else:
                         typ = None
 
+                    if start == end:
+                        end = start + end_buffer
                     # Revenue Calculation
                     rev = TripPreprocess.calc_revenue(revenue_table, int(row['trip_miles']), los)
 
