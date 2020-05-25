@@ -307,7 +307,7 @@ class GeneralOptimizer:
             self.mdl.add_constraint(ct=totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
         for d in self.drivers:
             for dS in self.driverStart:
-                if dS[3:] != d.address:
+                if dS[:-4] != d.address[:-4]:
                     continue
                 total = 0
                 for otrip in self.filtered(d, self.outtrips[dS]):
@@ -315,7 +315,7 @@ class GeneralOptimizer:
                 self.mdl.add_constraint(ct=total == -1, ctname='driverout' + '_' + str(d.id))
         for d in self.drivers:
             for dE in self.driverEnd:
-                if dE[3:] != d.address:
+                if dE[:-4] != d.address[:-4]:
                     continue
                 total = 0
                 for intrip in self.filtered(d, self.intrips[dE]):
@@ -502,13 +502,13 @@ class GeneralOptimizer:
             otime = 0
             itime = 0
             for dS in self.driverStart:
-                if dS[:-4] != d.address:
+                if dS[:-4] != d.address[:-4]:
                     continue
                 for otrip in self.filtered(d, self.outtrips[dS]):
                     otime += self.times[d][otrip]
                 break
             for dE in self.driverEnd:
-                if dE[:-4] != d.address:
+                if dE[:-4] != d.address[:-4]:
                     continue
                 for intrip in self.filtered(d, self.intrips[dE]):
                     itime += self.times[d][intrip]
@@ -522,6 +522,7 @@ class GeneralOptimizer:
                 except DOcplexException as e:
                     if 'trivially' not in e.message:
                         raise e
+                    print(itime, otime)
                     print("Can't restrict early day for", d.name)
 
         """
@@ -572,13 +573,15 @@ class GeneralOptimizer:
                     print(driverMiles)
                     self.visualize(solution_file+'stage1', 'stage1vis.html')
                 else:
-                    print("Stage 1 Infeasible")
-                if first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
+                    print("Stage 1 Infeasible with ED")
+                if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
+                    print("Relaxing Early Day Constraints")
                     self.mdl.remove_constraints(self.ed_constr)
                 print("Relaxing single rider requirements constraints")
                 self.mdl.remove_constraints(self.constraintsToRem)
                 print("Warm starting from single rider constrained solution")
-                self.mdl.add_mip_start(first_solve)
+                if first_solve:
+                    self.mdl.add_mip_start(first_solve)
                 self.mdl.remove_progress_listener(pL)
 
                 if self.STAGE2_GAP:
@@ -807,6 +810,14 @@ class GeneralOptimizer:
                     if t.lp.o not in self.requestStart or var.solution_value != 1:
                         continue
                     yield (d, t)
+        # def tripGen_debug(d):
+        #     for t, var in self.trips[d].items():
+        #         if var.solution_value != 1:
+        #             continue
+        #         yield (d, t)
+        # for dr in self.drivers:
+        #     for d, t in sorted(tripGen_debug(dr), key=lambda x: self.times[x[0]][x[1]].solution_value):
+        #         print(d.name, t.lp.o, t.lp.d, self.times[d][t].solution_value, t.lp.time)
 
         with open(solution_file, 'w') as output:
             output.write(

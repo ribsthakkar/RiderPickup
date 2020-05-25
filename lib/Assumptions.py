@@ -3,7 +3,7 @@ from .constants import FIFTEEN
 preprocess_assumptions = {
  "UNKNOWN_TIME_BUFFER": FIFTEEN * 10,
  "UNKNOWN_TIME_DROP": FIFTEEN * 8,
- "MERGE_ADDRESSES": {"1631 E 2nd St", "1110 W Willia", "1801 E 51st St , Austin , TX"},
+ "MERGE_ADDRESSES": {"1631 E 2nd St", "1110 W Willia", "1801 E 51st St , Austin , TX", "1000 E 41st St"},
  "MERGE_ADDRESS_WINDOW": FIFTEEN
 
 }

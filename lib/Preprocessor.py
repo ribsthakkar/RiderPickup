@@ -68,6 +68,8 @@ class TripPreprocess:
                             print('A Trip with Unknown Time', id)
                             exit(1)
                         end = min(1 - (1/24), start + end_buffer)
+                        trip_df.at[index, 'trip_pickup_time'] = start
+                        trip_df.at[index, 'trip_dropoff_time'] = end
 
                     # AB Merge Assumption
                     if "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
@@ -80,6 +82,8 @@ class TripPreprocess:
                             print(o, d, id, start, end)
                             exit(1)
                         typ = TripType.MERGE
+                        trip_df.at[index, 'trip_pickup_time'] = start
+                        trip_df.at[index, 'trip_dropoff_time'] = end
                     else:
                         typ = None
 
