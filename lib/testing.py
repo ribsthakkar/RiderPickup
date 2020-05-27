@@ -2,7 +2,7 @@ from lib.GeneralizedOptimizer import GeneralOptimizer
 from lib.PDWTWOptimizer import PDWTWOptimizer
 from lib.Preprocessor import TripPreprocess as tp
 from datetime import datetime
-from lib.Assumptions import preprocess_assumptions, opt_params
+from lib.Assumptions import preprocess_assumptions, opt_params, gen_opt_params
 from lib.constants import keys
 
 keyFile = open('geocode.key')
@@ -24,7 +24,7 @@ drivers = tp.load_drivers('../Data/in_drivers.csv')
 # optimizer2.solve(outfile)
 # optimizer2.visualize(outfile, 'vis-022620.html')
 
-optimizer = GeneralOptimizer(trips, drivers, opt_params)
+optimizer = GeneralOptimizer(trips, drivers, gen_opt_params)
 outfile = 'output/gen_final_output' + str(datetime.now()) + '.csv'
 optimizer.solve(outfile)
 optimizer.visualize(outfile, 'vis-010220-genopt.html')

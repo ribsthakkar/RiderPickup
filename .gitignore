@@ -25,3 +25,4 @@ vis-010220-genopt-best.html
 *.pyc
 input/
 output/
+*.mps

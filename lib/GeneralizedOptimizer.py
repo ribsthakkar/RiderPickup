@@ -30,8 +30,9 @@ class GeneralOptimizer:
         self.trips_inp = trips
         self.MODEL_NAME = params['MODEL_NAME']
         # self.mdl = Model(name=params["MODEL_NAME"])
-        self.mdl = pywraplp.Solver('simple_mip_program',
+        self.mdl = pywraplp.Solver(params["MODEL_NAME"],
                              pywraplp.Solver.CPLEX_MIXED_INTEGER_PROGRAMMING)
+                             # pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
         self.drivers = list()  # List of all Drivers
         self.primary_trips = dict() # Map Primary trip pair to trip object
@@ -566,6 +567,8 @@ class GeneralOptimizer:
 
     def solve(self, solution_file):
         try:
+            with open('mdl.mps', 'w') as m:
+                m.write(self.mdl.ExportModelAsMpsFormat(True, False))
             self.mdl.SetTimeLimit(int((1000 * 60) * 15))
             self.mdl.EnableOutput()
             status = self.mdl.Solve()
@@ -573,11 +576,11 @@ class GeneralOptimizer:
                 print("S1 solve status: " + str(status))
                 print("S1 Obj value: " + str(self.mdl.Objective().Value()))
 
-            for c in self.constraintsToRem:
-                look = self.mdl.LookupConstraint(c)
-                look.SetLb(0.0)
-            self.mdl.SetTimeLimit((1000 * 60) * 15)
-            self.mdl.EnableOutput()
+            # for c in self.constraintsToRem:
+            #     look = self.mdl.LookupConstraint(c)
+            #     look.SetLb(0.0)
+            # self.mdl.SetTimeLimit((1000 * 60) * 15)
+            # self.mdl.EnableOutput()
             status = self.mdl.Solve()
             if status:
                 print("Final solve status: " + str(status))
