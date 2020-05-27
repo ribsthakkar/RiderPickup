@@ -89,6 +89,9 @@ class LocationPair:
         speed = self.get_speed(self.miles)
         self.time = (self.miles / speed) / 24
         if self.time > 1:
+            print("Time Longer than a Day")
+            print(self.o, self.c1)
+            print(self.d, self.c2)
             print(self.miles, self.time, speed)
             exit(1)
 

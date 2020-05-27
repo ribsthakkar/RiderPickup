@@ -50,8 +50,8 @@ class TripPreprocess:
                      "scheduled_miles, trip_miles,trip_rev,orig_lat,orig_long,dest_lat,dest_long,duration\n")
             for index, row in trip_df.iterrows():
                 if not row['trip_status'] == "CANCELED":
-                    o = row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[1:4]
-                    d = row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[1:4]
+                    o = row['trip_pickup_address'].replace('No Gc', '') + "P" + str(hash(row['trip_id']))[1:4]
+                    d = row['trip_dropoff_address'].replace('No Gc', '') + "D" + str(hash(row['trip_id']))[1:4]
                     start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
                     end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
                     los = row['trip_los']
@@ -131,7 +131,7 @@ class TripPreprocess:
             cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
             add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
             day_of_year = datetime.datetime.now().timetuple().tm_yday
-            ed = day_of_year % 2 != int(row['Early Day'])
+            ed = day_of_year % 2 == int(row['Early Day'])
             drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type'], ed))
         if not any(d.ed for d in drivers):
             x = random.choice(drivers)

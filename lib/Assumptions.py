@@ -65,7 +65,7 @@ gen_opt_params = {
 
     "ROUTE_LIMIT": FIFTEEN * 60,  # Limits on the length of time of the route
     "ROUTE_LIMIT_PENALTY": 500,  # Limits on the length of time of the route
-    "EARLY_DAY_TIME": FIFTEEN * 18,  # Limits on the length of time of the route
+    "EARLY_DAY_TIME": FIFTEEN * 18,  # Time of day marking trips that are "early day"
 
     "MERGE_PENALTY": 1000,  # Penalty for not meeting AB or BC Trip Merge Requirements
 
