@@ -406,6 +406,23 @@ class GeneralOptimizer:
             if isinstance(trp, str):
                 if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
                     main_trip = self.all_trips[trp]
+                    main_tripo = main_trip.lp.o
+                    main_tripd = main_trip.lp.d
+                    isum = 0
+                    itimeSum = 0
+                    for d in self.drivers:
+                        for intrip in self.filtered(d, self.intrips[main_tripo]):
+                            isum += self.times[d][intrip]
+                            itimeSum += intrip.lp.time * self.trips[d][intrip]
+                    isum2 = 0
+                    itimeSum2 = 0
+                    for d2 in self.drivers:
+                        for intrip in self.filtered(d2, self.intrips[main_tripd]):
+                            isum2 += self.times[d2][intrip]
+                            itimeSum2 += intrip.lp.time * self.trips[d2][intrip]
+
+                    self.mdl.add_constraint(isum + itimeSum + main_trip.lp.time <= isum2 + itimeSum2)
+
                     main_trip_loc = self.all_trips[trp].lp.d
                     alt_trip_loc = None
                     if trp.endswith('A'):
@@ -639,7 +656,7 @@ class GeneralOptimizer:
         heights.insert(1, summary_height)
         fig = make_subplots(
             rows=2 + len(self.drivers), cols=1,
-            vertical_spacing=0.01,
+            vertical_spacing=0.015,
             subplot_titles=titles,
             specs=subplots,
             row_heights=heights
