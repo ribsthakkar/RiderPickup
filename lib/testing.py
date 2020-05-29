@@ -8,7 +8,7 @@ from lib.constants import keys
 keyFile = open('geocode.key')
 keys['geo_key'] = keyFile.readline().rstrip()
 
-
+print("started", datetime.now())
 rev_table = tp.load_revenue_table('../Data/rev_table.csv')
 trips = tp.prepare_and_load_trips('../Data/in_trips_010220.csv',rev_table, preprocess_assumptions)
 # trips = tp.load_trips('calc_trips.csv')
@@ -28,6 +28,7 @@ optimizer = GeneralOptimizer(trips, drivers, gen_opt_params)
 outfile = 'output/gen_final_output' + str(datetime.now()) + '.csv'
 optimizer.solve(outfile)
 optimizer.visualize(outfile, 'vis-010220-genopt.html')
+print("ended", datetime.now())
 
 # trips2 = tp.prepare_and_load_trips('../Data/in_trips_022620.csv',rev_table, preprocess_assumptions)
 # optimizer2 = GeneralOptimizer(trips2, drivers, opt_params)
