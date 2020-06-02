@@ -536,6 +536,7 @@ class GeneralOptimizer:
                 try:
                     c = self.mdl.add_constraint(otime >= self.EARLY_DAY_TIME)
                     self.ed_constr.add(c)
+                    pass
                 except DOcplexException as e:
                     if 'trivially' not in e.message:
                         raise e
@@ -594,6 +595,17 @@ class GeneralOptimizer:
                 if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
                     print("Relaxing Early Day Constraints")
                     self.mdl.remove_constraints(self.ed_constr)
+                    first_solve = self.mdl.solve()
+                    if first_solve and (
+                            first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
+                        print("First solve status (No ED): " + str(self.mdl.get_solve_status()))
+                        print("First solve obj value (No ED): " + str(self.mdl.objective_value))
+                        driverMiles = self.__write_sol(solution_file + 'stage1')
+                        print("Total Number of trip miles by each driver after stage 1: ")
+                        print(driverMiles)
+                        self.visualize(solution_file + 'stage1', 'stage1vis.html')
+                    else:
+                        print("Stage 1 Infeasible without ED as well")
                 print("Relaxing single rider requirements constraints")
                 self.mdl.remove_constraints(self.constraintsToRem)
                 print("Warm starting from single rider constrained solution")
