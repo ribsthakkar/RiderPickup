@@ -73,8 +73,8 @@ gen_opt_params = {
     "REVENUE_PENALTY": 250, # Unused at the moment
     "MODEL_NAME": "PDWTW",
 
-    "STAGE1_TIME": 120, # Stage 1 Time
+    "STAGE1_TIME": 60 * 10, # Stage 1 Time
     "STAGE1_GAP": 0.05, # Stage 1 Target MIP Gap
-    "STAGE2_TIME": 120, # Stage 2 Time
+    "STAGE2_TIME": 60 * 10, # Stage 2 Time
     "STAGE2_GAP": 0.05 # Stage 2 Target MIP Gap
 }

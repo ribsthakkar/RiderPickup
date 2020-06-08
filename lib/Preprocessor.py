@@ -50,8 +50,8 @@ class TripPreprocess:
                      "scheduled_miles, trip_miles,trip_rev,orig_lat,orig_long,dest_lat,dest_long,duration\n")
             for index, row in trip_df.iterrows():
                 if not row['trip_status'] == "CANCELED":
-                    o = row['trip_pickup_address'].replace('No Gc', '').replace('*','') + "P" + str(hash(row['trip_id']))[1:4]
-                    d = row['trip_dropoff_address'].replace('No Gc', '') + "D" + str(hash(row['trip_id']))[1:4]
+                    o = row['trip_pickup_address'].replace('No Gc', '').replace('*','').replace('Apt .','') + "P" + str(hash(row['trip_id']))[1:4]
+                    d = row['trip_dropoff_address'].replace('No Gc', '').replace('*','').replace('Apt .','') + "D" + str(hash(row['trip_id']))[1:4]
                     start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
                     end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
                     los = row['trip_los']

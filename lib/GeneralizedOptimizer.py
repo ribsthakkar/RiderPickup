@@ -577,10 +577,7 @@ class GeneralOptimizer:
     def solve(self, solution_file):
         try:
             if self.STAGE1_TIME and self.STAGE2_TIME:
-                if self.STAGE1_GAP:
-                    pL = GapListener(self.STAGE1_TIME, self.STAGE1_GAP)
-                else:
-                    pL = TimeListener(self.STAGE1_TIME)
+                pL = TimeListener(self.STAGE1_TIME)
                 self.mdl.add_progress_listener(pL)
                 first_solve = self.mdl.solve()
                 if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
@@ -593,6 +590,12 @@ class GeneralOptimizer:
                 else:
                     print("Stage 1 Infeasible with ED")
                 if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
+                    self.mdl.remove_progress_listener(pL)
+                    if self.STAGE1_GAP:
+                        pL = GapListener(self.STAGE1_TIME, self.STAGE1_GAP)
+                    else:
+                        pL = TimeListener(self.STAGE1_TIME)
+                    self.mdl.add_progress_listener(pL)
                     print("Relaxing Early Day Constraints")
                     self.mdl.remove_constraints(self.ed_constr)
                     first_solve = self.mdl.solve()
