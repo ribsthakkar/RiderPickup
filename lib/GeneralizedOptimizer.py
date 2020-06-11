@@ -50,11 +50,14 @@ class GeneralOptimizer:
         self.merges = dict()  # Map from merge trip to incoming primary trip
         self.revenues = dict() # Map from start node to revenue of the trip
         self.badPairs = dict() # Map from Pickup location of trip pair to dropoff of incoming trip pair
+        self.wheelchairs = set() # Set of locations where wheelchair trips start
+
         # Decision Variable Structures
         self.trips = dict()  # Map from driver to map of trip to model variable
         self.times = dict()  # Map from driver to map of trip to model variable
         self.caps = dict()  # Map from driver to map of trip to model variable
         self.revs = dict() # Map from driver to revenue variable
+        self.ws = dict() # Map from wheel chair drivers to number of wheelchair trips variable
 
         # Additional Structures
         self.intrips = dict()  # Map from driver to Map from location to list of trips
@@ -73,6 +76,7 @@ class GeneralOptimizer:
         self.EARLY_DAY_TIME = params["EARLY_DAY_TIME"]
         self.MERGE_PEN = params["MERGE_PENALTY"]
         self.REVENUE_PEN = params["REVENUE_PENALTY"]
+        self.W_PEN = params["WHEELCHAIR_PENALTY"]
 
         self.STAGE1_TIME = params["STAGE1_TIME"]
         self.STAGE1_GAP = params["STAGE1_GAP"]
@@ -104,6 +108,7 @@ class GeneralOptimizer:
             self.requestStart.add(start)
             self.requestEnd.add(end)
             self.requestPair[start] = end
+            if trip.los == 'W': self.wheelchairs.add(start)
             a = len(self.requestNodes)
             self.requestNodes.add(start)
             if a == len(self.requestNodes):
@@ -219,7 +224,9 @@ class GeneralOptimizer:
                         rE in self.requestPair and self.requestPair[rE] == rS) or (rS in self.badPairs and self.badPairs[rS] == rE):
                     continue
                 try:
-                    t = Trip(rS, rE, 0, id, None, self.nodeOpen[rS], self.nodeClose[rE], 0.0, prefix=False, suffix=True)
+                    space = 0
+                    if rS in self.wheelchairs: space = 1.5
+                    t = Trip(rS, rE, space, id, None, self.nodeOpen[rS], self.nodeClose[rE], 0.0, prefix=False, suffix=True)
                 except InvalidTripException:
                     # print(rS, rE, nodeDeps[rS], nodeArrs[rE])
                     continue
@@ -411,9 +418,9 @@ class GeneralOptimizer:
                     isum = 0
                     itimeSum = 0
                     for d in self.drivers:
-                        for intrip in self.filtered(d, self.intrips[main_tripo]):
+                        for intrip in self.filtered(d, self.outtrips[main_tripo]):
                             isum += self.times[d][intrip]
-                            itimeSum += intrip.lp.time * self.trips[d][intrip]
+                            # itimeSum += intrip.lp.time * self.trips[d][intrip]
                     isum2 = 0
                     itimeSum2 = 0
                     for d2 in self.drivers:
@@ -421,7 +428,7 @@ class GeneralOptimizer:
                             isum2 += self.times[d2][intrip]
                             itimeSum2 += intrip.lp.time * self.trips[d2][intrip]
 
-                    self.mdl.add_constraint(isum + itimeSum + main_trip.lp.time <= isum2 + itimeSum2)
+                    self.mdl.add_constraint(isum + main_trip.lp.time <= isum2 + itimeSum2)
 
                     main_trip_loc = self.all_trips[trp].lp.d
                     alt_trip_loc = None
@@ -563,6 +570,19 @@ class GeneralOptimizer:
             self.mdl.add_constraint(self.rev_min <= self.revs[d])
         self.obj += self.REVENUE_PEN * (self.rev_max - self.rev_min)
 
+        """
+        Equalizing Wheel Chair Trip Penalty
+        """
+        self.w_max = self.mdl.continuous_var(0)
+        self.w_min = self.mdl.continuous_var(0)
+        for d in self.drivers:
+            if 'W' not in d.los: continue
+            self.ws[d] = self.mdl.continuous_var(lb=0, name="Wheelchairs" + str(d.id))
+            self.mdl.add_constraint(self.ws[d] == sum(self.trips[d][t] for t in filter(lambda x: x.los == 'W', self.filtered(d, self.all_trips.values()))))
+            self.mdl.add_constraint(self.w_max >= self.ws[d])
+            self.mdl.add_constraint(self.w_min <= self.ws[d])
+        self.obj += self.W_PEN * (self.w_max - self.w_min)
+
     def __prepare_objective(self):
         """
         Objective function
@@ -627,6 +647,8 @@ class GeneralOptimizer:
                 print("Final Obj value: " + str(self.mdl.objective_value))
                 print("Min Revenue:", self.rev_min.solution_value)
                 print("Max Revenue:", self.rev_max.solution_value)
+                print("Min W Trips:", self.w_min.solution_value)
+                print("Max W Trips:", self.w_max.solution_value)
 
             elif self.TIME_LIMIT:
                 if self.MIP_GAP:

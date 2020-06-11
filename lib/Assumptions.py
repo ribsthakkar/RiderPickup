@@ -70,7 +70,9 @@ gen_opt_params = {
     "MERGE_PENALTY": 1000,  # Penalty for not meeting AB or BC Trip Merge Requirements
 
 
-    "REVENUE_PENALTY": 250, # Unused at the moment
+    "REVENUE_PENALTY": 250, # Penalty for Revenue Difference
+    "WHEELCHAIR_PENALTY": 250, # Penalty for Wheelchair Trips Difference
+
     "MODEL_NAME": "PDWTW",
 
     "STAGE1_TIME": 60 * 10, # Stage 1 Time
