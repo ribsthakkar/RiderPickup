@@ -87,7 +87,7 @@ class LocationPair:
 
         self.miles = haversine(self.c1, self.c2, Unit.MILES)
         speed = self.get_speed(self.miles)
-        self.time = (self.miles / speed) / 24
+        self.time = (self.miles / speed) / 24 + FIFTEEN/3
         if self.time > 1:
             print("Time Longer than a Day")
             print(self.o, self.c1)

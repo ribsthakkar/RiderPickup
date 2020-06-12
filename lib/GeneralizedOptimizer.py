@@ -415,11 +415,11 @@ class GeneralOptimizer:
                     main_trip = self.all_trips[trp]
                     main_tripo = main_trip.lp.o
                     main_tripd = main_trip.lp.d
-                    isum = 0
+                    osum = 0
                     itimeSum = 0
                     for d in self.drivers:
                         for intrip in self.filtered(d, self.outtrips[main_tripo]):
-                            isum += self.times[d][intrip]
+                            osum += self.times[d][intrip]
                             # itimeSum += intrip.lp.time * self.trips[d][intrip]
                     isum2 = 0
                     itimeSum2 = 0
@@ -428,7 +428,7 @@ class GeneralOptimizer:
                             isum2 += self.times[d2][intrip]
                             itimeSum2 += intrip.lp.time * self.trips[d2][intrip]
 
-                    self.mdl.add_constraint(isum + main_trip.lp.time <= isum2 + itimeSum2)
+                    self.mdl.add_constraint(osum + main_trip.lp.time <= isum2 + itimeSum2)
 
                     main_trip_loc = self.all_trips[trp].lp.d
                     alt_trip_loc = None

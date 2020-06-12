@@ -71,7 +71,7 @@ gen_opt_params = {
 
 
     "REVENUE_PENALTY": 250, # Penalty for Revenue Difference
-    "WHEELCHAIR_PENALTY": 250, # Penalty for Wheelchair Trips Difference
+    "WHEELCHAIR_PENALTY": 150, # Penalty for Wheelchair Trips Difference
 
     "MODEL_NAME": "PDWTW",
 
