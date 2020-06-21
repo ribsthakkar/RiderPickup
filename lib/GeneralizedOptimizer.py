@@ -669,6 +669,15 @@ class GeneralOptimizer:
             print("Total Number of trip miles by each driver: ")
             print(driverMiles)
 
+    @staticmethod
+    def generate_addr_label(trips, addr):
+        data = "<br>".join(
+            "0" * (10 - len(str(t['trip_id']))) + str(t['trip_id']) + "  |  " +
+            str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] +
+            "  |  " + str(t['driver_id']) for t in trips
+        )
+        return addr + "<br><b>TripID,             Time,      DriverID </b><br>" + data
+
     def visualize(self, sfile, vfile='visualized.html', open_after=False):
         def names(id):
             return "Driver " + str(id) + " Route"
@@ -833,6 +842,9 @@ class GeneralOptimizer:
         _, coords, trips = zip(*sorted(pairs, key=lambda x: x[0]))
         return coords, trips
 
+    def get_driver_coords(self, filtered_trips, driver):
+        return self.__get_driver_coords(filtered_trips, driver)
+
     def __get_driver_trips_times_miles_rev(self, sol_df, id):
         filtered_trips = sol_df[sol_df['driver_id'] == id]
         try:
@@ -849,6 +861,9 @@ class GeneralOptimizer:
         m = (sum(float(t['est_miles']) for _, t in filtered_trips.iterrows()))
         r = (sum(float(t['trip_rev']) for _, t in filtered_trips.iterrows()))
         return name, trps, time, ep, ld, m, r
+
+    def get_driver_trips_times_miles_rev(self, sol_df, id):
+        return self.__get_driver_trips_times_miles_rev(sol_df, id)
 
     def __write_sol(self, solution_file):
         driverMiles = dict()

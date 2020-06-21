@@ -55,10 +55,15 @@ class Location:
             self.coord = coord
 
     def find_coord(self, addr):
+        if addr.endswith('Aust'):
+            addr = addr.replace('Aust', 'Austin, TX').replace('B', 'Blvd')
         geo_api = keys['geo_key']
         geolocator = OpenCageGeocode(geo_api)
         l1loc = geolocator.geocode(addr)
-        return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
+        try:
+            return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
+        except IndexError:
+            print("Couldn't find coordinates for ", addr)
 
     def rev_coord(self):
         return tuple(reversed(self.coord))
@@ -87,7 +92,7 @@ class LocationPair:
 
         self.miles = haversine(self.c1, self.c2, Unit.MILES)
         speed = self.get_speed(self.miles)
-        self.time = (self.miles / speed) / 24 + FIFTEEN/3
+        self.time = (self.miles / speed) / 24 + FIFTEEN/15
         if self.time > 1:
             print("Time Longer than a Day")
             print(self.o, self.c1)
