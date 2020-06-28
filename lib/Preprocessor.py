@@ -122,7 +122,7 @@ class TripPreprocess:
         return trips
 
     @staticmethod
-    def load_drivers(drivers_file):
+    def load_drivers(drivers_file, date=None):
         driver_df = pd.read_csv(drivers_file)
         drivers = []
         for index, row in driver_df.iterrows():
@@ -130,8 +130,12 @@ class TripPreprocess:
                 continue
             cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
             add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]
-            day_of_year = datetime.datetime.now().timetuple().tm_yday
-            ed = day_of_year % 2 == int(row['Early Day'])
+            if date is None:
+                day_of_week = datetime.datetime.now().timetuple().tm_wday
+            else:
+                m, d, y = date.split('-')
+                day_of_week = datetime.datetime(int(y), int(m), int(d)).timetuple().tm_wday
+            ed = day_of_week % 2 == int(row['Early Day'])
             drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type'], ed))
         if not any(d.ed for d in drivers):
             x = random.choice(drivers)
