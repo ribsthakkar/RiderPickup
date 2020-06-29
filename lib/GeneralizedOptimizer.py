@@ -412,23 +412,14 @@ class GeneralOptimizer:
         for trp in self.all_trips:
             if isinstance(trp, str):
                 if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
-                    main_trip = self.all_trips[trp]
-                    main_tripo = main_trip.lp.o
-                    main_tripd = main_trip.lp.d
-                    osum = 0
-                    itimeSum = 0
-                    for d in self.drivers:
-                        for intrip in self.filtered(d, self.outtrips[main_tripo]):
-                            osum += self.times[d][intrip]
-                            # itimeSum += intrip.lp.time * self.trips[d][intrip]
-                    isum2 = 0
-                    itimeSum2 = 0
-                    for d2 in self.drivers:
-                        for intrip in self.filtered(d2, self.intrips[main_tripd]):
-                            isum2 += self.times[d2][intrip]
-                            itimeSum2 += intrip.lp.time * self.trips[d2][intrip]
-
-                    self.mdl.add_constraint(osum + main_trip.lp.time <= isum2 + itimeSum2)
+                    t = self.all_trips[trp]
+                    rE = self.requestPair[t.lp.o]
+                    for d in filter(lambda x: t in self.times[d], self.drivers):
+                        startTime = self.times[d][t] + t.lp.time * self.trips[d][t]
+                        endTime = 0
+                        for intrip in self.filtered(d, self.intrips[rE]):
+                            endTime += self.times[d][intrip] + intrip.lp.time * self.trips[d][intrip]
+                        self.mdl.add_constraint(endTime >= startTime)
 
                     main_trip_loc = self.all_trips[trp].lp.d
                     alt_trip_loc = None
@@ -899,7 +890,7 @@ class GeneralOptimizer:
                 for intrip in self.filtered(d, self.intrips[rE]):
                     if self.trips[d][intrip].solution_value == 1:
                         end_time = self.times[d][intrip].solution_value + intrip.lp.time
-                        if end_time < self.times[d][t].solution_value:
+                        if end_time < self.times[d][t].solution_value + t.lp.time:
                             print('Something wrong')
                             print(sum(self.trips[d][intrip].solution_value for intrip in self.filtered(d, self.intrips[rE])))
                             print(rE)
