@@ -414,11 +414,13 @@ class GeneralOptimizer:
                 if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
                     t = self.all_trips[trp]
                     rE = self.requestPair[t.lp.o]
+                    startTime = 0
+                    endTime = 0
                     for d in filter(lambda x: t in self.times[d], self.drivers):
-                        startTime = self.times[d][t] + t.lp.time * self.trips[d][t]
-                        endTime = 0
+                        for otrip in self.filtered(d, self.outtrips[t.lp.o]):
+                            startTime += self.times[d][otrip]
                         for intrip in self.filtered(d, self.intrips[rE]):
-                            endTime += self.times[d][intrip] + intrip.lp.time * self.trips[d][intrip]
+                            endTime += self.times[d][intrip]
                         self.mdl.add_constraint(endTime >= startTime)
 
                     main_trip_loc = self.all_trips[trp].lp.d
