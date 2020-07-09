@@ -588,79 +588,89 @@ class GeneralOptimizer:
         self.mdl.minimize(self.obj)
 
     def solve(self, solution_file):
-        try:
-            if self.STAGE1_TIME and self.STAGE2_TIME:
-                pL = TimeListener(self.STAGE1_TIME)
-                self.mdl.add_progress_listener(pL)
-                first_solve = self.mdl.solve()
-                if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
-                    print("First solve status: " + str(self.mdl.get_solve_status()))
-                    print("First solve obj value: " + str(self.mdl.objective_value))
-                    driverMiles = self.__write_sol(solution_file+'stage1')
-                    print("Total Number of trip miles by each driver after stage 1: ")
-                    print(driverMiles)
-                    self.visualize(solution_file+'stage1', 'stage1vis.html')
-                else:
-                    print("Stage 1 Infeasible with ED")
-                if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
-                    self.mdl.remove_progress_listener(pL)
-                    if self.STAGE1_GAP:
-                        pL = GapListener(self.STAGE1_TIME, self.STAGE1_GAP)
-                    else:
-                        pL = TimeListener(self.STAGE1_TIME)
+        for i in range(3):
+            removed_ed = False
+            removed_sr = False
+            try:
+                if self.STAGE1_TIME and self.STAGE2_TIME:
+                    pL = TimeListener(self.STAGE1_TIME)
                     self.mdl.add_progress_listener(pL)
-                    print("Relaxing Early Day Constraints")
-                    self.mdl.remove_constraints(self.ed_constr)
                     first_solve = self.mdl.solve()
-                    if first_solve and (
-                            first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
-                        print("First solve status (No ED): " + str(self.mdl.get_solve_status()))
-                        print("First solve obj value (No ED): " + str(self.mdl.objective_value))
-                        driverMiles = self.__write_sol(solution_file + 'stage1')
+                    if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
+                        print("First solve status: " + str(self.mdl.get_solve_status()))
+                        print("First solve obj value: " + str(self.mdl.objective_value))
+                        driverMiles = self.__write_sol(solution_file+'stage1')
                         print("Total Number of trip miles by each driver after stage 1: ")
                         print(driverMiles)
-                        self.visualize(solution_file + 'stage1', 'stage1vis.html')
+                        self.visualize(solution_file+'stage1', 'stage1vis.html')
                     else:
-                        print("Stage 1 Infeasible without ED as well")
-                print("Relaxing single rider requirements constraints")
-                self.mdl.remove_constraints(self.constraintsToRem)
-                print("Warm starting from single rider constrained solution")
-                if first_solve:
-                    self.mdl.add_mip_start(first_solve)
-                self.mdl.remove_progress_listener(pL)
+                        print("Stage 1 Infeasible with ED")
+                    if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
+                        self.mdl.remove_progress_listener(pL)
+                        if self.STAGE1_GAP:
+                            pL = GapListener(self.STAGE1_TIME, self.STAGE1_GAP)
+                        else:
+                            pL = TimeListener(self.STAGE1_TIME)
+                        self.mdl.add_progress_listener(pL)
+                        print("Relaxing Early Day Constraints")
+                        self.mdl.remove_constraints(self.ed_constr)
+                        removed_ed = True
+                        first_solve = self.mdl.solve()
+                        if first_solve and (
+                                first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
+                            print("First solve status (No ED): " + str(self.mdl.get_solve_status()))
+                            print("First solve obj value (No ED): " + str(self.mdl.objective_value))
+                            driverMiles = self.__write_sol(solution_file + 'stage1')
+                            print("Total Number of trip miles by each driver after stage 1: ")
+                            print(driverMiles)
+                            self.visualize(solution_file + 'stage1', 'stage1vis.html')
+                        else:
+                            print("Stage 1 Infeasible without ED as well")
+                    print("Relaxing single rider requirements constraints")
+                    self.mdl.remove_constraints(self.constraintsToRem)
+                    removed_sr = True
+                    print("Warm starting from single rider constrained solution")
+                    if first_solve:
+                        self.mdl.add_mip_start(first_solve)
+                    self.mdl.remove_progress_listener(pL)
 
-                if self.STAGE2_GAP:
-                    pL = GapListener(self.STAGE2_TIME, self.STAGE2_GAP)
+                    if self.STAGE2_GAP:
+                        pL = GapListener(self.STAGE2_TIME, self.STAGE2_GAP)
+                    else:
+                        pL = TimeListener(self.STAGE2_TIME)
+
+                    self.mdl.add_progress_listener(pL)
+                    self.mdl.solve()
+                    print("Final solve status: " + str(self.mdl.get_solve_status()))
+                    print("Final Obj value: " + str(self.mdl.objective_value))
+                    print("Min Revenue:", self.rev_min.solution_value)
+                    print("Max Revenue:", self.rev_max.solution_value)
+                    print("Min W Trips:", self.w_min.solution_value)
+                    print("Max W Trips:", self.w_max.solution_value)
+
+                elif self.TIME_LIMIT:
+                    if self.MIP_GAP:
+                        pL = GapListener(self.TIME_LIMIT, self.MIP_GAP)
+                    else:
+                        pL = TimeListener(self.TIME_LIMIT)
+                    self.mdl.add_progress_listener(pL)
+                    self.mdl.solve()
+                    print("Final solve status: " + str(self.mdl.get_solve_status()))
+                    print("Final Obj value: " + str(self.mdl.objective_value))
                 else:
-                    pL = TimeListener(self.STAGE2_TIME)
-
-                self.mdl.add_progress_listener(pL)
-                self.mdl.solve()
-                print("Final solve status: " + str(self.mdl.get_solve_status()))
-                print("Final Obj value: " + str(self.mdl.objective_value))
-                print("Min Revenue:", self.rev_min.solution_value)
-                print("Max Revenue:", self.rev_max.solution_value)
-                print("Min W Trips:", self.w_min.solution_value)
-                print("Max W Trips:", self.w_max.solution_value)
-
-            elif self.TIME_LIMIT:
-                if self.MIP_GAP:
-                    pL = GapListener(self.TIME_LIMIT, self.MIP_GAP)
-                else:
-                    pL = TimeListener(self.TIME_LIMIT)
-                self.mdl.add_progress_listener(pL)
-                self.mdl.solve()
-                print("Final solve status: " + str(self.mdl.get_solve_status()))
-                print("Final Obj value: " + str(self.mdl.objective_value))
-            else:
-                print("Must specify individual 2 stage time limits or a single time limit parameter")
-                exit(1)
-        except DOcplexException as e:
-            print(e)
-        finally:
-            driverMiles = self.__write_sol(solution_file)
-            print("Total Number of trip miles by each driver: ")
-            print(driverMiles)
+                    print("Must specify individual 2 stage time limits or a single time limit parameter")
+                    if removed_sr: self.mdl.add_constraints(self.constraintsToRem)
+                    if removed_ed: self.mdl.add_constraints(self.ed_constr)
+                    exit(1)
+            except DOcplexException as e:
+                print(e)
+                print(str(i) + "th solution did not work trying again")
+                continue
+            finally:
+                driverMiles = self.__write_sol(solution_file)
+                print("Total Number of trip miles by each driver: ")
+                print(driverMiles)
+                return
 
     @staticmethod
     def generate_addr_label(trips, addr):

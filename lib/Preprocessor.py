@@ -135,7 +135,7 @@ class TripPreprocess:
             else:
                 m, d, y = date.split('-')
                 day_of_week = datetime.datetime(int(y), int(m), int(d)).timetuple().tm_wday
-            ed = day_of_week % 2 == int(row['Early Day'])
+            ed = day_of_week % 2 != int(row['Early Day'])
             drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type'], ed))
         if not any(d.ed for d in drivers):
             x = random.choice(drivers)
