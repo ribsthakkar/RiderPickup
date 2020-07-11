@@ -412,17 +412,6 @@ class GeneralOptimizer:
         for trp in self.all_trips:
             if isinstance(trp, str):
                 if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
-                    t = self.all_trips[trp]
-                    rE = self.requestPair[t.lp.o]
-                    startTime = 0
-                    endTime = 0
-                    for d in filter(lambda x: t in self.times[d], self.drivers):
-                        for otrip in self.filtered(d, self.outtrips[t.lp.o]):
-                            startTime += self.times[d][otrip]
-                        for intrip in self.filtered(d, self.intrips[rE]):
-                            endTime += self.times[d][intrip]
-                        self.mdl.add_constraint(endTime >= startTime)
-
                     main_trip_loc = self.all_trips[trp].lp.d
                     alt_trip_loc = None
                     if trp.endswith('A'):
@@ -432,19 +421,19 @@ class GeneralOptimizer:
                     else:
                         print('Invalid trip id ', trp)
                         exit(1)
-                    isum = 0
-                    itimeSum = 0
-                    for d in self.drivers:
-                        for intrip in self.filtered(d, self.intrips[main_trip_loc]):
-                            isum += self.times[d][intrip]
-                            itimeSum += intrip.lp.time * self.trips[d][intrip]
                     osum = 0
+                    otimeSum = 0
+                    osum2 = 0
+                    for d in self.drivers:
+                        for otrip in self.filtered(d, self.outtrips[main_trip_loc]):
+                            osum += self.times[d][otrip]
+                            otimeSum += otrip.lp.time * self.trips[d][otrip]
                     for d2 in self.drivers:
                         for otrip in self.filtered(d2, self.outtrips[alt_trip_loc]):
-                            osum += self.times[d2][otrip]
+                            osum2 += self.times[d2][otrip]
                             # print(d.id, d2.id, repr(intrip), repr(otrip))
                             # mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d2][otrip])
-                    self.mdl.add_constraint(isum + itimeSum <= osum)
+                    self.mdl.add_constraint(osum + otimeSum <= osum2)
         print("Set primary trip precedence constraints")
 
         for loc in self.requestNodes:
