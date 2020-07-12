@@ -421,19 +421,19 @@ class GeneralOptimizer:
                     else:
                         print('Invalid trip id ', trp)
                         exit(1)
-                    osum = 0
-                    otimeSum = 0
+                    isum = 0
+                    itimeSum = 0
                     osum2 = 0
                     for d in self.drivers:
-                        for otrip in self.filtered(d, self.outtrips[main_trip_loc]):
-                            osum += self.times[d][otrip]
-                            otimeSum += otrip.lp.time * self.trips[d][otrip]
+                        for otrip in self.filtered(d, self.intrips[main_trip_loc]):
+                            isum += self.times[d][otrip]
+                            itimeSum += otrip.lp.time * self.trips[d][otrip]
                     for d2 in self.drivers:
                         for otrip in self.filtered(d2, self.outtrips[alt_trip_loc]):
                             osum2 += self.times[d2][otrip]
                             # print(d.id, d2.id, repr(intrip), repr(otrip))
                             # mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d2][otrip])
-                    self.mdl.add_constraint(osum + otimeSum <= osum2)
+                    self.mdl.add_constraint(isum + itimeSum <= osum2)
         print("Set primary trip precedence constraints")
 
         for loc in self.requestNodes:
