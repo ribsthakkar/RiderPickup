@@ -425,12 +425,10 @@ class GeneralOptimizer:
                     else:
                         print('Invalid trip id ', trp)
                         exit(1)
-                    main_trip_o_in = 0
-                    main_trip_o_time_sum = 0
+                    main_trip_o_out = 0
                     for d in self.drivers:
                         for itrip in self.filtered(d, self.outtrips[main_trip_start]):
-                            main_trip_o_in += self.times[d][itrip]
-                            main_trip_o_time_sum += itrip.lp.time * self.trips[d][itrip]
+                            main_trip_o_out += self.times[d][itrip]
                     main_trip_d_in = 0
                     main_trip_d_time_sum = 0
                     for d in self.drivers:
@@ -445,7 +443,7 @@ class GeneralOptimizer:
                     for d2 in self.drivers:
                         for otrip in self.filtered(d2, self.outtrips[alt_trip_dest]):
                             alt_trip_d_in += self.times[d2][otrip]
-                    self.mdl.add_constraint(main_trip_o_in + main_trip_o_time_sum + self.all_trips[trp].lp.time <= main_trip_d_in + main_trip_d_time_sum)
+                    self.mdl.add_constraint(main_trip_o_out <= main_trip_d_in)
                     self.mdl.add_constraint(main_trip_d_in + main_trip_d_time_sum <= alt_trip_o_out)
                     self.mdl.add_constraint(alt_trip_o_out <= alt_trip_d_in)
         print("Set primary trip precedence constraints")
@@ -913,44 +911,6 @@ class GeneralOptimizer:
                             print(t.lp.o, t.lp.d)
                             print(intrip.lp.o, intrip.lp.d)
                             print(t.id, self.times[d][t].solution_value, self.times[d][intrip].solution_value, intrip.lp.time)
-                            main_trip_start = self.all_trips[t.id].lp.o
-                            main_trip_loc = self.all_trips[t.id].lp.d
-                            t = self.primaryTID[t.lp.o]
-                            alt_trip_loc = None
-                            if t.endswith('A'):
-                                alt_trip_loc = self.all_trips[t[:-1] + "B"].lp.o
-                            elif t.endswith('B'):
-                                alt_trip_loc = self.all_trips[t[:-1] + "C"].lp.o
-                            else:
-                                print('Invalid trip id ', t)
-                                exit(1)
-                            isum = 0
-                            itimeSum = 0
-                            for d in self.drivers:
-                                for itrip in self.filtered(d, self.intrips[main_trip_start]):
-                                    isum += self.times[d][itrip].solution_value
-                                    itimeSum += itrip.lp.time * self.trips[d][itrip].solution_value
-                            isum2 = 0
-                            itimeSum2 = 0
-                            for d in self.drivers:
-                                for itrip in self.filtered(d, self.intrips[main_trip_loc]):
-                                    isum2 += self.times[d][itrip].solution_value
-                                    itimeSum2 += itrip.lp.time * self.trips[d][itrip].solution_value
-                            osum2 = 0
-                            for d2 in self.drivers:
-                                for otrip in self.filtered(d2, self.outtrips[alt_trip_loc]):
-                                    osum2 += self.times[d2][otrip].solution_value
-                                    # print(d.id, d2.id, repr(intrip), repr(otrip))
-                                    # mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d2][otrip])
-                            print("Isum", isum)
-                            print("itimesum", itimeSum)
-                            print("triptime", self.all_trips[t].lp.time)
-                            print("isum2", isum2)
-                            print("itimesum2", itimeSum2)
-                            print("osum2", osum2)
-                            print(isum + itimeSum + self.all_trips[t].lp.time <= isum2 + itimeSum2)
-                            print(isum2 + itimeSum2 <= osum2)
-                            exit(1)
                         break
                 if end_time < 0:
                     print("Something wrong")
