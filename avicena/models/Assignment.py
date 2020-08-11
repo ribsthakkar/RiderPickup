@@ -1,31 +1,33 @@
+from sqlalchemy import Column, Integer, DateTime, String, Interval, Float
 from sqlalchemy.dialects.postgresql import ARRAY as Array
-from . import db
+from sqlalchemy.orm import relationship
 
-class Assignment(db.Model):
+from .Database import Base
+
+class Assignment(Base):
     __tablename__ = "assignment"
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime)
-    name = db.Column(db.String)
-    driver_assignments = db.relationship('DriverAssignment', backref='assignment')
-    drivers = db.Column(Array(db.String))
-    driver_ids = db.Column(Array(db.Integer))
-    trips = db.Column(Array(db.String))
-    times = db.Column(Array(db.Interval))
-    earliest_picks = db.Column(Array(db.Interval))
-    latest_drops = db.Column(Array(db.Interval))
-    miles = db.Column(Array(db.Float))
-    revenues = db.Column(Array(db.Float))
-
-    location_lats = db.Column(Array(db.Float))
-    location_lons = db.Column(Array(db.Float))
-    location_labels = db.Column(Array(db.String))
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime)
+    name = Column(String)
+    driver_assignments = relationship('DriverAssignment', backref='assignment')
+    drivers = Column(Array(String))
+    driver_ids = Column(Array(Integer))
+    trips = Column(Array(String))
+    times = Column(Array(Interval))
+    earliest_picks = Column(Array(Interval))
+    latest_drops = Column(Array(Interval))
+    miles = Column(Array(Float))
+    revenues = Column(Array(Float))
+    location_lats = Column(Array(Float))
+    location_lons = Column(Array(Float))
+    location_labels = Column(Array(String))
 
     def serialize(self):
         return {"id": self.id,
                 "date": self.date,
                 "name": self.name}
 
-    def create(self):
-        db.session.add(self)
-        db.session.commit()
+    def create(self, session):
+        session.add(self)
+        session.commit()
         return self

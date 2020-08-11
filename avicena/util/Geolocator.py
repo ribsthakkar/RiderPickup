@@ -1,6 +1,10 @@
 from opencage.geocoder import OpenCageGeocode
 
+locations = {}
+
 def find_coord_lat_lon(addr, key):
+    if addr in locations:
+        return locations[addr]
     geolocator = OpenCageGeocode(key)
     l1loc = geolocator.geocode(addr)
     try:

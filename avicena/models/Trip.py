@@ -1,117 +1,43 @@
-from enum import Enum
-import requests
-from opencage.geocoder import OpenCageGeocode
-from time import sleep
-from haversine import haversine, Unit
-from geopy.geocoders import Nominatim
-from experimental.constants import *
+from avicena.models import Location
+from avicena.models.LocationPair import LocationPair
+from avicena.util.Exceptions import InvalidTripException
+from avicena.util.Geolocator import find_coord_lat_lon
+from avicena.util.ParserUtil import convert_time
+from avicena.util.TimeWindows import get_time_window_by_hours_minutes
 
-try:
-    from locations import locations_cache
-    locations = locations_cache # cached dict mapping an address to its lat long, not in repository for privacy
-except:
-    locations = {}
-    pass
 
-class TripType(Enum):
-    A = 1 # Destination is a home without passenger Must be before B for a location
-    B = 2 # Destination is a hospital with passenger Must be before C for a location
-    C = 3 # Destination is a hospital without a passenger Must be before D for a location
-    D = 4 # Destination is a home with a passenger
-    INTER_A = 5 # From driver home to any other location Must occur before any A trips
-    INTER_B = 6 # From any location to driver home Must occur after all D trips
-    MERGE = 7
-class InvalidTripException(Exception):
-    pass
 class Trip:
-    def __init__(self, o, d, space, id, type, start, end, rev= 0, preset_miles = 0, lp = None, prefix=False, suffix=False, prefixLen=3, suffixLen=4):
-        self.type = type
-        self.id = id
+    def __init__(self, pickup, dropoff, space, trip_id, scheduled_pickup, scheduled_dropoff, speed, is_merge, revenue=0.0, preset_miles=0, lp=None):
+        self.id = trip_id
         if lp:
             self.lp = lp
         else:
-            self.lp = LocationPair(o, d, prefix=prefix, suffix=suffix, plen=prefixLen, slen=suffixLen)
+            self.lp = LocationPair(pickup, dropoff, speed)
         self.space = space
-        self.start = max(0.0, start)
-        self.end = 1.0 if end == 0 else end
+        self.scheduled_pickup = max(0.0, scheduled_pickup)
+        self.scheduled_dropoff = 1.0 if scheduled_dropoff == 0 else scheduled_dropoff
         self.los = 'W' if space == 1.5 else 'A'
-        self.rev = rev
-        if self.lp.time > end - max(0, start - BUFFER):
-            raise InvalidTripException("Trip ID:" + str(id) + " start:" + str(start) + " end:" + str(end) + " trip length: " + str(self.lp.time))
-        self.preset_m = preset_miles
+        self.is_merge = is_merge
+        self.rev = revenue
+        if self.lp.time > scheduled_dropoff - max(0, scheduled_pickup - get_time_window_by_hours_minutes(0, 20)):
+            raise InvalidTripException("Trip ID:" + str(id) + " start:" + str(scheduled_pickup) + " end:" + str(scheduled_dropoff) + " trip length: " + str(self.lp.time))
+        self.preset_miles = preset_miles
+
     def __repr__(self):
         return self.lp.o + "->" + self.lp.d
 
-class Location:
-    def __init__(self, addr, coord = None):
-        self.addr = addr
-        if coord is None and self.addr in locations:
-            self.coord = locations[self.addr]
-        elif coord is None:
-            loc1 = self.find_coord(addr)
-            locations[self.addr] = loc1
-            self.coord = locations[self.addr]
-        else:
-            self.coord = coord
 
-    def find_coord(self, addr):
-        if addr.endswith('Aust'):
-            addr = addr.replace('Aust', 'Austin, TX').replace('B', 'Blvd')
-        geo_api = keys['geo_key']
-        geolocator = OpenCageGeocode(geo_api)
-        l1loc = geolocator.geocode(addr)
-        try:
-            return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
-        except IndexError:
-            print("Couldn't find coordinates for ", addr)
-
-    def rev_coord(self):
-        return tuple(reversed(self.coord))
-
-class LocationPair:
-    def __init__(self, l1, l2, c1=None, c2=None, prefix=False, suffix=False, plen=3, slen=4):
-        self.o = l1
-        self.d = l2
-        if c1:
-            self.c1 = c1
-        else:
-            if prefix:
-                l1 = l1[plen:]
-            if suffix:
-                l1 = l1[:-slen]
-            self.c1 = self.getCoords(l1)
-
-        if c2:
-            self.c2 = c2
-        else:
-            if prefix:
-                l2 = l2[plen:]
-            if suffix:
-                l2 = l2[:-slen]
-            self.c2 = self.getCoords(l2)
-
-        self.miles = haversine(self.c1, self.c2, Unit.MILES)
-        speed = self.get_speed(self.miles)
-        self.time = (self.miles / speed) / 24 + FIFTEEN/15
-        if self.time > 1:
-            print("Time Longer than a Day")
-            print(self.o, self.c1)
-            print(self.d, self.c2)
-            print(self.miles, self.time, speed)
-            exit(1)
-
-    def getCoords(self, l1):
-        return Location(l1).coord
-
-    def get_speed(self, miles):
-        return SPEED[0]       # Adjust speed if needed
-        # if miles < 30:
-        #     # print(50)
-        #     return 50
-        # if miles < 50:
-        #     # print(60)
-        #     return 60
-        # else:
-        #     # print(70)
-        #     return 70
-
+def load_trips_from_df(trip_df, speed):
+    trips = []
+    for index, row in trip_df.iterrows():
+        pickup_coord = (row['trip_pickup_lat'], row['trip_pickup_lon'])
+        dropoff_coord = (row['trip_pickup_lat'], row['trip_pickup_lon'])
+        pickup = Location(row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[:3], pickup_coord)
+        dropoff = Location(row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[:3], dropoff_coord)
+        scheduled_pickup = convert_time(str(row['trip_pickup_time']))
+        scheduled_dropoff = convert_time(str(row['trip_dropoff_time']))
+        capacity_needed = 1 if row['trip_los'] == 'A' else 1.5
+        id = row['trip_id']
+        rev = float(row['trip_rev'])
+        trips.append(Trip(pickup, dropoff, capacity_needed, id, scheduled_pickup, scheduled_dropoff, speed, row['merge_flag'], rev, preset_miles=int(row['scheduled_miles'])))
+    return trips

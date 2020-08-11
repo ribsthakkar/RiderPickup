@@ -6,4 +6,5 @@ geocoder:
   vendor: OpenCage
   key: 1234
 client_parser: LogistiCare
-optimizer: GeneralizedOptimzer
+trips_file: trips.pdf
+optimizer: GeneralOptimzer
