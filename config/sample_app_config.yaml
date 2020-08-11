@@ -1,0 +1,9 @@
+database:
+  url: postgres://localhost:5432/rides
+  username: rides
+  password: password
+geocoder:
+  vendor: OpenCage
+  key: 1234
+client_parser: LogistiCare
+optimizer: GeneralizedOptimzer

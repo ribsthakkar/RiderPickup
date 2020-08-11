@@ -11,9 +11,9 @@ from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
 from plotly.subplots import make_subplots
 
-from lib.Trip import Trip, locations, InvalidTripException, TripType, Location
-from lib.constants import FIFTEEN
-from lib.listeners import TimeListener, GapListener
+from experimental.Trip import Trip, locations, InvalidTripException, TripType, Location
+from experimental.constants import FIFTEEN
+from experimental.listeners import TimeListener, GapListener
 
 class GeneralOptimizer:
     def filtered(self, d, iter):
@@ -56,8 +56,8 @@ class GeneralOptimizer:
         self.trips = dict()  # Map from driver to map of trip to model variable
         self.times = dict()  # Map from driver to map of trip to model variable
         self.caps = dict()  # Map from driver to map of trip to model variable
-        self.revs = dict() # Map from driver to revenue variable
-        self.ws = dict() # Map from wheel chair drivers to number of wheelchair trips variable
+        self.revs = dict()  # Map from driver to revenue variable
+        self.ws = dict()  # Map from wheel chair drivers to number of wheelchair trips variable
 
         # Additional Structures
         self.intrips = dict()  # Map from driver to Map from location to list of trips
@@ -268,14 +268,6 @@ class GeneralOptimizer:
         """
         Request Requirements
         """
-        # for trp in all_trips:
-        #     if isinstance(trp, str):
-        #         total = 0
-        #         for d in drivers:
-        #             if all_trips[trp].los in d.los and 1 > d.capacity - all_trips[trp].space >= 0:
-        #                 total += trips[d][all_trips[trp]]
-        #         if total is not 0:
-        #             con = mdl.add_constraint(ct=total == 1)
         for trp in self.all_trips:
             if isinstance(trp, str):
                 total = 0
@@ -284,20 +276,7 @@ class GeneralOptimizer:
                         total += self.trips[d][self.all_trips[trp]]
                 con = self.mdl.add_constraint(ct=total == 1)
                 self.constraintsToRem.add(con)
-        # for rS in requestStart:
-        #     flowout = 0
-        #     for d in drivers:
-        #         for otirp in filtered(d, outtrips[rS]):
-        #             flowout += trips[d][otirp]
-        #     mdl.add_constraint(flowout == 1)
-        #
-        # for rE in requestEnd:
-        #     flowin = 0
-        #     for d in drivers:
-        #         for intrip in filtered(d, intrips[rE]):
-        #             flowin += trips[d][intrip]
-        #     mdl.add_constraint(flowin == 1)
-        # print("Set Primary Trip Requirement Constraint")
+
         """
         Flow Conservation
         """
@@ -334,61 +313,16 @@ class GeneralOptimizer:
         """
         Time Constraints
         """
-        # for d in drivers:
-        #     for loc in requestNodes.union(driverEnd):
-        #         for intrip in filtered(d, intrips[loc]):
-        #             mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= intrip.end)
-        dropOffPenalty = 800
-        # for loc in requestEnd.union(driverEnd):
-        # for loc in self.requestNodes:
-        #     intripSum = 0
-        #     intripTimes = 0
-        #     intripStarts = self.nodeDeps[loc]
-        #     intripEnds = self.nodeArrs[loc]
-        #     for d in self.drivers:
-        #         for intrip in self.filtered(d, self.intrips[loc]):
-        #             intripSum += self.times[d][intrip]
-        #             intripTimes += intrip.lp.time * self.trips[d][intrip]
-        #             # intripEnds += intrip.end * trips[d][intrip]
-        #     self.mdl.add_constraint(intripSum + intripTimes <= intripEnds)
-        #     # obj += dropOffPenalty * ((intripSum + intripTimes) - intripEnds)
         for loc in self.requestEnd:
             intripSum = 0
             intripTimes = 0
-            intripStarts = self.nodeOpen[loc]
             intripEnds = self.nodeClose[loc]
             for d in self.drivers:
                 for intrip in self.filtered(d, self.intrips[loc]):
                     intripSum += self.times[d][intrip]
                     intripTimes += intrip.lp.time * self.trips[d][intrip]
-                    # intripEnds += intrip.end * trips[d][intrip]
             self.mdl.add_constraint(intripSum + intripTimes <= intripEnds)
-            # obj += dropOffPenalty * ((intripSum + intripTimes) - intripEnds)
         print("Set arrival time constriants")
-
-        # for d in drivers:
-        #     for loc in requestStart:
-        #         # print(loc)
-        #         for otrip in filtered(d, outtrips[loc]):
-        #             mdl.add_indicator(trips[d][otrip], times[d][otrip] >= otrip.start - BUFFER)
-        #             # mdl.add_indicator(trips[d][otrip], times[d][otrip] <= otrip.start + BUFFER)
-        pickupEarlyPenalty = 600
-        pickupLatePenalty = 200
-        # for loc in requestStart:
-        # for loc in self.requestNodes:
-        #     otripSum = 0
-        #     otripStarts = self.nodeArrs[loc]
-        #     otripEnds = self.nodeDeps[loc]
-        #     for d in self.drivers:
-        #         for otrip in self.filtered(d, self.outtrips[loc]):
-        #             otripSum += self.times[d][otrip]
-        #             # otripStarts += otrip.start * trips[d][otrip]
-        #         # obj += pickupEarlyPenalty * (otripStarts - (otripSum + BUFFER))
-        #         # obj += pickupLatePenalty * (otripStarts - (otripSum - BUFFER))
-        #     # self.mdl.add_constraint(otripSum + self.PICK_WINDOW >= otripStarts)
-        #     # self.mdl.add_constraint(otripSum <= otripStarts + self.PICK_WINDOW)
-        #     self.mdl.add_constraint(otripSum >= otripStarts)
-        #     self.mdl.add_constraint(otripSum <= otripEnds)
 
         for loc in self.requestStart:
             otripSum = 0
@@ -397,11 +331,6 @@ class GeneralOptimizer:
             for d in self.drivers:
                 for otrip in self.filtered(d, self.outtrips[loc]):
                     otripSum += self.times[d][otrip]
-                    # otripStarts += otrip.start * trips[d][otrip]
-                # obj += pickupEarlyPenalty * (otripStarts - (otripSum + BUFFER))
-                # obj += pickupLatePenalty * (otripStarts - (otripSum - BUFFER))
-            # self.mdl.add_constraint(otripSum + self.PICK_WINDOW >= otripStarts)
-            # self.mdl.add_constraint(otripSum <= otripStarts + self.PICK_WINDOW)
             self.mdl.add_constraint(otripSum >= otripStarts)
             self.mdl.add_constraint(otripSum <= otripEnds)
         print("Set departure time constraints")
@@ -483,15 +412,9 @@ class GeneralOptimizer:
         """
         Capacity Constraints
         """
-        # for d in drivers:
-        #     for loc in requestNodes:
-        #         for otrip in filtered(d, outtrips[loc]):
-        #             for intrip in filtered(d, intrips[loc]):
-        #                 mdl.add_if_then(trips[d][intrip] + trips[d][otrip] == 2, then_ct= nodeCaps[loc] == caps[d][otrip] - caps[d][intrip]) # !!!! MAJOR FIX
         for loc in self.requestNodes:
             incaps = 0
             ocaps = 0
-            tripsum = 0
             for d in self.drivers:
                 for otrip in self.filtered(d, self.outtrips[loc]):
                     ocaps += self.caps[d][otrip]
@@ -531,7 +454,6 @@ class GeneralOptimizer:
                 for intrip in self.filtered(d, self.intrips[dE]):
                     itime += self.times[d][intrip]
                 break
-            # self.mdl.add_constraint(ct= itime - otime <= self.ROUTE_LIMIT , ctname='Route limit' + '_' + str(d.id))
             self.obj += self.ROUTE_LIMIT_PEN * (itime - otime)
             if not d.ed:
                 try:
@@ -551,7 +473,6 @@ class GeneralOptimizer:
             for mer in self.filtered(d, self.merges):
                 self.mdl.add_constraint(ct = self.trips[d][mer] == self.trips[d][self.merges[mer]])
                 self.obj += self.MERGE_PEN * (self.times[d][mer] - (self.times[d][self.merges[mer]] + self.merges[mer].lp.time * self.trips[d][mer])) * (24)
-                # self.obj += self.MERGE_PEN * (self.trips[d][mer] - self.trips[d][self.merges[mer]])
         """
         Equalizing Revenue Penalty
         """

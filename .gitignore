@@ -25,3 +25,6 @@ vis-010220-genopt-best.html
 *.pyc
 input/
 output/
+config/app_config.yaml
+config/general_config.yaml
+*.pdf

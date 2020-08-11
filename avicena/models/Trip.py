@@ -4,13 +4,13 @@ from opencage.geocoder import OpenCageGeocode
 from time import sleep
 from haversine import haversine, Unit
 from geopy.geocoders import Nominatim
-from lib.constants import *
+from experimental.constants import *
 
 try:
     from locations import locations_cache
     locations = locations_cache # cached dict mapping an address to its lat long, not in repository for privacy
 except:
-    locations = dict()
+    locations = {}
     pass
 
 class TripType(Enum):

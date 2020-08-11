@@ -1,9 +1,9 @@
-from lib.GeneralizedOptimizer import GeneralOptimizer
-from lib.PDWTWOptimizer import PDWTWOptimizer
-from lib.Preprocessor import TripPreprocess as tp
+from experimental.GeneralizedOptimizer import GeneralOptimizer
+from experimental.PDWTWOptimizer import PDWTWOptimizer
+from experimental.Preprocessor import TripPreprocess as tp
 from datetime import datetime
-from lib.Assumptions import preprocess_assumptions, opt_params
-from lib.constants import keys
+from experimental.Assumptions import preprocess_assumptions, opt_params
+from experimental.constants import keys
 
 keyFile = open('geocode.key')
 keys['geo_key'] = keyFile.readline().rstrip()
