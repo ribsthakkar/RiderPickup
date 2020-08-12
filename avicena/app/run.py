@@ -51,7 +51,8 @@ if __name__ == "__main__":
 
     trips_df = trip_parser.parse_trips_to_df(args.trips_file, app_config)
     drivers = load_drivers_from_db(args.driver_ids, db_session)
-    trips = load_trips_from_df(trips_df)
+    trips = load_trips_from_df(trips_df, optimizer_config['speed'])
 
     optimizer = optimizer_type(trips, drivers, optimizer_config, app_config['model_name'])
-    optimizer.solve(app_config['assignment_file'])
+    assignment = optimizer.solve(app_config['assignment_file'])
+

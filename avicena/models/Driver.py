@@ -16,11 +16,6 @@ class Driver(Base):
     early_day_flag = Column(Boolean, default=False)
     assignments = relationship('DriverAssignment', backref='driver')
 
-    def create(self, session):
-        session.add(self)
-        session.commit()
-        return self
-
     def __init__(self, id,  name, address, capacity, level_of_service, early_day_flag):
         self.id = int(id)
         self.name = name
@@ -28,7 +23,12 @@ class Driver(Base):
         self.capacity = capacity
         self.level_of_service = level_of_service
         self.early_day_flag = early_day_flag
-    
+
+    def save_to_db(self, session):
+        session.add(self)
+        session.commit()
+        return self
+
     def __repr__(self):
         return '<Driver %s:%r>'.format(self.name, str(self.id))
 

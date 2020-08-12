@@ -18,7 +18,7 @@ class RevenueRate(Base):
         self.level_of_service = level_of_service
         self.revenue_per_mile = revenue_per_mile
 
-    def create(self, session):
+    def save_to_db(self, session):
         session.add(self)
         session.commit()
         return self

@@ -22,7 +22,7 @@ class DriverAssignment(Base):
     trip_los = Column(Array(String))
     trip_rev = Column(Array(Float))
 
-    def create(self, session):
+    def save_to_db(self, session):
         session.add(self)
         session.commit()
         return self
