@@ -128,12 +128,12 @@ def _parse_raw_data(df, tokens):
     df['trip_notes'] = df['raw_data'].apply(lambda x: _split_it(x).group(23))
     s = (tokens[10] + ' ' + tokens[11] + tokens[12] + ' ' + tokens[13])
     d = datetime.strptime(s, '%B %d, %Y')
-    filedate = d.strftime('%m/%d/%y')
-    df['date'] = filedate
+    filedate = d.strftime('%m-%d-%y')
+    df['trip_date'] = filedate
 
 
 def _store_raw_data(df, config, name, trip_count):
-    filedate = df['date'].iloc[0].replace('/', '_')
+    filedate = df['date'].iloc[0].replace('-', '_')
     output_dir = config['output_dir']
     print(str(len(df)) + "/" + str(trip_count) + " trips parsed.")
     df.to_csv(output_dir + name + filedate + '.csv', encoding='utf-8', index=False)
@@ -151,6 +151,6 @@ def parse_trips_to_df(trips_file, config):
     _parse_raw_data(df, tokens)
     _store_raw_data(df, config, name, trip_count)
     standardize_df(df, config)
-    df.drop('raw_data', axis='columns')
+    df.drop(['raw_data', 'trip_notes'], axis='columns')
     return df
 

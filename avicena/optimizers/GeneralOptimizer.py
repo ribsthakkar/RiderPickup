@@ -1,32 +1,20 @@
-import random
 from copy import copy
-from datetime import timedelta
-import pandas as pd
-import plotly.graph_objects as go
-import numpy as np
 from docloud.status import JobSolveStatus
 from docplex.mp.conflict_refiner import ConflictRefiner, VarLbConstraintWrapper, VarUbConstraintWrapper
 from docplex.mp.model import Model
 from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
-from plotly.subplots import make_subplots
 
-from avicena.models import Trip
+from avicena.models import Trip, Location
 from avicena.optimizers.solver_util.cplex.Listeners import GapListener, TimeListener
 from avicena.util.Exceptions import InvalidTripException
 
 
 class GeneralOptimizer:
-    def filter_driver_feasible_trips(self, driver, iter):
-        return filter(lambda t: not ((t.lp.o in self.driver_nodes and t.lp.o[:4] != driver.address[:4]) or (
-                t.lp.d in self.driver_nodes and t.lp.d[:4] != driver.address[:4]))
-                                and t.los in driver.los
-                                and not (abs(self.node_capacities[t.lp.o] + self.node_capacities[t.lp.d]) > driver.capacity), iter)
-
-
-    def __init__(self, trips, drivers, name, config):
+    def __init__(self, trips, drivers, name, date, speed, config):
         self.drivers_inp = drivers
         self.trips_inp = trips
+        self.date = date
         self.mdl = Model(name=name)
 
         self.drivers = list()  # List of all Drivers
@@ -60,6 +48,7 @@ class GeneralOptimizer:
         self.outtrips = dict()  # Map from driver to Map from location to list of outgoing trips from that location
 
         # Constants
+        self.SPEED = speed
         self.TRIPS_TO_DO = config["TRIPS_TO_DO"]
         self.NUM_DRIVERS = config["NUM_DRIVERS"]
         self.EARLY_PICK_WINDOW = config["EARLY_PICKUP_WINDOW"]
@@ -73,7 +62,6 @@ class GeneralOptimizer:
         self.MERGE_PEN = config["MERGE_PENALTY"]
         self.REVENUE_PEN = config["REVENUE_PENALTY"]
         self.W_PEN = config["WHEELCHAIR_PENALTY"]
-        self.SPEED = config["speed"]
 
         self.STAGE1_TIME = config["STAGE1_TIME"]
         self.STAGE1_GAP = config["STAGE1_GAP"]
@@ -86,11 +74,15 @@ class GeneralOptimizer:
         self.ed_constr = set()
         self.__prepare_trip_parameters()
         self.__prepare_driver_parameters()
-        self.__generate_trips()
+        self.__generate_variables()
         self.__prepare_constraints()
         self.__prepare_objective()
 
-
+    def filter_driver_feasible_trips(self, driver, iter):
+        return filter(lambda t: not ((t.lp.o in self.driver_nodes and t.lp.o.get_clean_address() != driver.get_clean_address()) or (
+                t.lp.d in self.driver_nodes and t.lp.d.get_clean_address() != driver.get_clean_address()))
+                                and t.los in driver.los
+                                and not (abs(self.node_capacities[t.lp.o] + self.node_capacities[t.lp.d]) > driver.capacity), iter)
 
     def __prepare_trip_parameters(self):
         count = 0
@@ -168,7 +160,7 @@ class GeneralOptimizer:
                 break
         print("Number of Drivers:", count)
 
-    def __generate_trips(self):
+    def __generate_variables(self):
         id = 1
         """
         Trips from Driver Start locations to Start location of any request
@@ -252,7 +244,6 @@ class GeneralOptimizer:
                 t.write(pair[0] + "," + pair[1] + "," + str(trp.lp.time) + "\n")
                 c.write(pair[0] + "," + pair[1] + "," + str(trp.lp.miles) + "\n")
 
-
     def __prepare_constraints(self):
         """
         Request Requirements
@@ -282,7 +273,7 @@ class GeneralOptimizer:
             self.mdl.add_constraint(ct=totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
         for d in self.drivers:
             for dS in self.driver_starts:
-                if dS[:-4] != d.address[:-4]:
+                if dS != d.address:
                     continue
                 total = 0
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[dS]):
@@ -290,7 +281,7 @@ class GeneralOptimizer:
                 self.mdl.add_constraint(ct=total == -1, ctname='driverout' + '_' + str(d.id))
         for d in self.drivers:
             for dE in self.driver_ends:
-                if dE[:-4] != d.address[:-4]:
+                if dE != d.address:
                     continue
                 total = 0
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[dE]):
@@ -433,13 +424,13 @@ class GeneralOptimizer:
             otime = 0
             itime = 0
             for dS in self.driver_starts:
-                if dS[:-4] != d.address[:-4]:
+                if dS != d.address:
                     continue
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[dS]):
                     otime += self.time_vars[d][otrip]
                 break
             for dE in self.driver_ends:
-                if dE[:-4] != d.address[:-4]:
+                if dE != d.address:
                     continue
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[dE]):
                     itime += self.time_vars[d][intrip]
@@ -513,7 +504,6 @@ class GeneralOptimizer:
                     driverMiles = self.__write_sol(solution_file+'stage1')
                     print("Total Number of trip miles by each driver after stage 1: ")
                     print(driverMiles)
-                    self.visualize(solution_file+'stage1', 'stage1vis.html')
                 else:
                     print("Stage 1 Infeasible with ED")
                 if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
@@ -534,7 +524,6 @@ class GeneralOptimizer:
                         driverMiles = self.__write_sol(solution_file + 'stage1')
                         print("Total Number of trip miles by each driver after stage 1: ")
                         print(driverMiles)
-                        self.visualize(solution_file + 'stage1', 'stage1vis.html')
                     else:
                         print("Stage 1 Infeasible without ED as well")
                 print("Relaxing single rider requirements constraints")
@@ -560,209 +549,13 @@ class GeneralOptimizer:
                 print("Max W Trips:", self.w_max.solution_value)
             except DOcplexException as e:
                 print(e)
-                print(str(i) + "th solution did not work trying again")
+                print(str(i) + "th solution did not work...trying again")
                 continue
             finally:
                 driverMiles = self.__write_sol(solution_file)
                 print("Total Number of trip miles by each driver: ")
                 print(driverMiles)
-                return
-
-    @staticmethod
-    def generate_addr_label(trips, addr):
-        data = "<br>".join(
-            "0" * (10 - len(str(t['trip_id']))) + str(t['trip_id']) + "  |  " +
-            str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] +
-            "  |  " + str(t['driver_id']) for t in trips
-        )
-        return addr + "<br><b>TripID,             Time,      DriverID </b><br>" + data
-
-    def visualize(self, sfile, vfile='visualized.html', open_after=False):
-        def names(id):
-            return "Driver " + str(id) + " Route"
-        def get_labels(trips, addr):
-            data = "<br>".join(
-               "0" * (10 - len(str(t['trip_id']))) + str(t['trip_id']) + "  |  " + str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] +
-                "  |  " + str(t['driver_id']) for t in trips
-            )
-            return addr + "<br><b>TripID,             Time,      DriverID </b><br>" + data
-
-        sol_df = pd.read_csv(sfile)
-        driver_ids = list(d.id for d in self.drivers)
-        titles = [names(i) for i in driver_ids]
-        titles.insert(0, "Map")
-        titles.insert(1, "Driver Summary: " + self.mdl.name)
-        subplots = [[{"type": "table"}]] * (len(self.drivers) + 1)
-        subplots.insert(0, [{"type": "scattermapbox"}])
-        map_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
-        summary_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
-        heights = [(1 - map_height - summary_height - 0.12) / ((len(self.drivers)))] * (len(self.drivers))
-        heights.insert(0, map_height)
-        heights.insert(1, summary_height)
-        fig = make_subplots(
-            rows=2 + len(self.drivers), cols=1,
-            vertical_spacing=0.015,
-            subplot_titles=titles,
-            specs=subplots,
-            row_heights=heights
-        )
-        all_x = []
-        all_y = []
-        locations = dict()
-        addresses = dict()
-        for i, d in enumerate(self.drivers):
-            r = lambda: random.randint(0, 255)
-            col = '#%02X%02X%02X' % (r(), r(), r())
-            filtered_trips = sol_df[sol_df['driver_id']==d.id]
-            points, trips = self.__get_driver_coords(filtered_trips, d)
-            x, y = zip(*points)
-            details = [[str(t['trip_id']) for _, t in filtered_trips.iterrows()],
-                       [t['trip_pickup_address'] for _,t in filtered_trips.iterrows()],
-                       [t['trip_dropoff_address'] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['trip_pickup_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['est_dropoff_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['trip_dropoff_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(t['est_miles']) for _,t in filtered_trips.iterrows()],
-                       [str(t['trip_los']) for _,t in filtered_trips.iterrows()],
-                       [str(t['trip_rev']) for _,t in filtered_trips.iterrows()],
-                       ]
-            all_x += x
-            all_y += y
-            fig.add_trace(go.Scattermapbox(
-                lon=x,
-                lat=y,
-                mode='lines',
-                marker=dict(
-                    size=8,
-                    color=col,
-                ),
-                name=names(d.id),
-
-            ), row=1, col=1)
-            fig.add_trace(
-                go.Table(
-                    header=dict(
-                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time",
-                                "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles",
-                                "LOS", "Revenue"],
-                        font=dict(size=10),
-                        align="left"
-                    ),
-                    cells=dict(
-                        values=details,
-                        align="left")
-                ),
-                row=i + 3, col=1,
-            )
-            points = points[1:-1]
-            trips = trips[1:-1]
-            for idx, point in enumerate(points):
-                if point in locations:
-                    locations[point].append(trips[idx])
-                    locations[point] = list(sorted(locations[point], key=lambda x: float(x['est_pickup_time'])))
-                else:
-                    locations[point] = [trips[idx]]
-                if point not in addresses:
-                    addresses[point] = trips[idx]['trip_pickup_address']
-
-        lon, lat = map(list, zip(*locations.keys()))
-        labels = [get_labels(locations[k], addresses[k]) for k in locations.keys()]
-        for d in self.drivers:
-            lon.append(Location(d.address[:-4]).coord[1])
-            lat.append(Location(d.address[:-4]).coord[0])
-            labels.append(d.address[:-4] + "<br>Driver " + str(d.id) + " Home")
-        fig.add_trace(
-            go.Scattermapbox(
-                lon=lon,
-                lat=lat,
-                mode='markers',
-                marker=go.scattermapbox.Marker(
-                    size=9
-                ),
-                text=labels,
-                name="Locations",
-
-            ),
-            row=1, col=1
-        )
-        names, ids, times, ep, ld,  miles, rev = zip(*(self.__get_driver_trips_times_miles_rev(sol_df, id) for id in driver_ids))
-        names = list(names)
-        ids = list(ids)
-        times = list(times)
-        ep = list(ep)
-        ld = list(ld)
-        miles = list(miles)
-        rev = list(rev)
-        ids.append("Average")
-        times.append(sum(times)/len(times))
-        ep.append(sum(ep)/len(ep))
-        ld.append(sum(ld)/len(ld))
-        miles.append(sum(miles)/len(miles))
-        rev.append(sum(rev)/len(rev))
-        times = list(map(lambda t: str(timedelta(days=t)).split('.')[0],times))
-        ep = list(map(lambda t: str(timedelta(days=t)).split('.')[0],ep))
-        ld = list(map(lambda t: str(timedelta(days=t)).split('.')[0],ld))
-        miles = list(map(str, miles))
-        rev = list(map(str, rev))
-        fig.add_trace(
-            go.Table(
-                header=dict(
-                    values=["Driver", "Trips", "Time", "Earliest Pickup", "Latest Dropoff", "Miles", "Revenue"],
-                    font=dict(size=10),
-                    align="left"
-                ),
-                cells=dict(
-                    values=[names, ids, times, ep, ld, miles, rev],
-                    align="left")
-            ),
-            row=2, col=1,
-        )
-        fig.update_mapboxes(zoom=10,center=go.layout.mapbox.Center(
-                lat=np.mean(all_y),
-                lon=np.mean(all_x)),
-         style='open-street-map')
-
-        fig.update_layout(
-            title_text=self.mdl.name,
-            showlegend=True,
-            height=(600 + 400 * (len(self.drivers) + 1))
-        )
-        fig.write_html(vfile, auto_open=open_after)
-
-    def __get_driver_coords(self, filtered_trips, driver):
-        pairs = []
-        pairs.append((0.0, Location(driver.address[:-4]).rev_coord(), {}))
-        for idx, t in filtered_trips.iterrows():
-            pairs.append((float(t['est_pickup_time']), Location(t['trip_pickup_address']).rev_coord(), t))
-            pairs.append((float(t['est_dropoff_time']), Location(t['trip_dropoff_address']).rev_coord(), {'est_pickup_time': t['est_dropoff_time'], 'driver_id': driver.id, 'trip_id': 'INTER', 'trip_pickup_address': t['trip_dropoff_address']}))
-
-        pairs.append((1.0, Location(driver.address[:-4]).rev_coord(), {}))
-        _, coords, trips = zip(*sorted(pairs, key=lambda x: x[0]))
-        return coords, trips
-
-    def get_driver_coords(self, filtered_trips, driver):
-        return self.__get_driver_coords(filtered_trips, driver)
-
-    def __get_driver_trips_times_miles_rev(self, sol_df, id):
-        filtered_trips = sol_df[sol_df['driver_id'] == id]
-        try:
-            ep = (min(float(t['est_pickup_time']) for _, t in filtered_trips.iterrows()))
-        except ValueError:
-            ep = '0'
-        try:
-            ld = (max(float(t['est_dropoff_time']) for _, t in filtered_trips.iterrows()))
-        except:
-            ld = '0'
-        name = ("".join(str(t['driver_name']) for _, t in filtered_trips.sample(1).iterrows())) + ";" + str(id)
-        trps = ", ".join(t['trip_id'] for _, t in filtered_trips.iterrows())
-        time = (sum(float(t['est_time']) for _, t in filtered_trips.iterrows()))
-        m = (sum(float(t['est_miles']) for _, t in filtered_trips.iterrows()))
-        r = (sum(float(t['trip_rev']) for _, t in filtered_trips.iterrows()))
-        return name, trps, time, ep, ld, m, r
-
-    def get_driver_trips_times_miles_rev(self, sol_df, id):
-        return self.__get_driver_trips_times_miles_rev(sol_df, id)
+                break
 
     def __write_sol(self, solution_file):
         driverMiles = dict()
@@ -778,18 +571,20 @@ class GeneralOptimizer:
                     if t.lp.o not in self.request_starts or var.solution_value != 1:
                         continue
                     yield (d, t)
+
         def tripGen_debug(d):
             for t, var in self.trip_vars[d].items():
                 if var.solution_value != 1:
                     continue
                 yield (d, t)
+
         for dr in self.drivers:
             for d, t in sorted(tripGen_debug(dr), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
                 print(d.name, t.lp.o, t.lp.d, self.time_vars[d][t].solution_value, t.lp.time)
 
         with open(solution_file, 'w') as output:
             output.write(
-                'trip_id,driver_id,driver_name,trip_pickup_address,trip_pickup_time,est_pickup_time,trip_dropoff_address,trip_dropoff_time,est_dropoff_time,trip_los,est_miles,est_time,trip_rev\n')
+                'trip_id,driver_id,driver_name,trip_date,trip_pickup_address,trip_pickup_time,est_pickup_time,trip_dropoff_address,trip_dropoff_time,est_dropoff_time,trip_los,est_miles,est_time,trip_rev\n')
             count = 0
             for d, t in sorted(tripGen(), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
                 count += 1
@@ -810,9 +605,9 @@ class GeneralOptimizer:
                     print("Something wrong")
                 required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].end
                 ptrip = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]]
-                output.write(str(self.location_to_primary_trip_id_map[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + ",\"" + str(
-                    t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(self.time_vars[d][t].solution_value) + ",\"" +
-                             str(rE[:-4]) + "\"," + str(required_end) + "," + str(end_time) + "," +
+                output.write(str(self.location_to_primary_trip_id_map[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + str(self.date) + ",\"" + str(
+                    t.lp.o.get_clean_address()) + "\"," + str(t.start) + "," + str(self.time_vars[d][t].solution_value) + ",\"" +
+                             str(rE.get_clean_address()) + "\"," + str(required_end) + "," + str(end_time) + "," +
                              str(t.los) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "," + str(
                     self.revenues[t.lp.o]) + "\n")
         return driverMiles

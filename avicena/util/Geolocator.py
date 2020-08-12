@@ -1,8 +1,12 @@
+import os
+
 from opencage.geocoder import OpenCageGeocode
 
 locations = {}
 
-def find_coord_lat_lon(addr, key):
+def find_coord_lat_lon(addr, key=None):
+    if key is None:
+        key = os.environ.get("GEOCODER_KEY")
     if addr in locations:
         return locations[addr]
     geolocator = OpenCageGeocode(key)
@@ -12,5 +16,5 @@ def find_coord_lat_lon(addr, key):
     except IndexError:
         print("Couldn't find coordinates for ", addr)
 
-def find_coord_lon_lat(addr, key):
+def find_coord_lon_lat(addr, key=None):
     return tuple(reversed(find_coord_lat_lon(addr, key)))

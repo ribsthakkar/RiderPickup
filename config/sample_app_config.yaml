@@ -5,4 +5,7 @@ database:
 geocoder_key: 78bdef6c2b254abaa78c55640925d3db
 trips_parser: LogistiCare
 optimizer: GeneralOptimizer
+assumed_driving_speed: 50
+merge_address_table_path: input/merge_address.csv
+revenue_table_path: input/rev_table.csv
 output_dir: output/

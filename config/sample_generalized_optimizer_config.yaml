@@ -1,9 +1,7 @@
-model_name: "Patient Dispatch"
 trips_to_do: 1000 # if greater than total number of trips, then ignored
 num_drivers: 4
 driver_capacity: 2.5 # W trips take 1.5 space and A trips take 1 space
 early_day_time: 4:30  # Time of day marking trips that are "early day"
-speed: 50 # miles per hour
 
 # Optimizer Parameters
 # All Windows/Limits/Penalties in Minutes

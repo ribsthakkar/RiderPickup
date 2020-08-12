@@ -16,13 +16,17 @@ class Driver(Base):
     early_day_flag = Column(Boolean, default=False)
     assignments = relationship('DriverAssignment', backref='driver')
 
-    def __init__(self, id,  name, address, capacity, level_of_service, early_day_flag):
-        self.id = int(id)
+    def __init__(self, id,  name, address, capacity, level_of_service, early_day_flag, suffix_len=0):
+        self.id = id
         self.name = name
         self.address = address
         self.capacity = capacity
         self.level_of_service = level_of_service
         self.early_day_flag = early_day_flag
+        self._suffix_len = suffix_len
+
+    def get_clean_address(self):
+        return self.address[:-self._suffix_len]
 
     def save_to_db(self, session):
         session.add(self)
@@ -44,7 +48,7 @@ def load_drivers_from_db(session, driver_ids, date=None):
             m, d, y = date.split('-')
             day_of_week = datetime.datetime(int(y), int(m), int(d)).timetuple().tm_wday
         early_day_flag = day_of_week % 2 != d.early_day_flag
-        drivers.append(Driver(d.id, d.name, add, cap, d.level_of_service, early_day_flag))
+        drivers.append(Driver(d.id, d.name, add, cap, d.level_of_service, early_day_flag, suffix_len=4))
     if not any(d.early_day_flag for d in drivers):
         x = random.choice(drivers)
         while x.early_day_flag:
@@ -67,7 +71,7 @@ def load_drivers_from_csv(drivers_file, date=None):
             m, d, y = date.split('-')
             day_of_week = datetime.datetime(int(y), int(m), int(d)).timetuple().tm_wday
         early_day_flag = day_of_week % 2 != int(row['Early Day'])
-        drivers.append(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type'], early_day_flag))
+        drivers.append(Driver(int(row['ID']), row['Name'], add, cap, row['Vehicle_Type'], early_day_flag, suffix_len=4))
     if not any(d.early_day_flag for d in drivers):
         x = random.choice(drivers)
         while x.early_day_flag:

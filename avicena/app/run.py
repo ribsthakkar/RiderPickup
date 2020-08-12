@@ -1,3 +1,4 @@
+from avicena.models.Assignment import generate_visualization_from_csv
 from avicena.models.Database import create_db_session
 from avicena.models.Driver import load_drivers_from_db
 from avicena.models.Trip import load_trips_from_df
@@ -11,7 +12,7 @@ import yaml
 
 import argparse
 
-parsers = {'LogistiCare': LogistiCareParser, 'Default': CSVParser}
+parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
 optimizers = {'GeneralOptimizer': GeneralOptimizer, 'PDWTWOptimizer': PDWTWOptimizer}
 
 if __name__ == "__main__":
@@ -25,6 +26,9 @@ if __name__ == "__main__":
 
     parser.add_argument('-n', '--name', action='store', type=str, dest='name', default='Patient Dispatch',
                         help='Name of Model')
+
+    parser.add_argument('-d', '--date', action='store', type=str, dest='date', default=datetime.now().strftime('%m-%d-%y'))
+
 
     parser.add_argument('-t', '--trips-file', action='store', type=str, dest='trips_file',
                         help='Path to Trips File')
@@ -51,8 +55,9 @@ if __name__ == "__main__":
 
     trips_df = trip_parser.parse_trips_to_df(args.trips_file, app_config)
     drivers = load_drivers_from_db(args.driver_ids, db_session)
-    trips = load_trips_from_df(trips_df, optimizer_config['speed'])
+    trips = load_trips_from_df(trips_df, app_config['assumed_driving_speed'])
 
-    optimizer = optimizer_type(trips, drivers, optimizer_config, app_config['model_name'])
-    assignment = optimizer.solve(app_config['assignment_file'])
+    optimizer = optimizer_type(trips, drivers, args.name, args.date, optimizer_config)
+    optimizer.solve(app_config['output_dir'] + '/solution.csv')
+    generate_visualization_from_csv(app_config['output_dir'] + '/solution.csv', drivers, args.name, app_config['output_dir'] + '/visualization.html', False)
 

@@ -7,7 +7,7 @@ from avicena.util.TimeWindows import get_time_window_by_hours_minutes
 
 
 class Trip:
-    def __init__(self, pickup, dropoff, space, trip_id, scheduled_pickup, scheduled_dropoff, speed, is_merge, revenue=0.0, preset_miles=0, lp=None):
+    def __init__(self, pickup: Location, dropoff: Location, space, trip_id, scheduled_pickup, scheduled_dropoff, speed, is_merge, revenue=0.0, preset_miles=0, lp=None):
         self.id = trip_id
         if lp:
             self.lp = lp
@@ -24,7 +24,7 @@ class Trip:
         self.preset_miles = preset_miles
 
     def __repr__(self):
-        return self.lp.o + "->" + self.lp.d
+        return repr(self.lp.o) + "->" + repr(self.lp.d)
 
 
 def load_trips_from_df(trip_df, speed):

@@ -1,7 +1,7 @@
 import datetime
 
 from avicena.models.MergeAddress import load_merge_details_from_db
-from avicena.models.RevenueRate import load_revenue_table_from_db
+from avicena.models.RevenueRate import load_revenue_table_from_db, load_revenue_table_from_csv
 from avicena.util.Exceptions import RevenueCalculationException
 from avicena.util.Geolocator import find_coord_lat_lon
 from avicena.util.TimeWindows import get_time_window_by_hours_minutes
@@ -50,17 +50,19 @@ def standardize_df(df, config):
     df['trip_pickup_time'] = df['trip_pickup_time'].apply(convert_time)
     df['trip_dropoff_time'] = df['trip_dropoff_time'].apply(convert_time)
 
-    merge_details = load_merge_details_from_db(config['database']['db_session'])
+    # merge_details = load_merge_details_from_db(config['database']['db_session'])
+    merge_details = load_merge_details_from_csv(config['merge_details_path'])
     df['trip_pickup_time', 'trip_dropoff_time', 'merge_flag'] = \
         df[['trip_pickup_time', 'trip_id', 'trip_pickup_address']].apply(
             lambda x: _adjust_pickup_dropoff_merge(x['trip_pickup_time'], x['trip_id'], x['trip_pickup_address'],
                                                    df['trip_dropoff_time'], df['trip_id'], merge_details), axis=1)
 
-    revenue_table = load_revenue_table_from_db(config['database']['db_session'])
+    # revenue_table = load_revenue_table_from_db(config['database']['db_session'])
+    revenue_table = load_revenue_table_from_csv(config['revenue_table_path'])
     df['trip_revenue'] = df[['trip_miles', 'trip_los']].apply(
         lambda x: _revenue_calculation(revenue_table, x['trip_miles'], x['trip_los']), axis=1)
 
     df['trip_pickup_lat', 'trip_pickup_lon'] = df['trip_pickup_address'].apply(
-        lambda x: find_coord_lat_lon(x, config['geo_key']))
+        lambda x: find_coord_lat_lon(x))
     df['trip_dropoff_lat', 'trip_dropoff_lon'] = df['trip_dropoff_address'].apply(
-        lambda x: find_coord_lat_lon(x, config['geo_key']))
+        lambda x: find_coord_lat_lon(x))

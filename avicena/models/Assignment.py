@@ -1,7 +1,17 @@
+import random
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+import datetime
 from sqlalchemy import Column, Integer, DateTime, String, Interval, Float
 from sqlalchemy.dialects.postgresql import ARRAY as Array
 from sqlalchemy.orm import relationship
 
+from avicena.models import DriverAssignment
+from avicena.util.Geolocator import find_coord_lon_lat
+from avicena.util.VisualizationUtil import generate_html_label_for_addr, generate_html_label_for_driver_addr
 from .Database import Base
 
 class Assignment(Base):
@@ -22,6 +32,22 @@ class Assignment(Base):
     location_lons = Column(Array(Float))
     location_labels = Column(Array(String))
 
+    def __init__(self, date, name):
+        self.date = date
+        self.name = name
+        self.driver_assignments = []
+        self.drivers = []
+        self.driver_ids = []
+        self.trips = []
+        self.times = []
+        self.earliest_picks = []
+        self.latest_drops = []
+        self.miles = []
+        self.revenues = []
+        self.location_lats = []
+        self.location_lons = []
+        self.location_labels = []
+
     def serialize(self):
         return {"id": self.id,
                 "date": self.date,
@@ -32,180 +58,136 @@ class Assignment(Base):
         session.commit()
         return self
 
-    def generate_visualization(self):
-        pass
+    def generate_visualization(self, visualization_file_name='visualized.html', open_in_browser=False):
+        def names(id):
+            return "Driver " + str(id) + " Route"
 
-def generate_visualization_from_csv():
-    pass
-
-def generate_visualization_from_db():
-    pass
-
-def visualize(sfile, drivers, mdl_name, vfile='visualized.html', open_after=False):
-    def names(id):
-        return "Driver " + str(id) + " Route"
-    def get_labels(trips, addr):
-        data = "<br>".join(
-           "0" * (10 - len(str(t['trip_id']))) + str(t['trip_id']) + "  |  " + str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] +
-            "  |  " + str(t['driver_id']) for t in trips
+        # Prepare Table Setup
+        titles = [names(i) for i in self.driver_ids]
+        titles.insert(0, "Map")
+        titles.insert(1, "Driver Summary: " + self.name)
+        subplots = [[{"type": "table"}]] * (len(self.drivers) + 1)
+        subplots.insert(0, [{"type": "scattermapbox"}])
+        map_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
+        summary_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
+        heights = [(1 - map_height - summary_height - 0.12) / ((len(self.drivers)))] * (len(self.drivers))
+        heights.insert(0, map_height)
+        heights.insert(1, summary_height)
+        fig = make_subplots(
+            rows=2 + len(self.drivers), cols=1,
+            vertical_spacing=0.015,
+            subplot_titles=titles,
+            specs=subplots,
+            row_heights=heights
         )
-        return addr + "<br><b>TripID,             Time,      DriverID </b><br>" + data
+        all_lon = []
+        all_lat = []
 
-    sol_df = pd.read_csv(sfile)
-    driver_ids = list(d.id for d in drivers)
-    titles = [names(i) for i in driver_ids]
-    titles.insert(0, "Map")
-    titles.insert(1, "Driver Summary: " + mdl_name)
-    subplots = [[{"type": "table"}]] * (len(drivers) + 1)
-    subplots.insert(0, [{"type": "scattermapbox"}])
-    map_height = 600 / (600 + 2000 + 400 * (len(drivers)))
-    summary_height = 600 / (600 + 2000 + 400 * (len(drivers)))
-    heights = [(1 - map_height - summary_height - 0.12) / ((len(drivers)))] * (len(drivers))
-    heights.insert(0, map_height)
-    heights.insert(1, summary_height)
-    fig = make_subplots(
-        rows=2 + len(drivers), cols=1,
-        vertical_spacing=0.015,
-        subplot_titles=titles,
-        specs=subplots,
-        row_heights=heights
-    )
-    all_x = []
-    all_y = []
-    locations = dict()
-    addresses = dict()
-    for i, d in enumerate(drivers):
-        r = lambda: random.randint(0, 255)
-        col = '#%02X%02X%02X' % (r(), r(), r())
-        filtered_trips = sol_df[sol_df['driver_id']==d.id]
-        points, trips = _get_driver_coords(filtered_trips, d)
-        x, y = zip(*points)
-        details = [[str(t['trip_id']) for _, t in filtered_trips.iterrows()],
-                   [t['trip_pickup_address'] for _,t in filtered_trips.iterrows()],
-                   [t['trip_dropoff_address'] for _,t in filtered_trips.iterrows()],
-                   [str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                   [str(timedelta(days=float(t['trip_pickup_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                   [str(timedelta(days=float(t['est_dropoff_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                   [str(timedelta(days=float(t['trip_dropoff_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                   [str(t['est_miles']) for _,t in filtered_trips.iterrows()],
-                   [str(t['trip_los']) for _,t in filtered_trips.iterrows()],
-                   [str(t['trip_rev']) for _,t in filtered_trips.iterrows()],
-                   ]
-        all_x += x
-        all_y += y
-        fig.add_trace(go.Scattermapbox(
-            lon=x,
-            lat=y,
-            mode='lines',
-            marker=dict(
-                size=8,
-                color=col,
+        # Generate Driver Route Tables
+        for i, d in enumerate(self.drivers):
+            r = lambda: random.randint(0, 255)
+            col = '#%02X%02X%02X' % (r(), r(), r())
+            driver_assignment = self.driver_assignments[i]
+            details = [driver_assignment.trip_ids,
+                       driver_assignment.trip_pu,
+                       driver_assignment.trip_do,
+                       driver_assignment.trip_est_pu,
+                       driver_assignment.shc_pu,
+                       driver_assignment.trip_est_do,
+                       driver_assignment.trip_sch_do,
+                       driver_assignment.trip_miles,
+                       driver_assignment.trip_los,
+                       driver_assignment.trip_rev]
+            all_lon += driver_assignment.lons
+            all_lat += driver_assignment.lats
+            fig.add_trace(go.Scattermapbox(
+                lon=driver_assignment.lons,
+                lat=driver_assignment.lats,
+                mode='lines',
+                marker=dict(
+                    size=8,
+                    color=col,
+                ),
+                name=names(self.driver_ids[i]),
+
+            ), row=1, col=1)
+            fig.add_trace(
+                go.Table(
+                    header=dict(
+                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time",
+                                "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles",
+                                "LOS", "Revenue"],
+                        font=dict(size=10),
+                        align="left"
+                    ),
+                    cells=dict(
+                        values=details,
+                        align="left")
+                ),
+                row=i + 3, col=1,
+            )
+
+        # Generate Map Labels
+        fig.add_trace(
+            go.Scattermapbox(
+                lon=self.location_lons,
+                lat=self.location_lats,
+                mode='markers',
+                marker=go.scattermapbox.Marker(
+                    size=9
+                ),
+                text=self.location_labels,
+                name="Locations",
+
             ),
-            name=names(d.id),
+            row=1, col=1
+        )
 
-        ), row=1, col=1)
+        # Generate Overall Summary Table
         fig.add_trace(
             go.Table(
                 header=dict(
-                    values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time",
-                            "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles",
-                            "LOS", "Revenue"],
+                    values=["Driver", "Trips", "Time", "Earliest Pickup", "Latest Dropoff", "Miles", "Revenue"],
                     font=dict(size=10),
                     align="left"
                 ),
                 cells=dict(
-                    values=details,
+                    values=[self.drivers, self.trips, self.times, self.earliest_picks, self.latest_drops, self.miles, self.revenues],
                     align="left")
             ),
-            row=i + 3, col=1,
+            row=2, col=1,
         )
-        points = points[1:-1]
-        trips = trips[1:-1]
-        for idx, point in enumerate(points):
-            if point in locations:
-                locations[point].append(trips[idx])
-                locations[point] = list(sorted(locations[point], key=lambda x: float(x['est_pickup_time'])))
-            else:
-                locations[point] = [trips[idx]]
-            if point not in addresses:
-                addresses[point] = trips[idx]['trip_pickup_address']
 
-    lon, lat = map(list, zip(*locations.keys()))
-    labels = [get_labels(locations[k], addresses[k]) for k in locations.keys()]
-    for d in drivers:
-        lon.append(Location(d.address[:-4]).coord[1])
-        lat.append(Location(d.address[:-4]).coord[0])
-        labels.append(d.address[:-4] + "<br>Driver " + str(d.id) + " Home")
-    fig.add_trace(
-        go.Scattermapbox(
-            lon=lon,
-            lat=lat,
-            mode='markers',
-            marker=go.scattermapbox.Marker(
-                size=9
-            ),
-            text=labels,
-            name="Locations",
+        # Center Map and Add Legend
+        fig.update_mapboxes(
+            zoom=10,
+            center=go.layout.mapbox.Center(
+                lat=np.mean(all_lat),
+                lon=np.mean(all_lon)),
+            style='open-street-map')
+        fig.update_layout(
+            title_text=self.name,
+            showlegend=True,
+            height=(600 + 400 * (len(self.drivers) + 1))
+        )
 
-        ),
-        row=1, col=1
-    )
-    names, ids, times, ep, ld,  miles, rev = zip(*(_get_driver_trips_times_miles_rev(sol_df, id) for id in driver_ids))
-    names = list(names)
-    ids = list(ids)
-    times = list(times)
-    ep = list(ep)
-    ld = list(ld)
-    miles = list(miles)
-    rev = list(rev)
-    ids.append("Average")
-    times.append(sum(times)/len(times))
-    ep.append(sum(ep)/len(ep))
-    ld.append(sum(ld)/len(ld))
-    miles.append(sum(miles)/len(miles))
-    rev.append(sum(rev)/len(rev))
-    times = list(map(lambda t: str(timedelta(days=t)).split('.')[0],times))
-    ep = list(map(lambda t: str(timedelta(days=t)).split('.')[0],ep))
-    ld = list(map(lambda t: str(timedelta(days=t)).split('.')[0],ld))
-    miles = list(map(str, miles))
-    rev = list(map(str, rev))
-    fig.add_trace(
-        go.Table(
-            header=dict(
-                values=["Driver", "Trips", "Time", "Earliest Pickup", "Latest Dropoff", "Miles", "Revenue"],
-                font=dict(size=10),
-                align="left"
-            ),
-            cells=dict(
-                values=[names, ids, times, ep, ld, miles, rev],
-                align="left")
-        ),
-        row=2, col=1,
-    )
-    fig.update_mapboxes(zoom=10,center=go.layout.mapbox.Center(
-            lat=np.mean(all_y),
-            lon=np.mean(all_x)),
-     style='open-street-map')
+        # Save to File
+        fig.write_html(visualization_file_name, auto_open=open_in_browser)
 
-    fig.update_layout(
-        title_text=mdl_name,
-        showlegend=True,
-        height=(600 + 400 * (len(drivers) + 1))
-    )
-    fig.write_html(vfile, auto_open=open_after)
 
-def _get_driver_coords(filtered_trips, driver):
+def _get_coords_and_trip_data_from_df_filtered_by_driver(filtered_trips, driver_id, driver_address):
     pairs = []
-    pairs.append((0.0, Location(driver.address[:-4]).rev_coord(), {}))
+    pairs.append((0.0, find_coord_lon_lat(driver_address), {}))
     for idx, t in filtered_trips.iterrows():
-        pairs.append((float(t['est_pickup_time']), Location(t['trip_pickup_address']).rev_coord(), t))
-        pairs.append((float(t['est_dropoff_time']), Location(t['trip_dropoff_address']).rev_coord(), {'est_pickup_time': t['est_dropoff_time'], 'driver_id': driver.id, 'trip_id': 'INTER', 'trip_pickup_address': t['trip_dropoff_address']}))
+        pairs.append((float(t['est_pickup_time']), find_coord_lon_lat(t['trip_pickup_address']), t))
+        pairs.append((float(t['est_dropoff_time']), find_coord_lon_lat(t['trip_dropoff_address']), {'est_pickup_time': t['est_dropoff_time'], 'driver_id': driver_id, 'trip_id': 'INTER', 'trip_pickup_address': t['trip_dropoff_address']}))
 
-    pairs.append((1.0, Location(driver.address[:-4]).rev_coord(), {}))
+    pairs.append((1.0, find_coord_lon_lat(driver_address), {}))
     _, coords, trips = zip(*sorted(pairs, key=lambda x: x[0]))
     return coords, trips
 
-def _get_driver_trips_times_miles_rev(sol_df, id):
+
+def _get_driver_trips_times_miles_rev_from_df(sol_df, id):
     filtered_trips = sol_df[sol_df['driver_id'] == id]
     try:
         ep = (min(float(t['est_pickup_time']) for _, t in filtered_trips.iterrows()))
@@ -221,3 +203,81 @@ def _get_driver_trips_times_miles_rev(sol_df, id):
     m = (sum(float(t['est_miles']) for _, t in filtered_trips.iterrows()))
     r = (sum(float(t['trip_rev']) for _, t in filtered_trips.iterrows()))
     return name, trps, time, ep, ld, m, r
+
+
+def load_assignment_from_df(assignment_df, drivers, name):
+    assignment_date = datetime.datetime.strptime(assignment_df['trip_date'].iloc[0], '%m-%d-%y')
+    assign = Assignment(assignment_date, name)
+    locations = dict()
+    addresses = dict()
+    for i, d in enumerate(drivers):
+        filtered_trips = assignment_df[assignment_df['driver_id'] == d.id]
+        points, trips = _get_coords_and_trip_data_from_df_filtered_by_driver(filtered_trips, d.id, d.get_address())
+        x, y = zip(*points)
+        da = DriverAssignment()
+        da.date = assignment_date
+        da.driver_id = d.id
+        da.assignment_id = assign.id
+        da.trip_ids = [str(t['trip_id']) for _, t in filtered_trips.iterrows()]
+        da.trip_pu = [t['trip_pickup_address'] for _, t in filtered_trips.iterrows()]
+        da.trip_do = [t['trip_dropoff_address'] for _, t in filtered_trips.iterrows()]
+        da.trip_est_pu = [datetime.timedelta(days=float(t['est_pickup_time'])) for _, t in
+                          filtered_trips.iterrows()]
+        da.trip_sch_pu = [datetime.timedelta(days=float(t['trip_pickup_time'])) for _, t in
+                          filtered_trips.iterrows()]
+        da.trip_est_do = [datetime.timedelta(days=float(t['est_dropoff_time'])) for _, t in
+                          filtered_trips.iterrows()]
+        da.trip_sch_do = [datetime.timedelta(days=float(t['trip_dropoff_time'])) for _, t in
+                          filtered_trips.iterrows()]
+        da.trip_miles = [(t['est_miles']) for _, t in filtered_trips.iterrows()]
+        da.trip_los = [str(t['trip_los']) for _, t in filtered_trips.iterrows()]
+        da.trip_rev = [(t['trip_rev']) for _, t in filtered_trips.iterrows()]
+        da.lats = list(y)
+        da.lons = list(x)
+        assign.driver_assignments.append(da)
+        names, ids, time, ep, ld, miles, rev = _get_driver_trips_times_miles_rev_from_df(assignment_df, d.id)
+        assign.drivers.append(names)
+        assign.driver_ids.append(d.id)
+        assign.trips.append(ids)
+        assign.times.append(datetime.timedelta(days=time))
+        assign.earliest_picks.append(datetime.timedelta(days=ep))
+        assign.latest_drops.append(datetime.timedelta(days=ld))
+        assign.miles.append(miles)
+        assign.revenues.append(rev)
+        points = points[1:-1]
+        trips = trips[1:-1]
+        for idx, point in enumerate(points):
+            if point in locations:
+                locations[point].append(trips[idx])
+                locations[point] = list(sorted(locations[point], key=lambda x: float(x['est_pickup_time'])))
+            else:
+                locations[point] = [trips[idx]]
+            if point not in addresses:
+                addresses[point] = trips[idx]['trip_pickup_address']
+
+    lon, lat = map(list, zip(*locations.keys()))
+    labels = [generate_html_label_for_addr(locations[k], addresses[k]) for k in locations.keys()]
+
+    for d in drivers:
+        lon.append(find_coord_lon_lat(d.get_clean_address()).coord[0])
+        lat.append(find_coord_lon_lat(d.get_clean_address()).coord[1])
+        labels.append(generate_html_label_for_driver_addr(d))
+
+    assign.location_lats = lat
+    assign.location_lons = lon
+    assign.location_labels = labels
+    return assign
+
+
+def load_assignment_from_csv(assignment_csv, drivers, name):
+    sol_df = pd.read_csv(assignment_csv)
+    return load_assignment_from_df(sol_df, drivers, name)
+
+
+def generate_visualization_from_csv(assignment_csv, drivers, mdl_name, visualization_file_name='visualized.html', open_in_browser=False):
+    load_assignment_from_csv(assignment_csv, drivers, mdl_name).generate_visualization(visualization_file_name, open_in_browser)
+
+
+def generate_visualization_from_db(assignment_id, session, visualization_file_name='visualized.html', open_in_browser=False):
+    assignment = session.query(Assignment).get(assignment_id)
+    assignment.generate_visualization(visualization_file_name, open_in_browser)
