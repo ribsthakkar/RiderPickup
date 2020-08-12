@@ -4,7 +4,7 @@ import random
 import pandas as pd
 
 from lib.Driver import Driver
-from lib.Trip import Trip, LocationPair, TripType
+from lib.Trip import Trip, LocationPair, TripType, InvalidTripException
 from lib.constants import FIFTEEN
 
 
@@ -43,61 +43,70 @@ class TripPreprocess:
         else:
             buffer = FIFTEEN * 10
             end_buffer = FIFTEEN * 8
-
-
-        with open(processed_file_name, "w") as ct:
-            ct.write("trip_id,customer_name,trip_pickup_time,trip_pickup_address,trip_dropoff_time,trip_dropoff_address,trip_los,"
-                     "scheduled_miles, trip_miles,trip_rev,orig_lat,orig_long,dest_lat,dest_long,duration\n")
-            for index, row in trip_df.iterrows():
-                if not row['trip_status'] == "CANCELED":
-                    o = row['trip_pickup_address'].replace('No Gc', '').replace('*','').replace('Apt .','').replace('//','').replace('Bldg .','') + "P" + str(hash(row['trip_id']))[1:4]
-                    d = row['trip_dropoff_address'].replace('No Gc', '').replace('*','').replace('Apt .','').replace('//','').replace('Bldg .','')  + "D" + str(hash(row['trip_id']))[1:4]
-                    start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
-                    end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
-                    los = row['trip_los']
-                    cap = 1 if los == 'A' else 1.5
-                    id = row['trip_id']
-
-                    # Uknown Time Assumption
-                    if start == 0.0 or end == 0.0 or start > 1 - (1/24):
-                        if id[-1] == 'B':
-                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A','trip_dropoff_time'].values[0])) + buffer
-                        elif id[-1] == 'C':
-                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B','trip_dropoff_time'].values[0])) + buffer
-                        else:
-                            print('A Trip with Unknown Time', id)
-                            exit(1)
-                        end = min(1 - (1/24), start + end_buffer)
-                        trip_df.at[index, 'trip_pickup_time'] = start
-                        trip_df.at[index, 'trip_dropoff_time'] = end
-
-                    # AB Merge Assumption
-                    if "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
-                        if id[-1] == 'B':
-                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A', 'trip_dropoff_time'].values[0])) + assumptions["MERGE_ADDRESS_WINDOW"]
-                        elif id[-1] == 'C':
-                            start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B', 'trip_dropoff_time'].values[0])) + assumptions["MERGE_ADDRESS_WINDOW"]
-                        else:
-                            print("Error processing merge Trip", id)
-                            print(o, d, id, start, end)
-                            exit(1)
-                        typ = TripType.MERGE
-                        trip_df.at[index, 'trip_pickup_time'] = start
-                        trip_df.at[index, 'trip_dropoff_time'] = end
+        ignore_ids = set()
+        names = {}
+        for index, row in trip_df.iterrows():
+            if not row['trip_status'] == "CANCELED":
+                o = row['trip_pickup_address'].replace('No Gc', '').replace('*','').replace('Apt .','').replace('//','').replace('Bldg .','') + "P" + str(hash(row['trip_id']))[1:4]
+                d = row['trip_dropoff_address'].replace('No Gc', '').replace('*','').replace('Apt .','').replace('//','').replace('Bldg .','')  + "D" + str(hash(row['trip_id']))[1:4]
+                temp_start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
+                temp_end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
+                los = row['trip_los']
+                cap = 1 if los == 'A' else 1.5
+                id = row['trip_id']
+                start = min(temp_start, temp_end)
+                end = max(temp_start, temp_end)
+                # Uknown Time Assumption
+                if start == 0.0 or end == 0.0 or start > 1 - (1/24):
+                    if id[-1] == 'B':
+                        start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A','trip_dropoff_time'].values[0])) + buffer
+                    elif id[-1] == 'C':
+                        start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B','trip_dropoff_time'].values[0])) + buffer
                     else:
-                        typ = None
+                        print('A Trip with Unknown Time', id)
+                        exit(1)
+                    end = min(1 - (1/24), start + end_buffer)
+                    trip_df.at[index, 'trip_pickup_time'] = start
+                    trip_df.at[index, 'trip_dropoff_time'] = end
 
-                    if start == end:
-                        end = start + end_buffer
-                    # Revenue Calculation
-                    rev = TripPreprocess.calc_revenue(revenue_table, int(row['trip_miles']), los)
+                # AB Merge Assumption
+                if "MERGE_ADDRESSES" in assumptions and (id[-1] == 'B' or id[-1] == 'C') and any(ad in row['trip_pickup_address'] for ad in assumptions['MERGE_ADDRESSES']):
+                    if id[-1] == 'B':
+                        start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'A', 'trip_dropoff_time'].values[0])) + assumptions["MERGE_ADDRESS_WINDOW"]
+                    elif id[-1] == 'C':
+                        start = TripPreprocess.convert_time(str(trip_df.loc[trip_df['trip_id'] == id[:-1]+'B', 'trip_dropoff_time'].values[0])) + assumptions["MERGE_ADDRESS_WINDOW"]
+                    else:
+                        print("Error processing merge Trip", id)
+                        print(o, d, id, start, end)
+                        exit(1)
+                    typ = TripType.MERGE
+                    trip_df.at[index, 'trip_pickup_time'] = start
+                    trip_df.at[index, 'trip_dropoff_time'] = end
+                else:
+                    typ = None
 
+                if start == end:
+                    end = start + end_buffer
+                # Revenue Calculation
+                rev = TripPreprocess.calc_revenue(revenue_table, int(row['trip_miles']), los)
+                try:
                     t = Trip(o, d, cap, id, typ, start, end, rev, preset_miles=row['trip_miles'],prefix=False, suffix=True)
                     trips.append(t)
-                    ct.write(",".join([t.id, '"' +  " ".join(row["customer_name"].split(",")) + '"', str(start),
-                                       '"' + row['trip_pickup_address'] + '"',str(end) ,'"' + row['trip_dropoff_address'] + '"',
-                                       los,str(row['trip_miles']), str(t.lp.miles), str(rev),str(t.lp.c1[0]), str(t.lp.c1[1]),
-                                       str(t.lp.c2[0]), str(t.lp.c2[1]), str(t.lp.time)]) + "\n")
+                    names[t] = row["customer_name"]
+                except InvalidTripException as e:
+                    print(e)
+                    ignore_ids.add(id[:-1] + 'A')
+                    ignore_ids.add(id[:-1] + 'B')
+                    ignore_ids.add(id[:-1] + 'C')
+        trips = list(filter(lambda t: t.id not in ignore_ids, trips))
+        with open(processed_file_name, "w") as ct:
+            for t in trips:
+                ct.write("trip_id,customer_name,trip_pickup_time,trip_pickup_address,trip_dropoff_time,trip_dropoff_address,trip_los,"
+                         "scheduled_miles, trip_miles,trip_rev,orig_lat,orig_long,dest_lat,dest_long,duration\n")
+                ct.write(",".join([t.id, '"' +  " ".join(names[t].split(",")) + '"', str(t.start),
+                                           '"' + t.lp.o[:-4] + '"',str(t.end) ,'"' + t.lp.d[:-4] + '"',
+                                           t.los,str(t.preset_m), str(t.lp.miles), str(t.rev),str(t.lp.c1[0]), str(t.lp.c1[1]),
+                                           str(t.lp.c2[0]), str(t.lp.c2[1]), str(t.lp.time)]) + "\n")
         return trips
 
     @staticmethod
