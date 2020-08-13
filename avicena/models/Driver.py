@@ -26,7 +26,7 @@ class Driver(Base):
         self.suffix_len = suffix_len
 
     def get_clean_address(self):
-        return self.address[:-self.suffix_len]
+        return self.address[:-self.suffix_len] if self.suffix_len else self.address
 
     def save_to_db(self, session):
         session.add(self)
@@ -34,7 +34,7 @@ class Driver(Base):
         return self
 
     def __repr__(self):
-        return '<Driver %s:%r>'.format(self.name, str(self.id))
+        return f'<Driver {self.name}:{self.id}>'
 
 
 def load_drivers_from_db(session, driver_ids, date=None):

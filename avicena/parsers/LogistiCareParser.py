@@ -93,9 +93,9 @@ def _split_it(raw_data):
 
 
 def _clean_address(addr):
-    replacements = {'No Gc': '', '*': '', 'Apt. ': '', '//': '', 'Bldg .': '', 'Aust ': 'Austin, TX ', 'B': 'Blvd'}
+    replacements = {'No Gc': ' ', '*': ' ', '\s*Apt. ': ' ', '//': ' ', 'Bldg .': ' ', 'Aust ': 'Austin, TX ', ' B ': 'Blvd ', 'Doorcode :':' '}
     for to_replace, replace_with in replacements.items():
-        pattern = re.compile(r"\s+" + re.escape(to_replace) + r"\s+")
+        pattern = re.compile(r"\s*" + re.escape(to_replace) + r"\s*")
         addr = re.sub(pattern, replace_with, addr)
     return addr
 
@@ -151,6 +151,6 @@ def parse_trips_to_df(trips_file, merge_details, revenue_table, output_directory
     _parse_raw_data(df, tokens)
     _store_raw_data(df, output_directory, name, trip_count)
     standardize_trip_df(df, merge_details, revenue_table)
-    final_df = df.drop(['raw_data', 'trip_notes', 'trip_reg', 'trip_county', 'customer_name', 'customer_age', 'trip_pickup_name', 'trip_pickup_phone', 'trip_dropoff_name', 'trip_dropoff_phone', 'trip_daysofweek', 'trip_cpay', 'trip_pca', 'trip_aesc', 'trip_cesc', 'trip_seats', 'trip_notes'], axis='columns')
-    return final_df
+    df.drop(['raw_data', 'trip_notes', 'trip_reg', 'trip_county', 'customer_name', 'customer_age', 'trip_pickup_name', 'trip_pickup_phone', 'trip_dropoff_name', 'trip_dropoff_phone', 'trip_daysofweek', 'trip_cpay', 'trip_pca', 'trip_aesc', 'trip_cesc', 'trip_seats', 'trip_notes'], axis='columns', inplace=True)
+    return df[df['trip_status'] != "CANCELED"]
 

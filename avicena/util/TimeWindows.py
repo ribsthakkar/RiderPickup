@@ -5,3 +5,6 @@ def get_time_window_by_hours_minutes(hours, minutes):
 
 def fifteen_minutes():
     return get_time_window_by_hours_minutes(0, 15)
+
+def timedelta_to_hhmmss(td):
+    return str(td).split('.')[0]

@@ -8,7 +8,7 @@ class Location:
         return self.addr + repr(self.coord)
 
     def get_clean_address(self):
-        return self.addr[:-self._suffix_len]
+        return self.addr[:-self._suffix_len] if self._suffix_len else self.addr
 
     def reversed_coord(self):
         return tuple(reversed(self.coord))

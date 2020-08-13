@@ -16,6 +16,8 @@ import yaml
 
 import argparse
 
+from avicena.util.Geolocator import locations
+
 parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
 optimizers = {'GeneralOptimizer': GeneralOptimizer, 'PDWTWOptimizer': None}
 
@@ -73,6 +75,7 @@ if __name__ == "__main__":
     trips = load_trips_from_df(trips_df, app_config['assumed_driving_speed'])
 
     optimizer = optimizer_type(trips, drivers, args.name, args.date, float(app_config['assumed_driving_speed']), optimizer_config)
-    optimizer.solve(app_config['output_dir'] + '/solution.csv')
-    generate_visualization_from_csv(app_config['output_directory'] + '/solution.csv', drivers, args.name, app_config['output_dir'] + '/visualization.html', False)
+    # print(locations)
+    optimizer.solve(app_config['output_directory'] + '/solution.csv')
+    generate_visualization_from_csv(app_config['output_directory'] + '/solution.csv', drivers, args.name, app_config['output_directory'] + '/visualization.html', False)
 

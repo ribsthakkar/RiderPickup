@@ -9,8 +9,9 @@ from sqlalchemy import Column, Integer, DateTime, String, Interval, Float
 from sqlalchemy.dialects.postgresql import ARRAY as Array
 from sqlalchemy.orm import relationship
 
-from avicena.models import DriverAssignment
+from avicena.models.DriverAssignment import DriverAssignment
 from avicena.util.Geolocator import find_coord_lon_lat
+from avicena.util.TimeWindows import timedelta_to_hhmmss
 from avicena.util.VisualizationUtil import generate_html_label_for_addr, generate_html_label_for_driver_addr
 from .Database import Base
 
@@ -91,10 +92,10 @@ class Assignment(Base):
             details = [driver_assignment.trip_ids,
                        driver_assignment.trip_pu,
                        driver_assignment.trip_do,
-                       driver_assignment.trip_est_pu,
-                       driver_assignment.shc_pu,
-                       driver_assignment.trip_est_do,
-                       driver_assignment.trip_sch_do,
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_est_pu)),
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_sch_pu)),
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_est_do)),
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_sch_do)),
                        driver_assignment.trip_miles,
                        driver_assignment.trip_los,
                        driver_assignment.trip_rev]
@@ -152,7 +153,8 @@ class Assignment(Base):
                     align="left"
                 ),
                 cells=dict(
-                    values=[self.drivers, self.trips, self.times, self.earliest_picks, self.latest_drops, self.miles, self.revenues],
+                    values=[self.drivers, self.trips, list(map(timedelta_to_hhmmss, self.times)), list(map(timedelta_to_hhmmss, self.earliest_picks)),
+                            list(map(timedelta_to_hhmmss, self.latest_drops)), self.miles, self.revenues],
                     align="left")
             ),
             row=2, col=1,
@@ -206,13 +208,13 @@ def _get_driver_trips_times_miles_rev_from_df(sol_df, id):
 
 
 def load_assignment_from_df(assignment_df, drivers, name):
-    assignment_date = datetime.datetime.strptime(assignment_df['trip_date'].iloc[0], '%m-%d-%y')
+    assignment_date = datetime.datetime.strptime(assignment_df['trip_date'].iloc[0], '%m-%d-%Y')
     assign = Assignment(assignment_date, name)
     locations = dict()
     addresses = dict()
     for i, d in enumerate(drivers):
         filtered_trips = assignment_df[assignment_df['driver_id'] == d.id]
-        points, trips = _get_coords_and_trip_data_from_df_filtered_by_driver(filtered_trips, d.id, d.get_address())
+        points, trips = _get_coords_and_trip_data_from_df_filtered_by_driver(filtered_trips, d.id, d.get_clean_address())
         x, y = zip(*points)
         da = DriverAssignment()
         da.date = assignment_date
@@ -259,8 +261,8 @@ def load_assignment_from_df(assignment_df, drivers, name):
     labels = [generate_html_label_for_addr(locations[k], addresses[k]) for k in locations.keys()]
 
     for d in drivers:
-        lon.append(find_coord_lon_lat(d.get_clean_address()).coord[0])
-        lat.append(find_coord_lon_lat(d.get_clean_address()).coord[1])
+        lon.append(find_coord_lon_lat(d.get_clean_address())[0])
+        lat.append(find_coord_lon_lat(d.get_clean_address())[1])
         labels.append(generate_html_label_for_driver_addr(d))
 
     assign.location_lats = lat

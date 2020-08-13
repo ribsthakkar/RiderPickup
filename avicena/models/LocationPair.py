@@ -12,6 +12,6 @@ class LocationPair:
         if self.time > 1:
             print("Time Longer than a Day")
             print(self.o, self.o.coord)
-            print(self.d, self.o.coord)
+            print(self.d, self.d.coord)
             print(self.miles, self.time, speed)
             exit(1)

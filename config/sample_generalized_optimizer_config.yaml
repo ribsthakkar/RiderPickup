@@ -17,8 +17,8 @@ wheelchair_penalty: 150 # Penalty for Wheelchair Trips Difference
 
 # Solver Parameters
 seed: 1
-stage1_time: 10 # Stage 1 Time in minutes
+stage1_time: 10 # Stage 1 Time in seconds
 stage1_gap: 0.05 # Stage 1 Target MIP Gap
-stage2_time: 10 # Stage 2 Time in minutes
+stage2_time: 10 # Stage 2 Time in seconds
 stage2_gap: 0.05 # Stage 2 Target MIP Gap
 max_retries: 3 # number of attempts to solve problem

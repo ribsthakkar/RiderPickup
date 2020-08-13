@@ -277,7 +277,7 @@ class GeneralOptimizer:
             self.mdl.add_constraint(ct=totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
         for d in self.drivers:
             for dS in self.driver_starts:
-                if dS != d.address:
+                if dS.get_clean_address() != d.get_clean_address():
                     continue
                 total = 0
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[dS]):
@@ -285,7 +285,7 @@ class GeneralOptimizer:
                 self.mdl.add_constraint(ct=total == -1, ctname='driverout' + '_' + str(d.id))
         for d in self.drivers:
             for dE in self.driver_ends:
-                if dE != d.address:
+                if dE.get_clean_address() != d.get_clean_address():
                     continue
                 total = 0
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[dE]):
@@ -428,13 +428,13 @@ class GeneralOptimizer:
             otime = 0
             itime = 0
             for dS in self.driver_starts:
-                if dS != d.address:
+                if dS.get_clean_address() != d.get_clean_address():
                     continue
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[dS]):
                     otime += self.time_vars[d][otrip]
                 break
             for dE in self.driver_ends:
-                if dE != d.address:
+                if dE.get_clean_address() != d.get_clean_address():
                     continue
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[dE]):
                     itime += self.time_vars[d][intrip]
@@ -609,7 +609,7 @@ class GeneralOptimizer:
                     print("Something wrong")
                 required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].scheduled_dropoff
                 ptrip = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]]
-                output.write(str(self.location_to_primary_trip_id_map[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + str(self.date) + ",\"" + str(
+                output.write(str(self.location_to_primary_trip_id_map[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + "," + str(self.date) + ",\"" + str(
                     t.lp.o.get_clean_address()) + "\"," + str(t.scheduled_pickup) + "," + str(self.time_vars[d][t].solution_value) + ",\"" +
                              str(rE.get_clean_address()) + "\"," + str(required_end) + "," + str(end_time) + "," +
                              str(t.required_level_of_service) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "," + str(

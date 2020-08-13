@@ -31,9 +31,9 @@ def load_trips_from_df(trip_df, speed):
     trips = []
     for _, row in trip_df.iterrows():
         pickup_coord = (row['trip_pickup_lat'], row['trip_pickup_lon'])
-        dropoff_coord = (row['trip_pickup_lat'], row['trip_pickup_lon'])
-        pickup = Location(row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[:3], pickup_coord)
-        dropoff = Location(row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[:3], dropoff_coord)
+        dropoff_coord = (row['trip_dropoff_lat'], row['trip_dropoff_lon'])
+        pickup = Location(row['trip_pickup_address'] + "P" + str(hash(row['trip_id']))[:3], pickup_coord, suffix_len=4)
+        dropoff = Location(row['trip_dropoff_address'] + "D" + str(hash(row['trip_id']))[:3], dropoff_coord, suffix_len=4)
         scheduled_pickup = convert_time(str(row['trip_pickup_time']))
         scheduled_dropoff = convert_time(str(row['trip_dropoff_time']))
         capacity_needed = 1 if row['trip_los'] == 'A' else 1.5
