@@ -16,7 +16,7 @@ calc_trips.csv
 input/
 output/
 config/app_config.yaml
-config/general_config.yaml
+config/optimizer_config.yaml
 *.pdf
 temp.key
 venv/

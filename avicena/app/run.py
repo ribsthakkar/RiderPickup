@@ -52,12 +52,6 @@ def _retrieve_file_based_inputs(app_config):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the Patient Dispatch Model')
 
-    parser.add_argument('-c', '--app-config', action='store', type=str, dest='app_config', default='config/app_config.yaml',
-                        help='Path to application config file')
-
-    parser.add_argument('-o', '--opt-config', action='store', type=str, dest='opt_config', default='config/general_optimizer_config.yaml',
-                        help='Path to optimizer specific config file')
-
     parser.add_argument('-n', '--name', action='store', type=str, dest='name', default='Patient Dispatch',
                         help='Name of Model')
 
@@ -74,11 +68,11 @@ if __name__ == "__main__":
                         help='List of driver IDs separated by spaces')
 
     args = parser.parse_args()
-    with open(args.app_config) as cfg_file:
+    with open('config/app_config.yaml') as cfg_file:
         app_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
     validate_app_config(app_config)
 
-    with open(args.opt_config) as cfg_file:
+    with open('config/optimizer_config') as cfg_file:
         optimizer_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
 
     os.environ['GEOCODER_KEY'] = app_config['geocoder_key']
