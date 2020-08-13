@@ -15,7 +15,8 @@ calc_trips.csv
 *.pyc
 input/
 output/
-avicena/config/app_config.yaml
-avicena/config/general_config.yaml
+config/app_config.yaml
+config/general_config.yaml
 *.pdf
 temp.key
+venv/

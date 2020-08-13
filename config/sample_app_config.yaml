@@ -1,14 +1,13 @@
 database:
   enabled: False
-  url: postgres://localhost:5432/rides
+  url: postgres://localhost:5432/rides_test
   username: rides
   password: password
 geocoder_key: 78bdef6c2b254abaa78c55640925d3db
 trips_parser: LogistiCare
 optimizer: GeneralOptimizer
-assumed_driving_speed: 50
 seed: 10
 merge_address_table_path: input/merge_address.csv
-revenue_table_path: input/rev_table.csv
+revenue_table_path: input/updated_rev_table.csv
 driver_table_path: input/in_drivers.csv
-output_dir: output/
+output_directory: output/

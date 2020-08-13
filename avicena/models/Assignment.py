@@ -21,7 +21,7 @@ class Assignment(Base):
     date = Column(DateTime)
     name = Column(String)
     driver_assignments = relationship('DriverAssignment', backref='assignment')
-    drivers = Column(Array(String))
+    driver_names = Column(Array(String))
     driver_ids = Column(Array(Integer))
     trips = Column(Array(String))
     times = Column(Array(Interval))
@@ -37,7 +37,7 @@ class Assignment(Base):
         self.date = date
         self.name = name
         self.driver_assignments = []
-        self.drivers = []
+        self.driver_names = []
         self.driver_ids = []
         self.trips = []
         self.times = []
@@ -62,15 +62,15 @@ class Assignment(Base):
         titles = [names(i) for i in self.driver_ids]
         titles.insert(0, "Map")
         titles.insert(1, "Driver Summary: " + self.name)
-        subplots = [[{"type": "table"}]] * (len(self.drivers) + 1)
+        subplots = [[{"type": "table"}]] * (len(self.driver_names) + 1)
         subplots.insert(0, [{"type": "scattermapbox"}])
-        map_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
-        summary_height = 600 / (600 + 2000 + 400 * (len(self.drivers)))
-        heights = [(1 - map_height - summary_height - 0.12) / ((len(self.drivers)))] * (len(self.drivers))
+        map_height = 600 / (600 + 2000 + 400 * (len(self.driver_names)))
+        summary_height = 600 / (600 + 2000 + 400 * (len(self.driver_names)))
+        heights = [(1 - map_height - summary_height - 0.12) / ((len(self.driver_names)))] * (len(self.driver_names))
         heights.insert(0, map_height)
         heights.insert(1, summary_height)
         fig = make_subplots(
-            rows=2 + len(self.drivers), cols=1,
+            rows=2 + len(self.driver_names), cols=1,
             vertical_spacing=0.015,
             subplot_titles=titles,
             specs=subplots,
@@ -80,7 +80,7 @@ class Assignment(Base):
         all_lat = []
 
         # Generate Driver Route Tables
-        for i, d in enumerate(self.drivers):
+        for i, name in enumerate(self.drivers_names):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
             driver_assignment = self.driver_assignments[i]
@@ -104,7 +104,7 @@ class Assignment(Base):
                     size=8,
                     color=col,
                 ),
-                name=names(self.driver_ids[i]),
+                name=name,
 
             ), row=1, col=1)
             fig.add_trace(
@@ -148,7 +148,7 @@ class Assignment(Base):
                     align="left"
                 ),
                 cells=dict(
-                    values=[self.drivers, self.trips, list(map(timedelta_to_hhmmss, self.times)), list(map(timedelta_to_hhmmss, self.earliest_picks)),
+                    values=[self.driver_names, self.trips, list(map(timedelta_to_hhmmss, self.times)), list(map(timedelta_to_hhmmss, self.earliest_picks)),
                             list(map(timedelta_to_hhmmss, self.latest_drops)), self.miles, self.revenues],
                     align="left")
             ),
@@ -165,7 +165,7 @@ class Assignment(Base):
         fig.update_layout(
             title_text=self.name,
             showlegend=True,
-            height=(600 + 400 * (len(self.drivers) + 1))
+            height=(600 + 400 * (len(self.driver_names) + 1))
         )
 
         # Save to File
@@ -233,7 +233,7 @@ def load_assignment_from_df(assignment_df, drivers, name):
         da.lons = list(x)
         assign.driver_assignments.append(da)
         names, ids, time, ep, ld, miles, rev = _get_driver_trips_times_miles_rev_from_df(assignment_df, d.id)
-        assign.drivers.append(names)
+        assign.driver_names.append(names)
         assign.driver_ids.append(d.id)
         assign.trips.append(ids)
         assign.times.append(datetime.timedelta(days=time))

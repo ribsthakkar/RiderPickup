@@ -3,8 +3,7 @@ from sqlalchemy import create_engine
 
 
 def create_db_session(db_config):
-    url = db_config['url'].replace('//', f"//{db_config['username']}@{db_config['password']}")
-    engine = create_engine(url)
+    engine = create_engine(db_config['url'])
     session = Session(engine)
     return session
 

@@ -11,3 +11,6 @@ class RevenueCalculationException(Exception):
 
 class SolutionNotFoundException(Exception):
     pass
+
+class UknownDriverException(Exception):
+    pass

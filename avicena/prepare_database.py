@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     with open(args.app_config) as cfg_file:
-        app_config = yaml.load(cfg_file)
+        app_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
     if 'database' not in app_config:
         raise InvalidConfigException("Missing database input config yaml")
     _validate_db_details(app_config['database'])
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     drivers = load_drivers_from_csv(args.driver_details_file)
     for driver in drivers:
-        save_to_db_session(db_session, drivers)
+        save_to_db_session(db_session, driver)
 
     commit_db_session(db_session)
     close_db_session(db_session)

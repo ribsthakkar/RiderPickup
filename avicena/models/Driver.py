@@ -4,6 +4,7 @@ import pandas as pd
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from sqlalchemy.orm import relationship
 
+from avicena.util.Exceptions import UknownDriverException
 from avicena.util.TimeWindows import date_to_day_of_week
 from . import Base
 
@@ -55,11 +56,15 @@ def load_drivers_from_csv(drivers_file):
 
 
 def prepare_drivers_for_optimizer(all_drivers, driver_ids, date=None):
+    all_ids = set(map(lambda x: x.id, all_drivers))
+    for id in driver_ids:
+        if id not in all_ids:
+            raise UknownDriverException(f"ID({id}) not found in drivers table")
     output_drivers = []
     for index, d in enumerate(all_drivers):
         if d.id not in driver_ids: continue
         cap = 1 if d.level_of_service == 'A' else 1.5
-        add = d.get_clean_address() + "DR" + str(hash(d.id))[1:3]
+        add = d.address + "DR" + str(hash(d.id))[1:3]
         day_of_week = date_to_day_of_week(date)
         output_drivers.append(Driver(d.id, d.name, add, cap, d.level_of_service, d.alternate_early_day, suffix_len=4))
         output_drivers[-1].set_early_day_flag(day_of_week % 2 != d.alternate_early_day)

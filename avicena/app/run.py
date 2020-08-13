@@ -21,40 +21,32 @@ parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
 optimizers = {'GeneralOptimizer': GeneralOptimizer, 'PDWTWOptimizer': None}
 
 
-def _run_parser_and_optimizer(app_config, drivers, merge_details, optimizer_config, optimizer_type, revenue_table,
-                              trip_parser):
-    trips_df = trip_parser.parse_trips_to_df(args.trips_file, merge_details, revenue_table,
-                                             app_config['output_directory'])
-    trips = load_trips_from_df(trips_df, app_config['assumed_driving_speed'])
-    optimizer = optimizer_type(trips, drivers, args.name, args.date, float(app_config['assumed_driving_speed']),
-                               optimizer_config)
-    solution = optimizer.solve(app_config['output_directory'] + '/solution.csv')
+def _run_parser(trip_parser, trips_file, revenue_table, merge_details, assumed_speed, output_directory):
+    trips_df = trip_parser.parse_trips_to_df(trips_file, merge_details, revenue_table, output_directory)
+    trips = load_trips_from_df(trips_df, assumed_speed)
+    return trips
 
+
+def _run_optimizer(trip_optimizer, trips, drivers, name, date, assumed_speed, optimizer_config, output_directory):
+    optimizer = trip_optimizer(trips, drivers, name, date, assumed_speed, optimizer_config)
+    solution = optimizer.solve(output_directory + '/solution.csv')
     return solution
 
 
-def _database_integrated_run(db_session, app_config, optimizer_config, trip_parser, optimizer_type):
+def _retrieve_database_inputs(db_session):
     revenue_table = load_revenue_table_from_db(db_session)
     merge_details = load_merge_details_from_db(db_session)
     drivers_table = load_drivers_from_db(db_session)
-    drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ds, args.date)
 
-    solution = _run_parser_and_optimizer(app_config, drivers, merge_details, optimizer_config, optimizer_type,
-                                         revenue_table, trip_parser)
-    save_and_commit_to_db(db_session, load_assignment_from_df(solution, drivers, args.name))
-
-    generate_visualization_from_df(solution, drivers, args.name, app_config['output_directory'] + '/visualization.html', False)
+    return revenue_table, merge_details, drivers_table
 
 
-def _file_based_run(app_config, optimizer_config, trip_parser, optimizer_type):
+def _retrieve_file_based_inputs(app_config):
     revenue_table = load_revenue_table_from_csv(app_config['revenue_table_path'])
     merge_details = load_merge_details_from_csv(app_config['merge_address_table_path'])
     drivers_table = load_drivers_from_csv(app_config['driver_table_path'])
-    drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
 
-    solution = _run_parser_and_optimizer(app_config, drivers, merge_details, optimizer_config, optimizer_type, revenue_table, trip_parser)
-
-    generate_visualization_from_df(solution, drivers, args.name, app_config['output_directory'] + '/visualization.html', False)
+    return revenue_table, merge_details, drivers_table
 
 
 if __name__ == "__main__":
@@ -69,6 +61,9 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--name', action='store', type=str, dest='name', default='Patient Dispatch',
                         help='Name of Model')
 
+    parser.add_argument('-s', '--speed', action='store', type=int, dest='speed', default=50,
+                        help='Assumed Traveling Speed in MPH')
+
     parser.add_argument('-d', '--date', action='store', type=str, dest='date', default=datetime.now().strftime('%m-%d-%Y'),
                         help='Date in MM-DD-YYYY format')
 
@@ -80,11 +75,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     with open(args.app_config) as cfg_file:
-        app_config = yaml.load(cfg_file)
+        app_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
     validate_app_config(app_config)
 
     with open(args.opt_config) as cfg_file:
-        optimizer_config = yaml.load(cfg_file)
+        optimizer_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
 
     os.environ['GEOCODER_KEY'] = app_config['geocoder_key']
     random.seed(app_config['seed'])
@@ -95,7 +90,7 @@ if __name__ == "__main__":
         raise InvalidConfigException(f"Invalid client parser {app_config['client_parser']}")
 
     if app_config['optimizer'] in optimizers:
-        optimizer_type = optimizers[app_config['optimizer']]
+        trip_optimizer = optimizers[app_config['optimizer']]
     else:
         raise InvalidConfigException(f"Invalid optimizer {app_config['optimizer']}")
 
@@ -103,7 +98,18 @@ if __name__ == "__main__":
     if database_enabled:
         db_session = create_db_session(app_config['database'])
         app_config['database']['db_session'] = db_session
-        _database_integrated_run(db_session, app_config, optimizer_config, trip_parser, optimizer_type)
+        revenue_table, merge_details, drivers_table = _retrieve_database_inputs(db_session)
+        trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, app_config['output_directory'])
+        drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
+        solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config, app_config['output_directory'])
+        save_and_commit_to_db(db_session, load_assignment_from_df(solution, drivers, args.name))
+        generate_visualization_from_df(solution, drivers, args.name,
+                                       app_config['output_directory'] + '/visualization.html', False)
         close_db_session(db_session)
     else:
-        _file_based_run(app_config, optimizer_config, trip_parser, optimizer_type)
+        revenue_table, merge_details, drivers_table = _retrieve_file_based_inputs(app_config)
+        trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, app_config['output_directory'])
+        drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
+        solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config, app_config['output_directory'])
+        generate_visualization_from_df(solution, drivers, args.name,
+                                       app_config['output_directory'] + '/visualization.html', False)
