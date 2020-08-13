@@ -23,10 +23,10 @@ class Driver(Base):
         self.capacity = capacity
         self.level_of_service = level_of_service
         self.early_day_flag = early_day_flag
-        self._suffix_len = suffix_len
+        self.suffix_len = suffix_len
 
     def get_clean_address(self):
-        return self.address[:-self._suffix_len]
+        return self.address[:-self.suffix_len]
 
     def save_to_db(self, session):
         session.add(self)
@@ -35,6 +35,7 @@ class Driver(Base):
 
     def __repr__(self):
         return '<Driver %s:%r>'.format(self.name, str(self.id))
+
 
 def load_drivers_from_db(session, driver_ids, date=None):
     db_drivers = list(map(session.query(Driver).get, driver_ids))
@@ -57,11 +58,12 @@ def load_drivers_from_db(session, driver_ids, date=None):
     return drivers
 
 
-def load_drivers_from_csv(drivers_file, date=None):
+
+def load_drivers_from_csv(drivers_file, driver_ids, date=None):
     driver_df = pd.read_csv(drivers_file)
     drivers = []
     for index, row in driver_df.iterrows():
-        if row['Available?'] != 1:
+        if int(row['ID']) not in driver_ids:
             continue
         cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
         add = row['Address'] + "DR" + str(hash(row['ID']))[1:3]

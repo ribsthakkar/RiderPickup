@@ -1,4 +1,5 @@
 database:
+  enabled: false
   url: postgres://localhost:5432/rides
   username: rides
   password: password
@@ -8,4 +9,5 @@ optimizer: GeneralOptimizer
 assumed_driving_speed: 50
 merge_address_table_path: input/merge_address.csv
 revenue_table_path: input/rev_table.csv
+driver_table_path: input/in_drivers.csv
 output_dir: output/

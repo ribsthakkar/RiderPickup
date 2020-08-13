@@ -5,7 +5,8 @@ import pandas as pd
 import re
 import os
 
-from avicena.util.ParserUtil import standardize_df
+from avicena.util.Geolocator import locations
+from avicena.util.ParserUtil import standardize_trip_df
 
 
 def _load_pdf_content(pdf):
@@ -132,15 +133,14 @@ def _parse_raw_data(df, tokens):
     df['trip_date'] = filedate
 
 
-def _store_raw_data(df, config, name, trip_count):
-    filedate = df['date'].iloc[0].replace('-', '_')
-    output_dir = config['output_dir']
+def _store_raw_data(df, output_directory, name, trip_count):
+    filedate = df['trip_date'].iloc[0].replace('-', '_')
     print(str(len(df)) + "/" + str(trip_count) + " trips parsed.")
-    df.to_csv(output_dir + name + filedate + '.csv', encoding='utf-8', index=False)
-    print('PDF file converted to ' + output_dir + name + filedate + '.csv')
+    df.to_csv(output_directory + name + filedate + '.csv', encoding='utf-8', index=False)
+    print('PDF file converted to ' + output_directory + name + filedate + '.csv')
 
 
-def parse_trips_to_df(trips_file, config):
+def parse_trips_to_df(trips_file, merge_details, revenue_table, output_directory):
     z = trips_file.find(".pdf")
     name = trips_file[trips_file.rfind('/') + 1:z]
     pdfFileObj = open(trips_file, 'rb')
@@ -149,8 +149,8 @@ def parse_trips_to_df(trips_file, config):
     tokens, trip_count = _tokenize_text(text)
     df = _initialize_df(tokens)
     _parse_raw_data(df, tokens)
-    _store_raw_data(df, config, name, trip_count)
-    standardize_df(df, config)
-    df.drop(['raw_data', 'trip_notes'], axis='columns')
-    return df
+    _store_raw_data(df, output_directory, name, trip_count)
+    standardize_trip_df(df, merge_details, revenue_table)
+    final_df = df.drop(['raw_data', 'trip_notes', 'trip_reg', 'trip_county', 'customer_name', 'customer_age', 'trip_pickup_name', 'trip_pickup_phone', 'trip_dropoff_name', 'trip_dropoff_phone', 'trip_daysofweek', 'trip_cpay', 'trip_pca', 'trip_aesc', 'trip_cesc', 'trip_seats', 'trip_notes'], axis='columns')
+    return final_df
 

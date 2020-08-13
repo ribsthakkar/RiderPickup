@@ -8,6 +8,9 @@ from docplex.mp.utils import DOcplexException
 from avicena.models import Trip, Location
 from avicena.optimizers.solver_util.cplex.Listeners import GapListener, TimeListener
 from avicena.util.Exceptions import InvalidTripException
+from avicena.util.Geolocator import find_coord_lat_lon
+from avicena.util.ParserUtil import convert_time
+from avicena.util.TimeWindows import get_time_window_by_hours_minutes
 
 
 class GeneralOptimizer:
@@ -16,7 +19,7 @@ class GeneralOptimizer:
         self.trips_inp = trips
         self.date = date
         self.mdl = Model(name=name)
-
+        self.mdl.parameters.randomseed = config['seed']
         self.drivers = list()  # List of all Drivers
         self.primary_trips = dict() # Map Primary trip pair to trip object
         self.all_trips = dict()  # Maps Trip-ID to Trip Object
@@ -49,24 +52,25 @@ class GeneralOptimizer:
 
         # Constants
         self.SPEED = speed
-        self.TRIPS_TO_DO = config["TRIPS_TO_DO"]
-        self.NUM_DRIVERS = config["NUM_DRIVERS"]
-        self.EARLY_PICK_WINDOW = config["EARLY_PICKUP_WINDOW"]
-        self.EARLY_DROP_WINDOW = config["EARLY_DROP_WINDOW"]
-        self.LATE_PICK_WINDOW = config["LATE_PICKUP_WINDOW"]
-        self.LATE_DROP_WINDOW = config["LATE_DROP_WINDOW"]
-        self.CAP = config["DRIVER_CAP"]
-        self.ROUTE_LIMIT = config["ROUTE_LIMIT"]
-        self.ROUTE_LIMIT_PEN = config["ROUTE_LIMIT_PENALTY"]
-        self.EARLY_DAY_TIME = config["EARLY_DAY_TIME"]
-        self.MERGE_PEN = config["MERGE_PENALTY"]
-        self.REVENUE_PEN = config["REVENUE_PENALTY"]
-        self.W_PEN = config["WHEELCHAIR_PENALTY"]
+        self.TRIPS_TO_DO = config["trips_to_do"]
+        self.NUM_DRIVERS = config["num_drivers"]
+        self.EARLY_PICK_WINDOW = get_time_window_by_hours_minutes(0, config["early_pickup_window"])
+        self.EARLY_DROP_WINDOW = get_time_window_by_hours_minutes(0, config["late_pickup_window"])
+        self.LATE_PICK_WINDOW = get_time_window_by_hours_minutes(0, config["early_drop_window"])
+        self.LATE_DROP_WINDOW = get_time_window_by_hours_minutes(0, config["late_drop_window"])
+        self.CAP = config["driver_capacity"]
+        self.ROUTE_LIMIT = config["route_limit"]
+        self.ROUTE_LIMIT_PEN = config["route_limit_penalty"]
+        self.EARLY_DAY_TIME = convert_time(config["early_day_time"])
+        self.MERGE_PEN = config["merge_penalty"]
+        self.REVENUE_PEN = config["revenue_penalty"]
+        self.W_PEN = config["wheelchair_penalty"]
 
-        self.STAGE1_TIME = config["STAGE1_TIME"]
-        self.STAGE1_GAP = config["STAGE1_GAP"]
-        self.STAGE2_TIME = config["STAGE2_TIME"]
-        self.STAGE2_GAP = config["STAGE2_GAP"]
+        self.STAGE1_TIME = config["stage1_time"]
+        self.STAGE1_GAP = config["stage1_gap"]
+        self.STAGE2_TIME = config["stage2_time"]
+        self.STAGE2_GAP = config["stage2_gap"]
+        self.MAX_RETRIES = config["max_retries"]
 
         # Prepare Model
         self.obj = 0.0
@@ -81,7 +85,7 @@ class GeneralOptimizer:
     def filter_driver_feasible_trips(self, driver, iter):
         return filter(lambda t: not ((t.lp.o in self.driver_nodes and t.lp.o.get_clean_address() != driver.get_clean_address()) or (
                 t.lp.d in self.driver_nodes and t.lp.d.get_clean_address() != driver.get_clean_address()))
-                                and t.los in driver.los
+                                and t.required_level_of_service in driver.level_of_service
                                 and not (abs(self.node_capacities[t.lp.o] + self.node_capacities[t.lp.d]) > driver.capacity), iter)
 
     def __prepare_trip_parameters(self):
@@ -89,15 +93,15 @@ class GeneralOptimizer:
         for index, trip in enumerate(self.trips_inp):
             start = trip.lp.o
             end = trip.lp.d
-            pick = trip.start
-            drop = trip.end
+            pick_time = trip.scheduled_pickup
+            drop_time = trip.scheduled_dropoff
             cap = trip.space
             id = trip.id
             rev = trip.rev
             self.request_starts.add(start)
             self.request_ends.add(end)
             self.request_map[start] = end
-            if trip.los == 'W': self.wheelchair_locations.add(start)
+            if trip.required_level_of_service == 'W': self.wheelchair_locations.add(start)
             a = len(self.request_nodes)
             self.request_nodes.add(start)
             if a == len(self.request_nodes):
@@ -110,10 +114,10 @@ class GeneralOptimizer:
                 exit(1)
             self.node_capacities[start] = cap
             self.node_capacities[end] = -cap
-            self.node_window_close[start] = pick + self.LATE_PICK_WINDOW
-            self.node_window_open[start] = pick - self.EARLY_PICK_WINDOW
-            self.node_window_close[end] = drop + self.LATE_DROP_WINDOW
-            self.node_window_open[end] = pick - self.EARLY_PICK_WINDOW + trip.lp.time
+            self.node_window_close[start] = pick_time + self.LATE_PICK_WINDOW
+            self.node_window_open[start] = pick_time - self.EARLY_PICK_WINDOW
+            self.node_window_close[end] = drop_time + self.LATE_DROP_WINDOW
+            self.node_window_open[end] = pick_time - self.EARLY_PICK_WINDOW + trip.lp.time
             self.all_trips[id] = trip
             self.primary_trips[(start, end)] = trip
             self.location_to_primary_trip_id_map[start] = trip.id
@@ -128,7 +132,7 @@ class GeneralOptimizer:
             else:
                 self.intrips[end].add(trip)
             count += 1
-            if trip.merge_flag:
+            if trip.is_merge:
                 if 'B' in trip.id:
                     self.merges[trip] = self.all_trips[trip.id[:-1] + 'A']
                 elif 'C' in trip.id:
@@ -146,8 +150,8 @@ class GeneralOptimizer:
             d = copy(driver)
             self.drivers.append(d)
             d.capacity = self.CAP
-            start = d.address
-            end = d.address
+            start = Location(d.address, find_coord_lat_lon(d.get_clean_address()), d.suffix_len)
+            end = Location(d.address, find_coord_lat_lon(d.get_clean_address()), d.suffix_len)
             self.driver_nodes.add(start)
             self.driver_nodes.add(end)
             self.driver_starts.add(start)
@@ -241,8 +245,8 @@ class GeneralOptimizer:
             t.write("Start,End,Time")
             c.write("Start,End,Cost")
             for pair, trp in self.primary_trips.items():
-                t.write(pair[0] + "," + pair[1] + "," + str(trp.lp.time) + "\n")
-                c.write(pair[0] + "," + pair[1] + "," + str(trp.lp.miles) + "\n")
+                t.write(pair[0].get_clean_address() + "," + pair[1].get_clean_address() + "," + str(trp.lp.time) + "\n")
+                c.write(pair[0].get_clean_address() + "," + pair[1].get_clean_address() + "," + str(trp.lp.miles) + "\n")
 
     def __prepare_constraints(self):
         """
@@ -252,7 +256,7 @@ class GeneralOptimizer:
             if isinstance(trp, str):
                 total = 0
                 for d in self.drivers:
-                    if self.all_trips[trp].los in d.los:
+                    if self.all_trips[trp].required_level_of_service in d.level_of_service:
                         total += self.trip_vars[d][self.all_trips[trp]]
                 con = self.mdl.add_constraint(ct=total == 1)
                 self.constraintsToRem.add(con)
@@ -436,7 +440,7 @@ class GeneralOptimizer:
                     itime += self.time_vars[d][intrip]
                 break
             self.obj += self.ROUTE_LIMIT_PEN * (itime - otime)
-            if not d.ed:
+            if not d.early_day_flag:
                 try:
                     c = self.mdl.add_constraint(otime >= self.EARLY_DAY_TIME)
                     self.ed_constr.add(c)
@@ -472,9 +476,9 @@ class GeneralOptimizer:
         self.w_max = self.mdl.continuous_var(0)
         self.w_min = self.mdl.continuous_var(0)
         for d in self.drivers:
-            if 'W' not in d.los: continue
+            if 'W' not in d.level_of_service: continue
             self.wheelchair_vars[d] = self.mdl.continuous_var(lb=0, name="Wheelchairs" + str(d.id))
-            self.mdl.add_constraint(self.wheelchair_vars[d] == sum(self.trip_vars[d][t] for t in filter(lambda x: x.los == 'W', self.filter_driver_feasible_trips(d, self.all_trips.values()))))
+            self.mdl.add_constraint(self.wheelchair_vars[d] == sum(self.trip_vars[d][t] for t in filter(lambda x: x.required_level_of_service == 'W', self.filter_driver_feasible_trips(d, self.all_trips.values()))))
             self.mdl.add_constraint(self.w_max >= self.wheelchair_vars[d])
             self.mdl.add_constraint(self.w_min <= self.wheelchair_vars[d])
         self.obj += self.W_PEN * (self.w_max - self.w_min)
@@ -491,7 +495,7 @@ class GeneralOptimizer:
 
     def solve(self, solution_file):
         """TODO: Make this process of retrying solver better!!!"""
-        for i in range(3):
+        for i in range(self.MAX_RETRIES):
             removed_ed = False
             removed_sr = False
             try:
@@ -603,11 +607,11 @@ class GeneralOptimizer:
                         break
                 if end_time < 0:
                     print("Something wrong")
-                required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].end
+                required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].scheduled_dropoff
                 ptrip = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]]
                 output.write(str(self.location_to_primary_trip_id_map[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + str(self.date) + ",\"" + str(
-                    t.lp.o.get_clean_address()) + "\"," + str(t.start) + "," + str(self.time_vars[d][t].solution_value) + ",\"" +
+                    t.lp.o.get_clean_address()) + "\"," + str(t.scheduled_pickup) + "," + str(self.time_vars[d][t].solution_value) + ",\"" +
                              str(rE.get_clean_address()) + "\"," + str(required_end) + "," + str(end_time) + "," +
-                             str(t.los) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "," + str(
+                             str(t.required_level_of_service) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "," + str(
                     self.revenues[t.lp.o]) + "\n")
         return driverMiles

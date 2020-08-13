@@ -1,9 +1,9 @@
 import pandas as pd
 
-from avicena.util.ParserUtil import standardize_df
+from avicena.util.ParserUtil import standardize_trip_df
 
 
 def parse_trips_to_df(trips_file, config):
     df = pd.read_csv(trips_file)
-    standardize_df(df, config)
+    standardize_trip_df(df, config)
     return df

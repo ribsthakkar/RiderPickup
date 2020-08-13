@@ -12,7 +12,9 @@ def find_coord_lat_lon(addr, key=None):
     geolocator = OpenCageGeocode(key)
     l1loc = geolocator.geocode(addr)
     try:
-        return (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
+        coordinates = (l1loc[0]['geometry']['lat'], l1loc[0]['geometry']['lng'])
+        locations[addr] = coordinates
+        return coordinates
     except IndexError:
         print("Couldn't find coordinates for ", addr)
 
