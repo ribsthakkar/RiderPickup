@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, DateTime, String, Interval, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import ARRAY as Array
 
-from .Database import Base
+from . import Base
 
 class DriverAssignment(Base):
     __tablename__ = "driver_assignment"
@@ -21,8 +21,3 @@ class DriverAssignment(Base):
     trip_miles = Column(Array(Float))
     trip_los = Column(Array(String))
     trip_rev = Column(Array(Float))
-
-    def save_to_db(self, session):
-        session.add(self)
-        session.commit()
-        return self

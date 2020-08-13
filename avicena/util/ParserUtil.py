@@ -4,7 +4,7 @@ from avicena.models.MergeAddress import load_merge_details_from_db, load_merge_d
 from avicena.models.RevenueRate import load_revenue_table_from_db, load_revenue_table_from_csv
 from avicena.util.Exceptions import RevenueCalculationException
 from avicena.util.Geolocator import find_coord_lat_lon
-from avicena.util.TimeWindows import get_time_window_by_hours_minutes
+from avicena.util.TimeWindows import get_time_window_by_hours_minutes, timedelta_to_fraction_of_day
 
 INTER_LEG_BUFFER = get_time_window_by_hours_minutes(2, 30)
 TRIP_LENGTH_BUFFER = get_time_window_by_hours_minutes(2, 0)
@@ -19,8 +19,8 @@ def convert_time(time):
             segments.append(0)
             segments.append(0)
             segments.append(0)
-        x = datetime.timedelta(hours=segments[0], minutes=segments[1], seconds=segments[2])
-        return x.total_seconds() / (60 * 60 * 24)
+        td = datetime.timedelta(hours=segments[0], minutes=segments[1], seconds=segments[2])
+        return timedelta_to_fraction_of_day(td)
 
 
 def _adjust_pickup_dropoff_merge(pickup_time, id, pickup_address, dropoff_times, ids, merge_details):
@@ -29,7 +29,7 @@ def _adjust_pickup_dropoff_merge(pickup_time, id, pickup_address, dropoff_times,
     is_merge = False
     for merge_address in merge_details:
         if pickup_address in merge_address:
-            start_window = merge_details[merge_address]
+            start_window = timedelta_to_fraction_of_day(merge_details[merge_address].window)
             is_merge = True
             break
     if (pickup_time == 0.0 or pickup_time > 1 - (1 / 24) or is_merge) and (id.endswith('B') or id.endswith('C')):

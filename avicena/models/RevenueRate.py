@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import Column, Integer, String, Float
 
-from .Database import Base
+from . import Base
 
 class RevenueRate(Base):
     __tablename__ = "revenue_rate"
@@ -19,11 +19,6 @@ class RevenueRate(Base):
         self.level_of_service = level_of_service
         self.base_rate = base_rate
         self.revenue_per_mile = revenue_per_mile
-
-    def save_to_db(self, session):
-        session.add(self)
-        session.commit()
-        return self
 
 
 def load_revenue_table_from_db(session):

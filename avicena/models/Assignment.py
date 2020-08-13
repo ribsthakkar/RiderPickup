@@ -13,7 +13,7 @@ from avicena.models.DriverAssignment import DriverAssignment
 from avicena.util.Geolocator import find_coord_lon_lat
 from avicena.util.TimeWindows import timedelta_to_hhmmss
 from avicena.util.VisualizationUtil import generate_html_label_for_addr, generate_html_label_for_driver_addr
-from .Database import Base
+from . import Base
 
 class Assignment(Base):
     __tablename__ = "assignment"
@@ -53,11 +53,6 @@ class Assignment(Base):
         return {"id": self.id,
                 "date": self.date,
                 "name": self.name}
-
-    def save_to_db(self, session):
-        session.add(self)
-        session.commit()
-        return self
 
     def generate_visualization(self, visualization_file_name='visualized.html', open_in_browser=False):
         def names(id):
