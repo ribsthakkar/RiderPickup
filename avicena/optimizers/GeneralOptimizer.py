@@ -1,3 +1,5 @@
+import pandas as pd
+
 from copy import copy
 from docloud.status import JobSolveStatus
 from docplex.mp.conflict_refiner import ConflictRefiner, VarLbConstraintWrapper, VarUbConstraintWrapper
@@ -7,7 +9,7 @@ from docplex.mp.utils import DOcplexException
 
 from avicena.models import Trip, Location
 from avicena.optimizers.solver_util.cplex.Listeners import GapListener, TimeListener
-from avicena.util.Exceptions import InvalidTripException
+from avicena.util.Exceptions import InvalidTripException, SolutionNotFoundException
 from avicena.util.Geolocator import find_coord_lat_lon
 from avicena.util.ParserUtil import convert_time
 from avicena.util.TimeWindows import get_time_window_by_hours_minutes
@@ -74,6 +76,7 @@ class GeneralOptimizer:
 
         # Prepare Model
         self.obj = 0.0
+        self.solution_df = None
         self.constraintsToRem = set()
         self.ed_constr = set()
         self.__prepare_trip_parameters()
@@ -494,6 +497,7 @@ class GeneralOptimizer:
         self.mdl.minimize(self.obj)
 
     def solve(self, solution_file):
+        self.solution_df = None
         """TODO: Make this process of retrying solver better!!!"""
         for i in range(self.MAX_RETRIES):
             removed_ed = False
@@ -505,7 +509,7 @@ class GeneralOptimizer:
                 if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                     print("First solve status: " + str(self.mdl.get_solve_status()))
                     print("First solve obj value: " + str(self.mdl.objective_value))
-                    driverMiles = self.__write_sol(solution_file+'stage1')
+                    driverMiles = self.__save_solution(solution_file + 'stage1')
                     print("Total Number of trip miles by each driver after stage 1: ")
                     print(driverMiles)
                 else:
@@ -525,7 +529,7 @@ class GeneralOptimizer:
                             first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                         print("First solve status (No ED): " + str(self.mdl.get_solve_status()))
                         print("First solve obj value (No ED): " + str(self.mdl.objective_value))
-                        driverMiles = self.__write_sol(solution_file + 'stage1')
+                        driverMiles = self.__save_solution(solution_file + 'stage1')
                         print("Total Number of trip miles by each driver after stage 1: ")
                         print(driverMiles)
                     else:
@@ -556,12 +560,16 @@ class GeneralOptimizer:
                 print(str(i) + "th solution did not work...trying again")
                 continue
             finally:
-                driverMiles = self.__write_sol(solution_file)
+                driverMiles = self.__save_solution(solution_file)
                 print("Total Number of trip miles by each driver: ")
                 print(driverMiles)
                 break
+        if self.solution_df is None:
+            raise SolutionNotFoundException(f"General Optimizer failed to find solution for {self.mdl.name} after {self.MAX_RETRIES} tries")
 
-    def __write_sol(self, solution_file):
+        return self.solution_df
+
+    def __save_solution(self, solution_file):
         driverMiles = dict()
         for d, driver_trips in self.trip_vars.items():
             driverMiles[d] = 0
@@ -586,32 +594,29 @@ class GeneralOptimizer:
             for d, t in sorted(tripGen_debug(dr), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
                 print(d.name, t.lp.o, t.lp.d, self.time_vars[d][t].solution_value, t.lp.time)
 
-        with open(solution_file, 'w') as output:
-            output.write(
-                'trip_id,driver_id,driver_name,trip_date,trip_pickup_address,trip_pickup_time,est_pickup_time,trip_dropoff_address,trip_dropoff_time,est_dropoff_time,trip_los,est_miles,est_time,trip_rev\n')
-            count = 0
-            for d, t in sorted(tripGen(), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
-                count += 1
-                end_time = -1
-                rE = self.request_map[t.lp.o]
-                for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE]):
-                    if self.trip_vars[d][intrip].solution_value == 1:
-                        end_time = self.time_vars[d][intrip].solution_value + intrip.lp.time
-                        if end_time < self.time_vars[d][t].solution_value + t.lp.time:
-                            print('Something wrong')
-                            print(sum(self.trip_vars[d][intrip].solution_value for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE])))
-                            print(rE)
-                            print(t.lp.o, t.lp.d)
-                            print(intrip.lp.o, intrip.lp.d)
-                            print(t.id, self.time_vars[d][t].solution_value, self.time_vars[d][intrip].solution_value, intrip.lp.time)
-                        break
-                if end_time < 0:
-                    print("Something wrong")
-                required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].scheduled_dropoff
-                ptrip = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]]
-                output.write(str(self.location_to_primary_trip_id_map[t.lp.o]) + "," + str(d.id) + "," + str(d.name) + "," + str(self.date) + ",\"" + str(
-                    t.lp.o.get_clean_address()) + "\"," + str(t.scheduled_pickup) + "," + str(self.time_vars[d][t].solution_value) + ",\"" +
-                             str(rE.get_clean_address()) + "\"," + str(required_end) + "," + str(end_time) + "," +
-                             str(t.required_level_of_service) + "," + str(ptrip.lp.miles) + "," + str(ptrip.lp.time) + "," + str(
-                    self.revenues[t.lp.o]) + "\n")
+        columns = ['trip_id','driver_id','driver_name','trip_date','trip_pickup_address','trip_pickup_time','est_pickup_time','trip_dropoff_address','trip_dropoff_time','est_dropoff_time','trip_los','est_miles','est_time','trip_rev']
+        data = []
+        for d, t in sorted(tripGen(), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
+            end_time = -1
+            rE = self.request_map[t.lp.o]
+            for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE]):
+                if self.trip_vars[d][intrip].solution_value == 1:
+                    end_time = self.time_vars[d][intrip].solution_value + intrip.lp.time
+                    if end_time < self.time_vars[d][t].solution_value + t.lp.time:
+                        print('Something wrong')
+                        print(sum(self.trip_vars[d][intrip].solution_value for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE])))
+                        print(rE)
+                        print(t.lp.o, t.lp.d)
+                        print(intrip.lp.o, intrip.lp.d)
+                        print(t.id, self.time_vars[d][t].solution_value, self.time_vars[d][intrip].solution_value, intrip.lp.time)
+                    break
+            if end_time < 0:
+                print("Something wrong")
+            required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].scheduled_dropoff
+            ptrip = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]]
+            data.append([self.location_to_primary_trip_id_map[t.lp.o], d.id, d.name, self.date,t.lp.o.get_clean_address(),
+                         t.scheduled_pickup, self.time_vars[d][t].solution_value, rE.get_clean_address(), required_end, end_time,
+                         t.required_level_of_service, ptrip.lp.miles, ptrip.lp.time, self.revenues[t.lp.o]])
+        self.solution_df = pd.DataFrame(data, columns=columns)
+        self.solution_df.to_csv(solution_file)
         return driverMiles

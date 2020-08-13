@@ -271,15 +271,19 @@ def load_assignment_from_df(assignment_df, drivers, name):
     return assign
 
 
-def load_assignment_from_csv(assignment_csv, drivers, name):
+def load_assignment_from_csv(assignment_csv, drivers, mdl_name):
     sol_df = pd.read_csv(assignment_csv)
-    return load_assignment_from_df(sol_df, drivers, name)
-
-
-def generate_visualization_from_csv(assignment_csv, drivers, mdl_name, visualization_file_name='visualized.html', open_in_browser=False):
-    load_assignment_from_csv(assignment_csv, drivers, mdl_name).generate_visualization(visualization_file_name, open_in_browser)
+    return load_assignment_from_df(sol_df, drivers, mdl_name)
 
 
 def generate_visualization_from_db(assignment_id, session, visualization_file_name='visualized.html', open_in_browser=False):
     assignment = session.query(Assignment).get(assignment_id)
     assignment.generate_visualization(visualization_file_name, open_in_browser)
+
+
+def generate_visualization_from_df(sol_df, drivers, mdl_name, visualization_file_name='visualized.html', open_in_browser=False):
+    load_assignment_from_df(sol_df, drivers, mdl_name).generate_visualization(visualization_file_name, open_in_browser)
+
+
+def generate_visualization_from_csv(assignment_csv, drivers, mdl_name, visualization_file_name='visualized.html', open_in_browser=False):
+    load_assignment_from_csv(assignment_csv, drivers, mdl_name).generate_visualization(visualization_file_name, open_in_browser)

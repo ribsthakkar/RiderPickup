@@ -8,3 +8,6 @@ class InvalidConfigException(Exception):
 
 class RevenueCalculationException(Exception):
     pass
+
+class SolutionNotFoundException(Exception):
+    pass

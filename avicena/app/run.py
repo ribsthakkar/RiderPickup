@@ -1,10 +1,11 @@
 import os
 
-from avicena.models.Assignment import generate_visualization_from_csv
+from avicena.models.Assignment import generate_visualization_from_csv, generate_visualization_from_df, \
+    load_assignment_from_df, generate_visualization_from_db
 from avicena.models.Database import create_db_session
 from avicena.models.Driver import load_drivers_from_db, load_drivers_from_csv
-from avicena.models.MergeAddress import load_merge_details_from_csv
-from avicena.models.RevenueRate import load_revenue_table_from_csv
+from avicena.models.MergeAddress import load_merge_details_from_csv, load_merge_details_from_db
+from avicena.models.RevenueRate import load_revenue_table_from_csv, load_revenue_table_from_db
 from avicena.models.Trip import load_trips_from_df
 # from avicena.optimizers import PDWTWOptimizer
 from avicena.parsers import LogistiCareParser, CSVParser
@@ -49,8 +50,10 @@ if __name__ == "__main__":
         optimizer_config = yaml.load(cfg_file)
 
     os.environ['GEOCODER_KEY'] = app_config['geocoder_key']
-    db_session = create_db_session(app_config['database'])
-    app_config['database']['db_session'] = db_session
+    database_enabled = app_config['database']['enabled']
+    if database_enabled:
+        db_session = create_db_session(app_config['database'])
+        app_config['database']['db_session'] = db_session
 
     if app_config['trips_parser'] in parsers:
         trip_parser = parsers[app_config['trips_parser']]
@@ -62,20 +65,27 @@ if __name__ == "__main__":
     else:
         raise InvalidConfigException(f"Invalid optimizer {app_config['optimizer']}")
 
-    # revenue_table = load_revenue_table_from_db(db_session)
-    revenue_table = load_revenue_table_from_csv(app_config['revenue_table_path'])
+    if database_enabled:
+        revenue_table = load_revenue_table_from_db(db_session)
+    else:
+        revenue_table = load_revenue_table_from_csv(app_config['revenue_table_path'])
 
-    # merge_details = load_merge_details_from_db(db_session)
-    merge_details = load_merge_details_from_csv(app_config['merge_address_table_path'])
+    if database_enabled:
+        merge_details = load_merge_details_from_db(db_session)
+    else:
+        merge_details = load_merge_details_from_csv(app_config['merge_address_table_path'])
 
-    # drivers = load_drivers_from_db(args.driver_ids, db_session)
-    drivers = load_drivers_from_csv(app_config['driver_table_path'], args.driver_ids)
+    if database_enabled:
+        drivers = load_drivers_from_db(args.driver_ids, db_session)
+    else:
+        drivers = load_drivers_from_csv(app_config['driver_table_path'], args.driver_ids)
 
     trips_df = trip_parser.parse_trips_to_df(args.trips_file, merge_details, revenue_table, app_config['output_directory'])
     trips = load_trips_from_df(trips_df, app_config['assumed_driving_speed'])
-
     optimizer = optimizer_type(trips, drivers, args.name, args.date, float(app_config['assumed_driving_speed']), optimizer_config)
-    # print(locations)
-    optimizer.solve(app_config['output_directory'] + '/solution.csv')
-    generate_visualization_from_csv(app_config['output_directory'] + '/solution.csv', drivers, args.name, app_config['output_directory'] + '/visualization.html', False)
+    solution = optimizer.solve(app_config['output_directory'] + '/solution.csv')
+
+    if database_enabled:
+        assignment = load_assignment_from_df(solution, drivers, args.name).save_to_db(db_session)
+    generate_visualization_from_df(solution, drivers, args.name, app_config['output_directory'] + '/visualization.html', False)
 

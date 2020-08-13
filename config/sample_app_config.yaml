@@ -1,5 +1,5 @@
 database:
-  enabled: false
+  enabled: False
   url: postgres://localhost:5432/rides
   username: rides
   password: password
