@@ -59,7 +59,8 @@ export PYTHONPATH="$PYTHONPATH:<path_to_current_directory>"
 pip install -r requirements.txt
 ```
 
-### Application Configuration
+### Setup
+#### Application Configuration
 `config/sample_app_config.yaml` provides an example configuration YAML.
 A configuration file of this format must be placed at the path
 `config/app_config.yaml` to run the application. Below is a glossary of
@@ -70,5 +71,57 @@ In addition to the `app_config.yaml`, you will need to provide a
 configuration for optimizer model (specified in the `app_config.yaml`) 
 used to solve the problem. Below is a list of supported optimizers and
 their configuration definitions.
+
+#### Database Setup (optional)
+The command-line application supports interfacing with a PostgreSQL
+database. We assume you have a PostgreSQL server hosted somewhere with a
+configured username and login. If in the database section in your
+`config/app_config.yaml` the "enabled" flag is set to True, Avicena will
+poll inputs such as the merge address table, the revenue rates table,
+and the drivers table from the database. Therefore it is assumed that
+the data is already in your database. Follow the instructions below to
+setup the database
+
+The database is versioned by alembic. In order to generate the initial
+tables in your database, make a copy of `sample_alembic.ini` in the same
+directory and name it `alembic.ini`. Modify the line in the file
+starting with `sqlalchemy.url = <fake_url>` and replace `<fake_url>` the
+URL to connect to your database. Be sure that the URL of the database
+will be the same one used in the `app_config.yaml`.
+ 
+ Run the command: 
+ ```
+ alembic upgrade head
+ ```
+ After that, the database tables should be created.
+ 
+Once the tables are created, the *revenue_rate*, *merge_details*, and
+*driver* tables must be populated with data. In order to help populate
+your database with the required inputs, a script
+`avicena/prepare_database.py` is provided. It can be run as follows:
+```
+usage: prepare_database.py [-h] -r REVENUE_TABLE_FILE -m MERGE_DETAILS_FILE -d
+                           DRIVER_DETAILS_FILE
+
+Populate Database with Base Information needed including Revenue Table, Merge
+Address Details, and Driver Details.
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -r REVENUE_TABLE_FILE, --revenue-table-csv REVENUE_TABLE_FILE
+                        Path to revenue table CSV
+  -m MERGE_DETAILS_FILE, --merge-details-csv MERGE_DETAILS_FILE
+                        Path to merge details CSV
+  -d DRIVER_DETAILS_FILE, --driver-details-csv DRIVER_DETAILS_FILE
+                        Path to driver details CSV
+
+```
+The three input CSV files must follow the same format and header as
+shown by `sample_data/sample_rev_table.csv`,
+`sample_data/sample_merge_details.csv`, and
+`sample_data/sample_drivers.csv`. 
+ 
 
 ### How to Run

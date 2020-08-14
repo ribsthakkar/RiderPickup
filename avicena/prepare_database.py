@@ -11,27 +11,26 @@ from avicena.util.Exceptions import InvalidConfigException
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Populate Database with Base Information needed including Revenue Table, Merge Address Details, and Driver Details.')
+    required_named = parser.add_argument_group('required arguments')
 
-    parser.add_argument('-c', '--app-config', action='store', type=str, dest='app_config', default='config/app_config.yaml',
-                        help='Path to application config file')
+    required_named.add_argument('-r', '--revenue-table-csv', action='store', type=str, dest='revenue_table_file', required=True,
+                                help='Path to revenue table CSV')
 
-    parser.add_argument('-r', '--revenue-table-csv', action='store', type=str, dest='revenue_table_file',
-                        help='Path to revenue table CSV')
+    required_named.add_argument('-m', '--merge-details-csv', action='store', type=str, dest='merge_details_file', required=True,
+                                help='Path to merge details CSV')
 
-    parser.add_argument('-m', '--merge-details-csv', action='store', type=str, dest='merge_details_file',
-                        help='Path to merge details CSV')
-
-    parser.add_argument('-d', '--driver-details-csv', action='store', type=str, dest='driver_details_file',
-                        help='Path to driver details CSV')
+    required_named.add_argument('-d', '--driver-details-csv', action='store', type=str, dest='driver_details_file', required=True,
+                                help='Path to driver details CSV')
 
     args = parser.parse_args()
-    with open(args.app_config) as cfg_file:
+    with open('config/app_config.yaml') as cfg_file:
         app_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
     if 'database' not in app_config:
         raise InvalidConfigException("Missing database input config yaml")
     _validate_db_details(app_config['database'])
 
     db_session = create_db_session(app_config['database'])
+
     rev_table = load_revenue_table_from_csv(args.revenue_table_file)
     for level_of_service in rev_table:
         for rate in rev_table[level_of_service]:
