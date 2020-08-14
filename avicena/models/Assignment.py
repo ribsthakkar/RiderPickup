@@ -80,7 +80,7 @@ class Assignment(Base):
         all_lat = []
 
         # Generate Driver Route Tables
-        for i, name in enumerate(self.drivers_names):
+        for i, name in enumerate(self.driver_names):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
             driver_assignment = self.driver_assignments[i]

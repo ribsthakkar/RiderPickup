@@ -10,7 +10,7 @@ from avicena.models.Driver import load_drivers_from_db, \
     load_drivers_from_csv, prepare_drivers_for_optimizer
 from avicena.models.MergeAddress import load_merge_details_from_csv, load_merge_details_from_db
 from avicena.models.RevenueRate import load_revenue_table_from_csv, load_revenue_table_from_db
-from avicena.models.Trip import load_trips_from_df
+from avicena.models.Trip import load_and_filter_valid_trips_from_df
 from avicena.parsers import LogistiCareParser, CSVParser
 from avicena.util.ConfigValidation import validate_app_config
 from avicena.util.Exceptions import InvalidConfigException
@@ -25,7 +25,7 @@ optimizers = {'GeneralOptimizer': GeneralOptimizer, 'PDWTWOptimizer': None}
 
 def _run_parser(trip_parser, trips_file, revenue_table, merge_details, assumed_speed, output_directory):
     trips_df = trip_parser.parse_trips_to_df(trips_file, merge_details, revenue_table, output_directory)
-    trips = load_trips_from_df(trips_df, assumed_speed)
+    trips = load_and_filter_valid_trips_from_df(trips_df, assumed_speed)
     return trips
 
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         app_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
     validate_app_config(app_config)
 
-    with open('config/optimizer_config') as cfg_file:
+    with open('config/optimizer_config.yaml') as cfg_file:
         optimizer_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
 
     os.environ['GEOCODER_KEY'] = app_config['geocoder_key']
@@ -97,7 +97,6 @@ if __name__ == "__main__":
         app_config['database']['db_session'] = db_session
         revenue_table, merge_details, drivers_table = _retrieve_database_inputs(db_session)
         trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, app_config['output_directory'])
-        verify_and_save_parsed_trips_df(trips, app_config['output_directory'])
         drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
         solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config, app_config['output_directory'])
         save_and_commit_to_db(db_session, load_assignment_from_df(solution, drivers, args.name))
@@ -107,7 +106,6 @@ if __name__ == "__main__":
     else:
         revenue_table, merge_details, drivers_table = _retrieve_file_based_inputs(app_config)
         trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, app_config['output_directory'])
-        verify_and_save_parsed_trips_df(trips, app_config['output_directory'])
         drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
         solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config, app_config['output_directory'])
         generate_visualization_from_df(solution, drivers, args.name,

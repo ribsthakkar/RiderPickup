@@ -27,8 +27,9 @@ class Trip:
         return repr(self.lp.o) + "->" + repr(self.lp.d)
 
 
-def load_trips_from_df(trip_df, speed):
+def load_and_filter_valid_trips_from_df(trip_df, speed):
     trips = []
+    ignore_ids = set()
     for _, row in trip_df.iterrows():
         pickup_coord = (row['trip_pickup_lat'], row['trip_pickup_lon'])
         dropoff_coord = (row['trip_dropoff_lat'], row['trip_dropoff_lon'])
@@ -39,5 +40,10 @@ def load_trips_from_df(trip_df, speed):
         capacity_needed = 1 if row['trip_los'] == 'A' else 1.5
         id = row['trip_id']
         rev = float(row['trip_revenue'])
-        trips.append(Trip(pickup, dropoff, capacity_needed, id, scheduled_pickup, scheduled_dropoff, speed, row['merge_flag'], rev, preset_miles=int(row['trip_miles'])))
-    return trips
+        try:
+            trips.append(Trip(pickup, dropoff, capacity_needed, id, scheduled_pickup, scheduled_dropoff, speed, row['merge_flag'], rev, preset_miles=int(row['trip_miles'])))
+        except InvalidTripException:
+            ignore_ids.add(id[:-1] + 'A')
+            ignore_ids.add(id[:-1] + 'B')
+            ignore_ids.add(id[:-1] + 'C')
+    return list(filter(lambda t: t.id not in ignore_ids, trips))
