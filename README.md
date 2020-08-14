@@ -76,7 +76,7 @@ is a child parameter of the field before the "." See the
 | database.url               | String  | URL to PostgreSQL database. Ignored if database.enabled is False                                                                        |
 | geocoder_key               | String  | API Key for geocoding. Currently only support [OpenCage Geocoder](https://opencagedata.com/api)                                     |
 | trips_parser               | String  | Parser used to read the incoming trips file. See more [here](./avicena/parsers/README.md)                                                                                   |
-| optimizer                   | String  | Model used to calculate and assign trips                                                                                                  |
+| optimizer                   | String  | Model used to calculate and assign trips. See more details below.                                                                                                  |
 | seed                        | Integer | Sets the Python random seed.                                                                                                             |
 | merge_address_table_path | String  | Path to CSV representation of merge_address_table. Ignored if database.enabled is True.                                              |
 | revenue_table_path        | String  | Path to CSV representation of revenue rate. Ignored if database.enabled is True.                                                       |
@@ -92,8 +92,8 @@ their configuration definitions. Samples are also provided in the
 
 | Optimizer           	| Configuration Details          	| Comments                                                                                                                                                                                                                        	|
 |---------------------	|------------------------	|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| GeneralOptimizer         	| [Glossary](./avicena/optimizers/Config.md#GeneralOptimizer)                   	| Self Developed Formulation to Solve Problem 	|
-| PDWTWOptimizer         	|  [Glossary](./avicena/optimizers/Config.md#PDWTWOptimizer)                     	| Formulation from following paper with additional fairness constraints integrated [here]()  	|
+| GeneralOptimizer         	| [Glossary](./avicena/optimizers/README.md#GeneralOptimizer)                   	| Self Developed Formulation to Solve Problem 	|
+| PDWTWOptimizer         	|  [Glossary](./avicena/optimizers/README.md#PDWTWOptimizer)                     	| (Not working in non-experimental mode yet) Formulation from following paper with additional fairness constraints integrated [here]()  	|
 
 #### Database Setup (optional)
 The command-line application supports interfacing with a PostgreSQL

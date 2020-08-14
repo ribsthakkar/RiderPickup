@@ -8,6 +8,7 @@ from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
 
 from avicena.models import Trip, Location
+from avicena.optimizers.BaseOptimizer import BaseOptimizer
 from avicena.optimizers.solver_util.cplex.Listeners import GapListener, TimeListener
 from avicena.util.Exceptions import InvalidTripException, SolutionNotFoundException
 from avicena.util.Geolocator import find_coord_lat_lon
@@ -15,7 +16,7 @@ from avicena.util.ParserUtil import convert_time
 from avicena.util.TimeWindows import get_time_window_by_hours_minutes
 
 
-class GeneralOptimizer:
+class GeneralOptimizer(BaseOptimizer):
     def __init__(self, trips, drivers, name, date, speed, config):
         self.drivers_inp = drivers
         self.trips_inp = trips
