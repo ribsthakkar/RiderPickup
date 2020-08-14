@@ -9,8 +9,14 @@ class InvalidConfigException(Exception):
 class RevenueCalculationException(Exception):
     pass
 
+
 class SolutionNotFoundException(Exception):
     pass
 
-class UknownDriverException(Exception):
+
+class UnknownDriverException(Exception):
+    pass
+
+
+class MissingTripDetailsException(Exception):
     pass

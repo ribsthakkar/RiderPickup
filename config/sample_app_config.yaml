@@ -1,8 +1,6 @@
 database:
   enabled: False
-  url: postgres://localhost:5432/rides_test
-  username: rides
-  password: password
+  url: postgres://rides:password@localhost:5432/rides_test
 geocoder_key: 78bdef6c2b254abaa78c55640925d3db
 trips_parser: LogistiCare
 optimizer: GeneralOptimizer

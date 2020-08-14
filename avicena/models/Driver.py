@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from sqlalchemy.orm import relationship
 
-from avicena.util.Exceptions import UknownDriverException
+from avicena.util.Exceptions import UnknownDriverException
 from avicena.util.TimeWindows import date_to_day_of_week
 from . import Base
 
@@ -59,7 +59,7 @@ def prepare_drivers_for_optimizer(all_drivers, driver_ids, date=None):
     all_ids = set(map(lambda x: x.id, all_drivers))
     for id in driver_ids:
         if id not in all_ids:
-            raise UknownDriverException(f"ID({id}) not found in drivers table")
+            raise UnknownDriverException(f"ID({id}) not found in drivers table")
     output_drivers = []
     for index, d in enumerate(all_drivers):
         if d.id not in driver_ids: continue

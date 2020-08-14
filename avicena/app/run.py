@@ -17,6 +17,8 @@ from avicena.util.Exceptions import InvalidConfigException
 from avicena.optimizers import GeneralOptimizer
 from datetime import datetime
 
+from avicena.util.ParserUtil import verify_and_save_parsed_trips_df
+
 parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
 optimizers = {'GeneralOptimizer': GeneralOptimizer, 'PDWTWOptimizer': None}
 
@@ -51,20 +53,21 @@ def _retrieve_file_based_inputs(app_config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the Patient Dispatch Model')
+    required_named = parser.add_argument_group('required arguments')
 
-    parser.add_argument('-n', '--name', action='store', type=str, dest='name', default='Patient Dispatch',
+    required_named.add_argument('-n', '--name', action='store', type=str, dest='name', default='Patient Dispatch',
                         help='Name of Model')
 
-    parser.add_argument('-s', '--speed', action='store', type=int, dest='speed', default=50,
+    required_named.add_argument('-s', '--speed', action='store', type=int, dest='speed', default=50,
                         help='Assumed Traveling Speed in MPH')
 
-    parser.add_argument('-d', '--date', action='store', type=str, dest='date', default=datetime.now().strftime('%m-%d-%Y'),
+    required_named.add_argument('-d', '--date', action='store', type=str, dest='date', default=datetime.now().strftime('%m-%d-%Y'),
                         help='Date in MM-DD-YYYY format')
 
-    parser.add_argument('-t', '--trips-file', action='store', type=str, dest='trips_file',
+    required_named.add_argument('-t', '--trips-file', action='store', type=str, dest='trips_file',
                         help='Path to Trips File')
 
-    parser.add_argument('-i', '--driver-ids', nargs='+', type=int, dest='driver_ids',
+    required_named.add_argument('-i', '--driver-ids', nargs='+', type=int, dest='driver_ids',
                         help='List of driver IDs separated by spaces')
 
     args = parser.parse_args()
@@ -94,6 +97,7 @@ if __name__ == "__main__":
         app_config['database']['db_session'] = db_session
         revenue_table, merge_details, drivers_table = _retrieve_database_inputs(db_session)
         trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, app_config['output_directory'])
+        verify_and_save_parsed_trips_df(trips, app_config['output_directory'])
         drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
         solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config, app_config['output_directory'])
         save_and_commit_to_db(db_session, load_assignment_from_df(solution, drivers, args.name))
@@ -103,6 +107,7 @@ if __name__ == "__main__":
     else:
         revenue_table, merge_details, drivers_table = _retrieve_file_based_inputs(app_config)
         trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, app_config['output_directory'])
+        verify_and_save_parsed_trips_df(trips, app_config['output_directory'])
         drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
         solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config, app_config['output_directory'])
         generate_visualization_from_df(solution, drivers, args.name,

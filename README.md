@@ -66,11 +66,34 @@ A configuration file of this format must be placed at the path
 `config/app_config.yaml` to run the application. Below is a glossary of
 the application configuration parameters.
 
+*Note the "." syntax below just indicates that the field after the "."
+is a child parameter of the field before the "." See the
+`config/sample_app_config.yaml` for proper format.*
+
+|Parameter                             | Type    | Details                                                                                                                                   |
+|-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| database.enabled           | Boolean | True if input data such as revenue table, merge addresses, driver table will come from database. Otherwise it uses CSVs with paths below |
+| database.url               | String  | URL to PostgreSQL database. Ignored if database.enabled is False                                                                        |
+| geocoder_key               | String  | API Key for geocoding. Currently only support [OpenCage Geocoder](https://opencagedata.com/api)                                     |
+| trips_parser               | String  | Parser used to read the incoming trips file. See more [here](./avicena/parsers/README.md)                                                                                   |
+| optimizer                   | String  | Model used to calculate and assign trips                                                                                                  |
+| seed                        | Integer | Sets the Python random seed.                                                                                                             |
+| merge_address_table_path | String  | Path to CSV representation of merge_address_table. Ignored if database.enabled is True.                                              |
+| revenue_table_path        | String  | Path to CSV representation of revenue rate. Ignored if database.enabled is True.                                                       |
+| driver_table_path         | String  | Path to CSV representation of drivers table. Ignored if database.enabled is True.                                                      |
+| output_directory           | String  | Path to directory where the generated files are stored. These include the one or more parsed trips file (depending on parser), the resulting CSV with the solution, and an HTML page that provides a visualization of the solution.                                          |
+
 In addition to the `app_config.yaml`, you will need to provide a
 `config/optimizer_config.yaml`. This configuration file provides the
-configuration for optimizer model (specified in the `app_config.yaml`) 
+configuration for optimizer model (specified in the `app_config.yaml`)
 used to solve the problem. Below is a list of supported optimizers and
-their configuration definitions.
+their configuration definitions. Samples are also provided in the
+`config/` folder.
+
+| Optimizer           	| Configuration Details          	| Comments                                                                                                                                                                                                                        	|
+|---------------------	|------------------------	|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
+| GeneralOptimizer         	| [Glossary](./avicena/optimizers/Config.md#GeneralOptimizer)                   	| Self Developed Formulation to Solve Problem 	|
+| PDWTWOptimizer         	|  [Glossary](./avicena/optimizers/Config.md#PDWTWOptimizer)                     	| Formulation from following paper with additional fairness constraints integrated [here]()  	|
 
 #### Database Setup (optional)
 The command-line application supports interfacing with a PostgreSQL
@@ -99,6 +122,7 @@ Once the tables are created, the *revenue_rate*, *merge_details*, and
 *driver* tables must be populated with data. In order to help populate
 your database with the required inputs, a script
 `avicena/prepare_database.py` is provided. It can be run as follows:
+
 ```
 usage: prepare_database.py [-h] -r REVENUE_TABLE_FILE -m MERGE_DETAILS_FILE -d
                            DRIVER_DETAILS_FILE
@@ -118,6 +142,7 @@ required arguments:
                         Path to driver details CSV
 
 ```
+
 The three input CSV files must follow the same format and header as
 shown by `sample_data/sample_rev_table.csv`,
 `sample_data/sample_merge_details.csv`, and
@@ -125,3 +150,33 @@ shown by `sample_data/sample_rev_table.csv`,
  
 
 ### How to Run
+Avicena is run through the command line by simply following the format
+below. If the database is enabled in the application configuration, then
+the resulting dispatch "Assignment" and its driver specific solutions
+"DriverAssignment", will be stored in the database. In the output
+directory you will find any files generated during the model's running.
+At the least, they include `parsed_trips.csv` with the basic trip
+details standarized and parsed from the original trips file,
+`solution.csv` with the final dispatch assignments, `visualization.html`
+which provides a visual representation of the final solution. 
+
+```
+usage: run.py [-h] [-n NAME] [-s SPEED] [-d DATE] [-t TRIPS_FILE]
+              [-i DRIVER_IDS [DRIVER_IDS ...]]
+
+Run the Patient Dispatch Model
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -n NAME, --name NAME  Name of Model
+  -s SPEED, --speed SPEED
+                        Assumed Traveling Speed in MPH
+  -d DATE, --date DATE  Date in MM-DD-YYYY format
+  -t TRIPS_FILE, --trips-file TRIPS_FILE
+                        Path to Trips File
+  -i DRIVER_IDS [DRIVER_IDS ...], --driver-ids DRIVER_IDS [DRIVER_IDS ...]
+                        List of driver IDs separated by spaces
+
+```

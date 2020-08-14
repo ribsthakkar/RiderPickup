@@ -2,7 +2,7 @@ import datetime
 import pandas as pd
 from avicena.models.MergeAddress import load_merge_details_from_db, load_merge_details_from_csv
 from avicena.models.RevenueRate import load_revenue_table_from_db, load_revenue_table_from_csv
-from avicena.util.Exceptions import RevenueCalculationException
+from avicena.util.Exceptions import RevenueCalculationException, MissingTripDetailsException
 from avicena.util.Geolocator import find_coord_lat_lon
 from avicena.util.TimeWindows import get_time_window_by_hours_minutes, timedelta_to_fraction_of_day
 
@@ -74,3 +74,14 @@ def standardize_trip_df(df, merge_details, revenue_table):
     _fill_in_missing_times_and_merge_details(df, merge_details)
     _compute_trip_revenues(df, revenue_table)
     _get_trip_coordinates(df)
+
+def verify_and_save_parsed_trips_df(df, output_directory):
+    required_columns = {'trip_id', 'trip_pickup_address', 'trip_pickup_time', 'trip_pickup_lat', 'trip_pickup_lon',
+                        'trip_dropoff_address', 'trip_dropoff_time', 'trip_dropoff_lat', 'trip_dropoff_lon', 'trip_los',
+                        'trip_miles', 'merge_flag', 'trip_revenue'}
+    for column in required_columns:
+        if column not in df.columns:
+            raise MissingTripDetailsException(f"Expected {column} to be in dataframe")
+
+    parsed_df = df[required_columns]
+    parsed_df.to_csv(output_directory + "/parsed_trips.csv")
