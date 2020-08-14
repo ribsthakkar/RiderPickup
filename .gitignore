@@ -20,3 +20,4 @@ config/optimizer_config.yaml
 *.pdf
 temp.key
 venv/
+alembic.ini
