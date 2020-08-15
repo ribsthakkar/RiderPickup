@@ -497,7 +497,7 @@ class GeneralOptimizer(BaseOptimizer):
         print("Defined Objective Function")
         self.mdl.minimize(self.obj)
 
-    def solve(self, solution_file):
+    def solve(self, solution_file, save_stages=False):
         self.solution_df = None
         """TODO: Make this process of retrying solver better!!!"""
         for i in range(self.MAX_RETRIES):
@@ -530,11 +530,11 @@ class GeneralOptimizer(BaseOptimizer):
                             first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                         print("First solve status (No ED): " + str(self.mdl.get_solve_status()))
                         print("First solve obj value (No ED): " + str(self.mdl.objective_value))
-                        driverMiles = self.__save_solution(solution_file + 'stage1')
-                        print("Total Number of trip miles by each driver after stage 1: ")
-                        print(driverMiles)
+                        if(save_stages): self.__save_solution(solution_file + 'stage1')
+                        driverMiles = self.__calc_driver_miles()
+                        print("Total Number of trip miles by each driver after stage 1: ", driverMiles)
                     else:
-                        print("Stage 1 Infeasible without ED as well")
+                        print("Stage 1 Infeasible without ED")
                 print("Relaxing single rider requirements constraints")
                 self.mdl.remove_constraints(self.constraintsToRem)
                 removed_sr = True
@@ -561,23 +561,25 @@ class GeneralOptimizer(BaseOptimizer):
                 print(str(i) + "th solution did not work...trying again")
                 continue
             finally:
-                driverMiles = self.__save_solution(solution_file)
-                print("Total Number of trip miles by each driver: ")
-                print(driverMiles)
+                self.__save_solution(solution_file)
+                driverMiles = self.__calc_driver_miles()
+                print("Total Number of trip miles by each driver: ", driverMiles)
                 break
         if self.solution_df is None:
             raise SolutionNotFoundException(f"General Optimizer failed to find solution for {self.mdl.name} after {self.MAX_RETRIES} tries")
 
         return self.solution_df
 
-    def __save_solution(self, solution_file):
+    def __calc_driver_miles(self):
         driverMiles = dict()
         for d, driver_trips in self.trip_vars.items():
             driverMiles[d] = 0
             for t, var in driver_trips.items():
                 if self.trip_vars[d][t].solution_value >= 0.1:
                     driverMiles[d] += t.lp.miles
+        return driverMiles
 
+    def __save_solution(self, solution_file):
         def tripGen():
             for d, driver_trips in self.trip_vars.items():
                 for t, var in driver_trips.items():
@@ -620,4 +622,3 @@ class GeneralOptimizer(BaseOptimizer):
                          t.required_level_of_service, ptrip.lp.miles, ptrip.lp.time, self.revenues[t.lp.o]])
         self.solution_df = pd.DataFrame(data, columns=columns)
         self.solution_df.to_csv(solution_file)
-        return driverMiles
