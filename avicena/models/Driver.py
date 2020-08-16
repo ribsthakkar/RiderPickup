@@ -11,11 +11,13 @@ from avicena.util.Exceptions import UnknownDriverException
 from avicena.util.TimeWindows import date_to_day_of_week
 from . import Base
 
+
 class Driver(Base):
     """
     This class represents a Driver that could be available for dispatch to transport patients in the model.
-    It holds information about the driver him/herself and details about their vehicle.
-    It extends from the SQL Alchemy Base class as the the list of possible drivers is extracted from the
+    It holds information about the driver him/herself and details about their vehicle. It has a one to many relationship
+    with Driver Assignments.
+    It extends from the SQLAlchemy Base class as the the list of possible drivers is extracted from the
     database, if enabled.
     """
     __tablename__ = "driver"
@@ -27,7 +29,8 @@ class Driver(Base):
     alternate_early_day = Column(Boolean, default=False)
     assignments = relationship('DriverAssignment', backref='driver')
 
-    def __init__(self, id: int, name: str, address: str, capacity:float, level_of_service:str, alternate_early_day: bool, suffix_len: int = 0):
+    def __init__(self, id: int, name: str, address: str, capacity: float, level_of_service: str,
+                 alternate_early_day: bool, suffix_len: int = 0) -> None:
         """
         Initializes a Driver object with relevant details.
         The suffix_len optional parameter indicates whether the address argument is provided with some suffix of
@@ -92,11 +95,12 @@ def load_drivers_from_df(driver_df: DataFrame) -> List[Driver]:
     for index, row in driver_df.iterrows():
         cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
         alternate_early_day = bool(int(row['Early Day']))
-        drivers.append(Driver(int(row['ID']), row['Name'], row['Address'], cap, row['Vehicle_Type'], alternate_early_day))
+        drivers.append(
+            Driver(int(row['ID']), row['Name'], row['Address'], cap, row['Vehicle_Type'], alternate_early_day))
     return drivers
 
 
-def load_drivers_from_csv(drivers_file: str):
+def load_drivers_from_csv(drivers_file: str) -> List[Driver]:
     """
     Load driver objects from CSV
     :param drivers_file: Path to CSV file with driver details
@@ -106,7 +110,8 @@ def load_drivers_from_csv(drivers_file: str):
     return load_drivers_from_df(driver_df)
 
 
-def prepare_drivers_for_optimizer(all_drivers: Iterable[Driver], driver_ids: Iterable[int], date: str = None):
+def prepare_drivers_for_optimizer(all_drivers: Iterable[Driver], driver_ids: Iterable[int], date: str = None) -> List[
+    Driver]:
     """
     Return a List of copied driver objects that have the early day flag enabled and an address with a suffix
     This copied list will be used for the

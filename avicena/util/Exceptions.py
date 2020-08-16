@@ -20,3 +20,7 @@ class UnknownDriverException(Exception):
 
 class MissingTripDetailsException(Exception):
     pass
+
+
+class InvalidRevenueRateMilageException(Exception):
+    pass

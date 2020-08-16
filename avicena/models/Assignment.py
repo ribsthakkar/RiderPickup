@@ -23,11 +23,11 @@ from . import Base
 class Assignment(Base):
     """
     This class represents an instance of a Dispatch "Assignment"
-    This class primarly stores the general details about the assignment including the list of drivers, the respective
+    This class primarily stores the general details about the assignment including the list of drivers, the respective
     distances traveled, revenue earned, time of the earliest pickup and the latest dropoff, and the coordinates of all
     locations.
     It also stores a list of DriverAssignments which contains more driver specific details about the dispatch.
-    It extends from the SQL Alchemy Base class as the resulting Assignments produced from solving the model are stored
+    It extends from the SQLAlchemy Base class as the resulting Assignments produced from solving the model are stored
     in the database, if enabled.
     """
     __tablename__ = "assignment"
@@ -278,16 +278,16 @@ def load_assignment_from_df(assignment_df: DataFrame, drivers: List[Driver], nam
         da.driver_id = d.id
         da.assignment_id = assign.id
         da.trip_ids = [str(t['trip_id']) for _, t in filtered_trips.iterrows()]
-        da.trip_pu = [t['trip_pickup_address'] for _, t in filtered_trips.iterrows()]
-        da.trip_do = [t['trip_dropoff_address'] for _, t in filtered_trips.iterrows()]
-        da.trip_est_pu = [timedelta(days=float(t['est_pickup_time'])) for _, t in
-                          filtered_trips.iterrows()]
-        da.trip_sch_pu = [timedelta(days=float(t['trip_pickup_time'])) for _, t in
-                          filtered_trips.iterrows()]
-        da.trip_est_do = [timedelta(days=float(t['est_dropoff_time'])) for _, t in
-                          filtered_trips.iterrows()]
-        da.trip_sch_do = [timedelta(days=float(t['trip_dropoff_time'])) for _, t in
-                          filtered_trips.iterrows()]
+        da.trip_pickup_addresses = [t['trip_pickup_address'] for _, t in filtered_trips.iterrows()]
+        da.trip_dropoff_addresses = [t['trip_dropoff_address'] for _, t in filtered_trips.iterrows()]
+        da.trip_estimated_pickup_times = [timedelta(days=float(t['est_pickup_time'])) for _, t in
+                                          filtered_trips.iterrows()]
+        da.trip_scheduled_pickup_times = [timedelta(days=float(t['trip_pickup_time'])) for _, t in
+                                          filtered_trips.iterrows()]
+        da.trip_estimated_dropoff_times = [timedelta(days=float(t['est_dropoff_time'])) for _, t in
+                                           filtered_trips.iterrows()]
+        da.trip_scheduled_dropoff_times = [timedelta(days=float(t['trip_dropoff_time'])) for _, t in
+                                           filtered_trips.iterrows()]
         da.trip_miles = [(t['est_miles']) for _, t in filtered_trips.iterrows()]
         da.trip_los = [str(t['trip_los']) for _, t in filtered_trips.iterrows()]
         da.trip_rev = [(t['trip_rev']) for _, t in filtered_trips.iterrows()]
@@ -346,7 +346,7 @@ def generate_visualization_from_db(assignment_id: int, session: Session,
     """
     Generate visualization for assignment that is in the database
     :param assignment_id: ID of the assignment for which the visualization is generated
-    :param session: SQLAlchemy database connection seession
+    :param session: SQLAlchemy database connection session
     :param visualization_file_name: path where the visualization will be stored
     :param open_in_browser: Whether the visualization will be opened in a browser after visualization is generated
     """

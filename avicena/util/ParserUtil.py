@@ -42,7 +42,7 @@ def _adjust_pickup_dropoff_merge(pickup_time, id, pickup_address, dropoff_times,
 def _revenue_calculation(table, miles, los):
     for revenue_rate in table[los]:
         if revenue_rate.lower_mileage_bound <= miles <= revenue_rate.upper_mileage_bound:
-            return revenue_rate.base_rate + revenue_rate.revenue_per_mile * miles
+            return revenue_rate.calculate_revenue(miles)
     raise RevenueCalculationException(f"Unable to calculate revenue for level of service:{los} miles:{miles}")
 
 
