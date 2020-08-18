@@ -1,3 +1,5 @@
+from typing import List, Any, Dict, Iterable
+
 import pandas as pd
 
 from copy import copy
@@ -6,8 +8,9 @@ from docplex.mp.conflict_refiner import ConflictRefiner, VarLbConstraintWrapper,
 from docplex.mp.model import Model
 from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
+from pandas import DataFrame
 
-from avicena.models import Trip, Location
+from avicena.models import Trip, Location, Driver
 from avicena.optimizers.BaseOptimizer import BaseOptimizer
 from avicena.optimizers.solver_util.cplex.Listeners import GapListener, TimeListener
 from avicena.util.Exceptions import InvalidTripException, SolutionNotFoundException
@@ -17,12 +20,22 @@ from avicena.util.TimeWindows import get_time_window_by_hours_minutes
 
 
 class GeneralOptimizer(BaseOptimizer):
-    def __init__(self, trips, drivers, name, date, speed, config):
-        self.drivers_inp = drivers
-        self.trips_inp = trips
-        self.date = date
-        self.mdl = Model(name=name)
-        self.mdl.parameters.randomseed = config['seed']
+    """
+    The GeneralOptimizer uses CPLEX to solve the Patient Dispatch problem.
+    The exact formulation can be found at: <will upload later>
+    """
+    def __init__(self, trips: List[Trip], drivers: List[Driver], name: str, date: str, speed: int,
+                 config: Dict[str, Any]) -> None:
+        """
+        Initialize a General Optimizer
+        :param trips: List of valid Trip objects that were parsed and cleaned from the input file
+        :param drivers: List of drivers selected to be dispatched for this model
+        :param name: Name of the given model
+        :param date: Date for which the model is running
+        :param speed: Assumed travelling speed
+        :param config: Configuration Details for this optimizer type and its parameters
+        """
+        super().__init__(trips, drivers, name, date, speed, config)
         self.drivers = list()  # List of all Drivers
         self.primary_trips = dict() # Map Primary trip pair to trip object
         self.all_trips = dict()  # Maps Trip-ID to Trip Object
@@ -54,9 +67,8 @@ class GeneralOptimizer(BaseOptimizer):
         self.outtrips = dict()  # Map from driver to Map from location to list of outgoing trips from that location
 
         # Constants
-        self.SPEED = speed
-        self.TRIPS_TO_DO = config["trips_to_do"]
-        self.NUM_DRIVERS = config["num_drivers"]
+        self.TRIPS_TO_DO = config["max_trips"]
+        self.NUM_DRIVERS = config["max_drivers"]
         self.EARLY_PICK_WINDOW = get_time_window_by_hours_minutes(0, config["early_pickup_window"])
         self.EARLY_DROP_WINDOW = get_time_window_by_hours_minutes(0, config["late_pickup_window"])
         self.LATE_PICK_WINDOW = get_time_window_by_hours_minutes(0, config["early_drop_window"])
@@ -78,21 +90,32 @@ class GeneralOptimizer(BaseOptimizer):
         # Prepare Model
         self.obj = 0.0
         self.solution_df = None
-        self.constraintsToRem = set()
-        self.ed_constr = set()
+        self.single_rider_constraints = set()
+        self.early_day_constraints = set()
         self.__prepare_trip_parameters()
         self.__prepare_driver_parameters()
         self.__generate_variables()
         self.__prepare_constraints()
         self.__prepare_objective()
 
-    def filter_driver_feasible_trips(self, driver, iter):
+    def filter_driver_feasible_trips(self, driver: Driver, iter: Iterable[Trip]) -> Iterable[Trip]:
+        """
+        Using an iterable of trips, return a filter of trips that is allowed for the driver. This optimizes the number
+        of constraints and variables generated.
+        :param driver: Driver object
+        :param iter: Iterable of Trips
+        :return: Filter generator of feasible trips that a given driver can perform
+        """
         return filter(lambda t: not ((t.lp.o in self.driver_nodes and t.lp.o.get_clean_address() != driver.get_clean_address()) or (
                 t.lp.d in self.driver_nodes and t.lp.d.get_clean_address() != driver.get_clean_address()))
                                 and t.required_level_of_service in driver.level_of_service
                                 and not (abs(self.node_capacities[t.lp.o] + self.node_capacities[t.lp.d]) > driver.capacity), iter)
 
-    def __prepare_trip_parameters(self):
+    def __prepare_trip_parameters(self) -> None:
+        """
+        Populate data structures with trip associated parameters such as mappings between pickups and dropoffs of trips,
+        opening and closing windows of locations, revenue for trips, etc.
+        """
         count = 0
         for index, trip in enumerate(self.trips_inp):
             start = trip.lp.o
@@ -148,7 +171,10 @@ class GeneralOptimizer(BaseOptimizer):
                 break
         print("Number of Trips:", count)
 
-    def __prepare_driver_parameters(self):
+    def __prepare_driver_parameters(self) -> None:
+        """
+        Prepare data structures that store driver specific details such as driver nodes, and capacities.
+        """
         count = 0
         for driver in self.drivers_inp:
             d = copy(driver)
@@ -168,7 +194,10 @@ class GeneralOptimizer(BaseOptimizer):
                 break
         print("Number of Drivers:", count)
 
-    def __generate_variables(self):
+    def __generate_variables(self) -> None:
+        """
+        Generate the model variables
+        """
         id = 1
         """
         Trips from Driver Start locations to Start location of any request
@@ -244,57 +273,53 @@ class GeneralOptimizer(BaseOptimizer):
                 self.capacity_vars[d][t] = self.mdl.continuous_var(lb=0, ub=d.capacity, name='q' + '_' + str(d.id) + '_' + str(t.id))
                 self.mdl.add_constraint(self.capacity_vars[d][t] - self.trip_vars[d][t] * d.capacity <= 0)
 
+    def __prepare_constraints(self) -> None:
+        """
+        Generate the model constraints.
+        """
 
-        with open("time.csv", "w") as t, open("cost.csv", "w") as c:
-            t.write("Start,End,Time")
-            c.write("Start,End,Cost")
-            for pair, trp in self.primary_trips.items():
-                t.write(pair[0].get_clean_address() + "," + pair[1].get_clean_address() + "," + str(trp.lp.time) + "\n")
-                c.write(pair[0].get_clean_address() + "," + pair[1].get_clean_address() + "," + str(trp.lp.miles) + "\n")
-
-    def __prepare_constraints(self):
         """
         Request Requirements
         """
         for trp in self.all_trips:
             if isinstance(trp, str):
-                total = 0
+                driver_id_sum = 0
                 for d in self.drivers:
                     if self.all_trips[trp].required_level_of_service in d.level_of_service:
-                        total += self.trip_vars[d][self.all_trips[trp]]
-                con = self.mdl.add_constraint(ct=total == 1)
-                self.constraintsToRem.add(con)
+                        driver_id_sum += self.trip_vars[d][self.all_trips[trp]]
+                con = self.mdl.add_constraint(ct=driver_id_sum == 1)
+                self.single_rider_constraints.add(con)
 
         """
         Flow Conservation
         """
         for rN in self.request_nodes:
-            totalin = 0
-            totalout = 0
+            total_flow_in = 0
+            total_flow_out = 0
             for d in self.drivers:
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[rN]):
-                    totalin += self.trip_vars[d][intrip]
+                    total_flow_in += self.trip_vars[d][intrip]
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[rN]):
-                    totalout -= self.trip_vars[d][otrip]
-            self.mdl.add_constraint(ct=totalin <= 1, ctname='flowin' + '_' + str(rN)[:5])
-            self.mdl.add_constraint(ct=totalout >= -1, ctname='flowout' + '_' + str(rN)[:5])
-            self.mdl.add_constraint(ct=totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
+                    total_flow_out -= self.trip_vars[d][otrip]
+            self.mdl.add_constraint(ct=total_flow_in <= 1, ctname='flowin' + '_' + str(rN)[:5])
+            self.mdl.add_constraint(ct=total_flow_out >= -1, ctname='flowout' + '_' + str(rN)[:5])
+            self.mdl.add_constraint(ct=total_flow_in + total_flow_out == 0, ctname='flowinout' + '_' + str(rN)[:5])
         for d in self.drivers:
             for dS in self.driver_starts:
                 if dS.get_clean_address() != d.get_clean_address():
                     continue
-                total = 0
+                driver_id_sum = 0
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[dS]):
-                    total -= self.trip_vars[d][otrip]
-                self.mdl.add_constraint(ct=total == -1, ctname='driverout' + '_' + str(d.id))
+                    driver_id_sum -= self.trip_vars[d][otrip]
+                self.mdl.add_constraint(ct=driver_id_sum == -1, ctname='driverout' + '_' + str(d.id))
         for d in self.drivers:
             for dE in self.driver_ends:
                 if dE.get_clean_address() != d.get_clean_address():
                     continue
-                total = 0
+                driver_id_sum = 0
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[dE]):
-                    total += self.trip_vars[d][intrip]
-                self.mdl.add_constraint(ct=total == 1, ctname='driverin' + '_' + str(d.id))
+                    driver_id_sum += self.trip_vars[d][intrip]
+                self.mdl.add_constraint(ct=driver_id_sum == 1, ctname='driverin' + '_' + str(d.id))
 
         print("Set flow conservation constraints")
 
@@ -302,25 +327,25 @@ class GeneralOptimizer(BaseOptimizer):
         Time Constraints
         """
         for loc in self.request_ends:
-            intripSum = 0
-            intripTimes = 0
-            intripEnds = self.node_window_close[loc]
+            intrip_time_var_sum = 0
+            intrip_travel_time_sum = 0
+            location_close_window = self.node_window_close[loc]
             for d in self.drivers:
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[loc]):
-                    intripSum += self.time_vars[d][intrip]
-                    intripTimes += intrip.lp.time * self.trip_vars[d][intrip]
-            self.mdl.add_constraint(intripSum + intripTimes <= intripEnds)
+                    intrip_time_var_sum += self.time_vars[d][intrip]
+                    intrip_travel_time_sum += intrip.lp.time * self.trip_vars[d][intrip]
+            self.mdl.add_constraint(intrip_time_var_sum + intrip_travel_time_sum <= location_close_window)
         print("Set arrival time constriants")
 
         for loc in self.request_starts:
-            otripSum = 0
-            otripEnds = self.node_window_close[loc]
-            otripStarts = self.node_window_open[loc]
+            outtrip_time_var_sum = 0
+            location_close_window = self.node_window_close[loc]
+            location_open_window = self.node_window_open[loc]
             for d in self.drivers:
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[loc]):
-                    otripSum += self.time_vars[d][otrip]
-            self.mdl.add_constraint(otripSum >= otripStarts)
-            self.mdl.add_constraint(otripSum <= otripEnds)
+                    outtrip_time_var_sum += self.time_vars[d][otrip]
+            self.mdl.add_constraint(outtrip_time_var_sum >= location_open_window)
+            self.mdl.add_constraint(outtrip_time_var_sum <= location_close_window)
         print("Set departure time constraints")
 
         """
@@ -329,86 +354,82 @@ class GeneralOptimizer(BaseOptimizer):
         for trp in self.all_trips:
             if isinstance(trp, str):
                 if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
-                    main_trip_start = self.all_trips[trp].lp.o
-                    main_trip_dest = self.all_trips[trp].lp.d
-                    alt_trip_start = None
-                    alt_trip_dest = None
+                    main_origin = self.all_trips[trp].lp.o
+                    main_dest = self.all_trips[trp].lp.d
                     if trp.endswith('A'):
-                        alt_trip_start = self.all_trips[trp[:-1] + "B"].lp.o
-                        alt_trip_dest = self.all_trips[trp[:-1] + "B"].lp.d
-                    elif trp.endswith('B'):
-                        alt_trip_start = self.all_trips[trp[:-1] + "C"].lp.o
-                        alt_trip_dest = self.all_trips[trp[:-1] + "C"].lp.d
+                        alt_origin = self.all_trips[trp[:-1] + "B"].lp.o
+                        alt_dest = self.all_trips[trp[:-1] + "B"].lp.d
                     else:
-                        print('Invalid trip id ', trp)
-                        exit(1)
-                    main_trip_o_out = 0
+                        alt_origin = self.all_trips[trp[:-1] + "C"].lp.o
+                        alt_dest = self.all_trips[trp[:-1] + "C"].lp.d
+
+                    main_origin_outtrip_time_var_sum = 0
                     for d in self.drivers:
-                        for itrip in self.filter_driver_feasible_trips(d, self.outtrips[main_trip_start]):
-                            main_trip_o_out += self.time_vars[d][itrip]
-                    main_trip_d_in = 0
-                    main_trip_d_time_sum = 0
+                        for itrip in self.filter_driver_feasible_trips(d, self.outtrips[main_origin]):
+                            main_origin_outtrip_time_var_sum += self.time_vars[d][itrip]
+                    main_dest_intrip_time_var_sum = 0
+                    main_dest_incoming_travel_time_sum = 0
                     for d in self.drivers:
-                        for itrip in self.filter_driver_feasible_trips(d, self.intrips[main_trip_dest]):
-                            main_trip_d_in += self.time_vars[d][itrip]
-                            main_trip_d_time_sum += itrip.lp.time * self.trip_vars[d][itrip]
-                    alt_trip_o_out = 0
+                        for itrip in self.filter_driver_feasible_trips(d, self.intrips[main_dest]):
+                            main_dest_intrip_time_var_sum += self.time_vars[d][itrip]
+                            main_dest_incoming_travel_time_sum += itrip.lp.time * self.trip_vars[d][itrip]
+                    alt_origin_outgoing_time_var_sum = 0
                     for d2 in self.drivers:
-                        for otrip in self.filter_driver_feasible_trips(d2, self.outtrips[alt_trip_start]):
-                            alt_trip_o_out += self.time_vars[d2][otrip]
-                    alt_trip_d_in = 0
+                        for otrip in self.filter_driver_feasible_trips(d2, self.outtrips[alt_origin]):
+                            alt_origin_outgoing_time_var_sum += self.time_vars[d2][otrip]
+                    alt_dest_incoming_time_var_sum = 0
                     for d2 in self.drivers:
-                        for otrip in self.filter_driver_feasible_trips(d2, self.outtrips[alt_trip_dest]):
-                            alt_trip_d_in += self.time_vars[d2][otrip]
-                    self.mdl.add_constraint(main_trip_o_out <= main_trip_d_in)
-                    self.mdl.add_constraint(main_trip_d_in + main_trip_d_time_sum <= alt_trip_o_out)
-                    self.mdl.add_constraint(alt_trip_o_out <= alt_trip_d_in)
+                        for otrip in self.filter_driver_feasible_trips(d2, self.outtrips[alt_dest]):
+                            alt_dest_incoming_time_var_sum += self.time_vars[d2][otrip]
+                    self.mdl.add_constraint(main_origin_outtrip_time_var_sum <= main_dest_intrip_time_var_sum)
+                    self.mdl.add_constraint(main_dest_intrip_time_var_sum + main_dest_incoming_travel_time_sum <= alt_origin_outgoing_time_var_sum)
+                    self.mdl.add_constraint(alt_origin_outgoing_time_var_sum <= alt_dest_incoming_time_var_sum)
         print("Set primary trip precedence constraints")
 
         for loc in self.request_nodes:
-            insum, osum = 0, 0
-            timeSum = 0
+            incoming_time_var_sum, outgoing_time_var_sum = 0, 0
+            travel_time_sum = 0
             for d in self.drivers:
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[loc]):
-                    insum += self.time_vars[d][intrip]
-                    timeSum += self.trip_vars[d][intrip] * intrip.lp.time
+                    incoming_time_var_sum += self.time_vars[d][intrip]
+                    travel_time_sum += self.trip_vars[d][intrip] * intrip.lp.time
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[loc]):
-                    osum += self.time_vars[d][otrip]
-            self.mdl.add_constraint(insum + timeSum <= osum)
+                    outgoing_time_var_sum += self.time_vars[d][otrip]
+            self.mdl.add_constraint(incoming_time_var_sum + travel_time_sum <= outgoing_time_var_sum)
         print("Set incoming trip before outgoing trip constraints")
 
         for loc in self.request_nodes:
-            total = 0
+            driver_id_sum = 0
             for d in self.drivers:
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[loc]):
-                    total += d.id * self.trip_vars[d][intrip]
+                    driver_id_sum += d.id * self.trip_vars[d][intrip]
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[loc]):
-                    total -= d.id * self.trip_vars[d][otrip]
-            self.mdl.add_constraint(ct=total == 0)
+                    driver_id_sum -= d.id * self.trip_vars[d][otrip]
+            self.mdl.add_constraint(ct=driver_id_sum == 0)
 
         for rS in self.request_starts:
             rE = self.request_map[rS]
-            total = 0
+            driver_id_sum = 0
             for d in self.drivers:
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE]):
-                    total += d.id * self.trip_vars[d][intrip]
+                    driver_id_sum += d.id * self.trip_vars[d][intrip]
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[rS]):
-                    total -= d.id * self.trip_vars[d][otrip]
-            self.mdl.add_constraint(ct=total == 0)
+                    driver_id_sum -= d.id * self.trip_vars[d][otrip]
+            self.mdl.add_constraint(ct=driver_id_sum == 0)
         print("Set incoming driver is the same as outgoing driver constraints")
 
         """
         Capacity Constraints
         """
         for loc in self.request_nodes:
-            incaps = 0
-            ocaps = 0
+            incoming_capacity_filled = 0
+            outgoing_capacity_filled = 0
             for d in self.drivers:
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[loc]):
-                    ocaps += self.capacity_vars[d][otrip]
+                    outgoing_capacity_filled += self.capacity_vars[d][otrip]
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[loc]):
-                    incaps += self.capacity_vars[d][intrip]
-            self.mdl.add_constraint(ocaps == incaps + self.node_capacities[loc])
+                    incoming_capacity_filled += self.capacity_vars[d][intrip]
+            self.mdl.add_constraint(outgoing_capacity_filled == incoming_capacity_filled + self.node_capacities[loc])
         print("Set capacity value constraints")
 
         for d in self.drivers:
@@ -422,37 +443,41 @@ class GeneralOptimizer(BaseOptimizer):
 
         self.__add_custom_constraints()
 
-    def __add_custom_constraints(self):
+    def __add_custom_constraints(self) -> None:
+        """
+        Add Custom Driver Fairness constraints.
+        These are the key constraints that set apart this model.
+        """
         print("Adding Custom Defined Constraints")
 
         """
         Route Length Penalty
         """
         for d in self.drivers:
-            otime = 0
-            itime = 0
+            driver_departure_time = 0
+            driver_return_time = 0
             for dS in self.driver_starts:
                 if dS.get_clean_address() != d.get_clean_address():
                     continue
                 for otrip in self.filter_driver_feasible_trips(d, self.outtrips[dS]):
-                    otime += self.time_vars[d][otrip]
+                    driver_departure_time += self.time_vars[d][otrip]
                 break
             for dE in self.driver_ends:
                 if dE.get_clean_address() != d.get_clean_address():
                     continue
                 for intrip in self.filter_driver_feasible_trips(d, self.intrips[dE]):
-                    itime += self.time_vars[d][intrip]
+                    driver_return_time += self.time_vars[d][intrip]
                 break
-            self.obj += self.ROUTE_LIMIT_PEN * (itime - otime)
+            self.obj += self.ROUTE_LIMIT_PEN * (driver_return_time - driver_departure_time)
             if not d.early_day_flag:
                 try:
-                    c = self.mdl.add_constraint(otime >= self.EARLY_DAY_TIME)
-                    self.ed_constr.add(c)
+                    c = self.mdl.add_constraint(driver_departure_time >= self.EARLY_DAY_TIME)
+                    self.early_day_constraints.add(c)
                     pass
                 except DOcplexException as e:
                     if 'trivially' not in e.message:
                         raise e
-                    print(itime, otime)
+                    print(driver_return_time, driver_departure_time)
                     print("Can't restrict early day for", d.name)
 
         """
@@ -477,17 +502,17 @@ class GeneralOptimizer(BaseOptimizer):
         """
         Equalizing Wheel Chair Trip Penalty
         """
-        self.w_max = self.mdl.continuous_var(0)
-        self.w_min = self.mdl.continuous_var(0)
+        self.max_wheelchair_trips = self.mdl.continuous_var(0)
+        self.min_wheelchair_trips = self.mdl.continuous_var(0)
         for d in self.drivers:
             if 'W' not in d.level_of_service: continue
             self.wheelchair_vars[d] = self.mdl.continuous_var(lb=0, name="Wheelchairs" + str(d.id))
             self.mdl.add_constraint(self.wheelchair_vars[d] == sum(self.trip_vars[d][t] for t in filter(lambda x: x.required_level_of_service == 'W', self.filter_driver_feasible_trips(d, self.all_trips.values()))))
-            self.mdl.add_constraint(self.w_max >= self.wheelchair_vars[d])
-            self.mdl.add_constraint(self.w_min <= self.wheelchair_vars[d])
-        self.obj += self.W_PEN * (self.w_max - self.w_min)
+            self.mdl.add_constraint(self.max_wheelchair_trips >= self.wheelchair_vars[d])
+            self.mdl.add_constraint(self.min_wheelchair_trips <= self.wheelchair_vars[d])
+        self.obj += self.W_PEN * (self.max_wheelchair_trips - self.min_wheelchair_trips)
 
-    def __prepare_objective(self):
+    def __prepare_objective(self) -> None:
         """
         Objective function
         """
@@ -497,80 +522,84 @@ class GeneralOptimizer(BaseOptimizer):
         print("Defined Objective Function")
         self.mdl.minimize(self.obj)
 
-    def solve(self, solution_file, save_stages=False):
+    def solve(self, solution_file: str, save_stages: bool = False) -> DataFrame:
         self.solution_df = None
         """TODO: Make this process of retrying solver better!!!"""
         for i in range(self.MAX_RETRIES):
-            removed_ed = False
-            removed_sr = False
+            removed_early_day_constraints = False
+            removed_single_rider_constraints = False
             try:
-                pL = TimeListener(self.STAGE1_TIME)
-                self.mdl.add_progress_listener(pL)
+                progress_listener = TimeListener(self.STAGE1_TIME)
+                self.mdl.add_progress_listener(progress_listener)
                 first_solve = self.mdl.solve()
                 if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                     print("First solve status: " + str(self.mdl.get_solve_status()))
                     print("First solve obj value: " + str(self.mdl.objective_value))
-                    driverMiles = self.__save_solution(solution_file + 'stage1')
-                    print("Total Number of trip miles by each driver after stage 1: ")
-                    print(driverMiles)
+                    if save_stages: self.__save_solution(solution_file + '_stage1')
+                    driver_miles = self.__calc_driver_miles()
+                    print("Total Number of trip miles by each driver after stage 1: ", driver_miles)
                 else:
                     print("Stage 1 Infeasible with ED")
                 if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
-                    self.mdl.remove_progress_listener(pL)
+                    self.mdl.remove_progress_listener(progress_listener)
                     if self.STAGE1_GAP:
-                        pL = GapListener(self.STAGE1_TIME, self.STAGE1_GAP)
+                        progress_listener = GapListener(self.STAGE1_TIME, self.STAGE1_GAP)
                     else:
-                        pL = TimeListener(self.STAGE1_TIME)
-                    self.mdl.add_progress_listener(pL)
+                        progress_listener = TimeListener(self.STAGE1_TIME)
+                    self.mdl.add_progress_listener(progress_listener)
                     print("Relaxing Early Day Constraints")
-                    self.mdl.remove_constraints(self.ed_constr)
-                    removed_ed = True
+                    self.mdl.remove_constraints(self.early_day_constraints)
+                    removed_early_day_constraints = True
                     first_solve = self.mdl.solve()
                     if first_solve and (
                             first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                         print("First solve status (No ED): " + str(self.mdl.get_solve_status()))
                         print("First solve obj value (No ED): " + str(self.mdl.objective_value))
-                        if(save_stages): self.__save_solution(solution_file + 'stage1')
-                        driverMiles = self.__calc_driver_miles()
-                        print("Total Number of trip miles by each driver after stage 1: ", driverMiles)
+                        if save_stages: self.__save_solution(solution_file + '_stage1_no_ed')
+                        driver_miles = self.__calc_driver_miles()
+                        print("Total Number of trip miles by each driver after stage 1: ", driver_miles)
                     else:
                         print("Stage 1 Infeasible without ED")
                 print("Relaxing single rider requirements constraints")
-                self.mdl.remove_constraints(self.constraintsToRem)
-                removed_sr = True
+                self.mdl.remove_constraints(self.single_rider_constraints)
+                removed_single_rider_constraints = True
                 print("Warm starting from single rider constrained solution")
                 if first_solve:
                     self.mdl.add_mip_start(first_solve)
-                self.mdl.remove_progress_listener(pL)
+                self.mdl.remove_progress_listener(progress_listener)
 
                 if self.STAGE2_GAP:
-                    pL = GapListener(self.STAGE2_TIME, self.STAGE2_GAP)
+                    progress_listener = GapListener(self.STAGE2_TIME, self.STAGE2_GAP)
                 else:
-                    pL = TimeListener(self.STAGE2_TIME)
+                    progress_listener = TimeListener(self.STAGE2_TIME)
 
-                self.mdl.add_progress_listener(pL)
+                self.mdl.add_progress_listener(progress_listener)
                 self.mdl.solve()
                 print("Final solve status: " + str(self.mdl.get_solve_status()))
                 print("Final Obj value: " + str(self.mdl.objective_value))
                 print("Min Revenue:", self.rev_min.solution_value)
                 print("Max Revenue:", self.rev_max.solution_value)
-                print("Min W Trips:", self.w_min.solution_value)
-                print("Max W Trips:", self.w_max.solution_value)
+                print("Min W Trips:", self.min_wheelchair_trips.solution_value)
+                print("Max W Trips:", self.max_wheelchair_trips.solution_value)
             except DOcplexException as e:
                 print(e)
                 print(str(i) + "th solution did not work...trying again")
                 continue
             finally:
                 self.__save_solution(solution_file)
-                driverMiles = self.__calc_driver_miles()
-                print("Total Number of trip miles by each driver: ", driverMiles)
+                driver_miles = self.__calc_driver_miles()
+                print("Total Number of trip miles by each driver: ", driver_miles)
                 break
         if self.solution_df is None:
             raise SolutionNotFoundException(f"General Optimizer failed to find solution for {self.mdl.name} after {self.MAX_RETRIES} tries")
 
         return self.solution_df
 
-    def __calc_driver_miles(self):
+    def __calc_driver_miles(self) -> Dict[Driver, float]:
+        """
+        Calculate the number of miles traveled by each driver
+        :return: Mapping between driver and miles assigned to driver by solution
+        """
         driverMiles = dict()
         for d, driver_trips in self.trip_vars.items():
             driverMiles[d] = 0
@@ -579,27 +608,31 @@ class GeneralOptimizer(BaseOptimizer):
                     driverMiles[d] += t.lp.miles
         return driverMiles
 
-    def __save_solution(self, solution_file):
-        def tripGen():
+    def __save_solution(self, solution_file: str) -> None:
+        """
+        Write solution in CSV format to the
+        :param solution_file: Path to where solution will be saved
+        """
+        def assigned_trip_generator():
             for d, driver_trips in self.trip_vars.items():
                 for t, var in driver_trips.items():
                     if t.lp.o not in self.request_starts or var.solution_value != 1:
                         continue
                     yield (d, t)
 
-        def tripGen_debug(d):
+        def debug_trip_generator(d):
             for t, var in self.trip_vars[d].items():
                 if var.solution_value != 1:
                     continue
                 yield (d, t)
 
         for dr in self.drivers:
-            for d, t in sorted(tripGen_debug(dr), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
+            for d, t in sorted(debug_trip_generator(dr), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
                 print(d.name, t.lp.o, t.lp.d, self.time_vars[d][t].solution_value, t.lp.time)
 
         columns = ['trip_id','driver_id','driver_name','trip_date','trip_pickup_address','trip_pickup_time','est_pickup_time','trip_dropoff_address','trip_dropoff_time','est_dropoff_time','trip_los','est_miles','est_time','trip_rev']
         data = []
-        for d, t in sorted(tripGen(), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
+        for d, t in sorted(assigned_trip_generator(), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
             end_time = -1
             rE = self.request_map[t.lp.o]
             for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE]):

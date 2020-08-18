@@ -5,12 +5,24 @@ There is experimental code for the PDWTWOptimizer, but it is still under
 development. 
 
 All Optimizers must be classes that extend from BaseOptimizer, and must
-implement the `solve(self, solution_file) -> Pandas.DataFrame` method.
+implement and conform to the following methods:
+
+* `__init__(self, trips: List[Trip], drivers: List[Driver], name: str, date: str, speed: int, config: Dict[str, Any]) -> None`
+* `solve(self, solution_file) ->
+Pandas.DataFrame`
+
+Furthermore, all optimizers must fix a seed in their configuration.
 
 ## Configuration Glossary
 Below is a gloassary of the expected parameters in the
 `config/optimizer_config.yaml` file when using Avicena depending on
 which optimizer is specified in `config/app_config.yaml`.
+
+### ALL OPTIMIZERS
+| Parameter           	| Default Value          	| Comments                                                                                                                                                                                                                        	|
+|---------------------	|------------------------	|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
+| seed         	| 1000                   	| Increase if more than 1000 trips for the day.  Otherwise model will automatically adjust for correct number of trips. If set to less than number of trips in file then it will only run the model on the first subset of trips. 	|
+
 
 ### GeneralOptimizer
 | Parameter           	| Default Value          	| Comments                                                                                                                                                                                                                        	|
