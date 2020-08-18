@@ -19,7 +19,7 @@ from avicena.util.Exceptions import InvalidConfigException
 from avicena.optimizers.GeneralOptimizer import GeneralOptimizer
 from datetime import datetime
 
-from avicena.util.ParserUtil import verify_and_save_parsed_trips_df
+from avicena.util.ParserUtil import verify_and_save_parsed_trips_df_to_csv
 
 # Supported Parser and Optimizer types that will be passed into the Config file
 parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
@@ -28,7 +28,7 @@ optimizers = {'GeneralOptimizer': GeneralOptimizer}
 
 def _run_parser(trip_parser: Union[Type[LogistiCareParser], Type[CSVParser]], trips_file: str,
                 revenue_table: Dict[str, List[RevenueRate]], merge_details: Dict[str, MergeAddress], assumed_speed: int,
-                output_directory: str) -> List[Trip]:
+                model_name: str, output_directory: str) -> List[Trip]:
     """
     Parses the trips from the trips file, verifies the parsing and saves it to a file in the output directory called
     "parsed_trips.csv", and filters out invalid trips and all legs associated with the invalid trips.
@@ -37,11 +37,12 @@ def _run_parser(trip_parser: Union[Type[LogistiCareParser], Type[CSVParser]], tr
     :param revenue_table: Map from level of service to RevenueRate objects
     :param merge_details: Map from merge address to MergeAddress objects
     :param assumed_speed: Assumed Driving Speed to determine travel times
+    :param model_name: Name for this run
     :param output_directory: Directory where the parsed files will be written
     :return: List of Trips that are valid and populated with all necessary details.
     """
     trips_df = trip_parser.parse_trips_to_df(trips_file, merge_details, revenue_table, output_directory)
-    verify_and_save_parsed_trips_df(trips_df, output_directory)
+    verify_and_save_parsed_trips_df_to_csv(trips_df, output_directory + "/" + model_name + "_parsed_trips.csv")
     trips = load_and_filter_valid_trips_from_df(trips_df, assumed_speed)
     return trips
 
@@ -53,7 +54,7 @@ def _run_optimizer(trip_optimizer: Union[Type[GeneralOptimizer]], trips: List[Tr
     :param trip_optimizer: Type of Optimizer to be used
     :param trips: List of parsed and validated trips
     :param drivers: List of filtered and drivers prepared for optimzier
-    :param name: Name of the Model
+    :param name: Name for this run
     :param date: Date for which this model is used
     :param assumed_speed: Assumed Driving Speed
     :param optimizer_config: Loaded optimizer specific configuratiod
@@ -142,7 +143,7 @@ if __name__ == "__main__":
         db_session = create_db_session(app_config['database'])
         app_config['database']['db_session'] = db_session
         revenue_table, merge_details, drivers_table = _retrieve_database_inputs(db_session)
-        trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed,
+        trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed, args.name,
                             app_config['output_directory'])
         drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
         solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config,
