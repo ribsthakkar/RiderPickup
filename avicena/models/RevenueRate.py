@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import Session
 
-from avicena.util.Exceptions import InvalidRevenueRateMilageException
+from avicena.util.Exceptions import InvalidRevenueRateMileageException
 from . import Base
 
 
@@ -46,7 +46,7 @@ class RevenueRate(Base):
         :return: revenue made for trip with given distance
         """
         if self.lower_mileage_bound <= miles <= self.upper_mileage_bound:
-            raise InvalidRevenueRateMilageException(
+            raise InvalidRevenueRateMileageException(
                 f"{miles} miles not within RevenueRate bounds [{self.lower_mileage_bound},{self.upper_mileage_bound}]")
         return self.base_rate + self.revenue_per_mile * miles
 

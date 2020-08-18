@@ -79,7 +79,7 @@ def _revenue_calculation(table: Dict[str, List[RevenueRate]], miles: float, los:
 
 def _get_trip_coordinates(df: DataFrame) -> None:
     """
-    Populate dataframe with coordinates of pickup and dropoff addresses
+    Populate DataFrame with coordinates of pickup and dropoff addresses
     :param df: Dataframe to update
     """
     df[['trip_pickup_lat', 'trip_pickup_lon']] = df['trip_pickup_address'].apply(
@@ -91,7 +91,7 @@ def _get_trip_coordinates(df: DataFrame) -> None:
 def _compute_trip_revenues(df: DataFrame, revenue_table: Dict[str, List[RevenueRate]]) -> None:
     """
     Calculate revenues for all trips
-    :param df: dataframe to be updated with trip details
+    :param df: DataFrame to be updated with trip details
     :param revenue_table: dictionary mapping level of service to a list of associated revenue rates
     """
     df['trip_revenue'] = df[['trip_miles', 'trip_los']].apply(
@@ -101,7 +101,7 @@ def _compute_trip_revenues(df: DataFrame, revenue_table: Dict[str, List[RevenueR
 def _fill_in_missing_times_and_merge_details(df: DataFrame, merge_details: Dict[str, MergeAddress]) -> None:
     """
     Update the missing travel times, correct for merge trip timings, set the merge indication flags
-    :param df: dataframe to be updated with trip details
+    :param df: DataFrame to be updated with trip details
     :param merge_details: dictionary mapping address substring to actual MergeAddress object
     """
     df[['trip_pickup_time', 'trip_dropoff_time', 'merge_flag']] = \
@@ -112,8 +112,8 @@ def _fill_in_missing_times_and_merge_details(df: DataFrame, merge_details: Dict[
 
 def _standardize_time_format_trip_df(df: DataFrame) -> None:
     """
-    Convert all the times stored in the dataframe to floats representing fraction of the day
-    :param df: dataframe with trip_pickup_time and trip_dropoff_time
+    Convert all the times stored in the DataFrame to floats representing fraction of the day
+    :param df: DataFrame with trip_pickup_time and trip_dropoff_time
     """
     df['trip_pickup_time'] = df['trip_pickup_time'].apply(convert_time)
     df['trip_dropoff_time'] = df['trip_dropoff_time'].apply(convert_time)
@@ -122,8 +122,8 @@ def _standardize_time_format_trip_df(df: DataFrame) -> None:
 def standardize_trip_df(df: DataFrame, merge_details: Dict[str, MergeAddress], revenue_table: Dict[str, List[RevenueRate]]) -> None:
     """
     Apply time standardization, merge trip updates, missing time updates, revenue calculations, and coordinates to
-    the trip dataframe
-    :param df: input trip dataframe to be updated
+    the trip DataFrame
+    :param df: input trip DataFrame to be updated
     :param merge_details: dictionary mapping address substring to actual MergeAddress object
     :param revenue_table: dictionary mapping level of service to a list of associated revenue rates
     """
@@ -135,9 +135,9 @@ def standardize_trip_df(df: DataFrame, merge_details: Dict[str, MergeAddress], r
 
 def verify_and_save_parsed_trips_df_to_csv(df: DataFrame, path_to_save: str) -> None:
     """
-    Check that all required columns are in the input dataframe of parsed trips (i.e. it has been standardized) and
+    Check that all required columns are in the input DataFrame of parsed trips (i.e. it has been standardized) and
     save it to the output_directory in a file called 'parsed_trips.csv'
-    :param df: dataframe that will be verified and saved to CSV
+    :param df: DataFrame that will be verified and saved to CSV
     :param path_to_save: path to save parsed CSV
     :return:
     """
@@ -146,7 +146,7 @@ def verify_and_save_parsed_trips_df_to_csv(df: DataFrame, path_to_save: str) -> 
                         'trip_miles', 'merge_flag', 'trip_revenue'}
     for column in required_columns:
         if column not in df.columns:
-            raise MissingTripDetailsException(f"Expected {column} to be in dataframe")
+            raise MissingTripDetailsException(f"Expected {column} to be in DataFrame")
 
     parsed_df = df[required_columns]
     parsed_df.to_csv(path_to_save)
