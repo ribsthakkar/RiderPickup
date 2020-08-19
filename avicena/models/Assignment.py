@@ -113,7 +113,6 @@ class Assignment(Base):
         for i, name in enumerate(self.driver_names):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
-            print(i, name, self.driver_names, self.driver_assignments)
             driver_assignment = self.driver_assignments[i]
             details = [driver_assignment.trip_ids,
                        driver_assignment.trip_pickup_addresses,
