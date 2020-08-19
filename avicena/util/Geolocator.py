@@ -1,9 +1,11 @@
 import os
 from typing import Optional
-
+import logging
 from opencage.geocoder import OpenCageGeocode
 
 locations = {}
+
+log = logging.getLogger(__name__)
 
 
 def find_coord_lat_lon(addr: str, key: Optional[str] = None) -> (float, float):
@@ -24,7 +26,7 @@ def find_coord_lat_lon(addr: str, key: Optional[str] = None) -> (float, float):
         locations[addr] = coordinates
         return coordinates
     except IndexError:
-        print("Couldn't find coordinates for ", addr)
+        log.warning(f"Couldn't find coordinates for  {addr}")
 
 
 def find_coord_lon_lat(addr: str, key: Optional[str] = None) -> (float, float):

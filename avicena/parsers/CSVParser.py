@@ -1,11 +1,14 @@
 from typing import Dict, List
-
+import logging
 import pandas as pd
 from pandas import DataFrame
 
 from avicena.models.RevenueRate import RevenueRate
 from avicena.models.MergeAddress import MergeAddress
 from avicena.util.ParserUtil import standardize_trip_df
+
+
+log = logging.getLogger(__name__)
 
 
 def parse_trips_to_df(trips_file: str, merge_details: Dict[str, MergeAddress],
@@ -22,5 +25,5 @@ def parse_trips_to_df(trips_file: str, merge_details: Dict[str, MergeAddress],
     """
     df = pd.read_csv(trips_file)
     standardize_trip_df(df, merge_details, revenue_table)
-    print(f"Parsed {len(df)} Trips")
+    log.info(f"Parsed {len(df)} Trips")
     return df

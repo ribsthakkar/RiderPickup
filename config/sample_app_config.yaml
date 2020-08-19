@@ -5,7 +5,7 @@ geocoder_key: 78bdef6c2b254abaa78c55640925d3db
 trips_parser: LogistiCare
 optimizer: GeneralOptimizer
 seed: 10
-merge_address_table_path: input/merge_address.csv
-revenue_table_path: input/updated_rev_table.csv
-driver_table_path: input/in_drivers.csv
+merge_address_table_path: sample_data/sample_merge_details.csv
+revenue_table_path: sample_data/sample_rev_table.csv
+driver_table_path: sample_data/sample_drivers.csv
 output_directory: output/

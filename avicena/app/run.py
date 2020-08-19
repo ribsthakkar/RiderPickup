@@ -9,6 +9,7 @@ import yaml
 from pandas import DataFrame
 from sqlalchemy.orm import Session
 
+from avicena.app import OPTIMIZER_CONFIG_FILE, APP_CONFIG_FILE
 from avicena.models.Assignment import generate_visualization_from_df, load_assignment_from_df
 from avicena.models.Driver import load_drivers_from_db, load_drivers_from_csv, prepare_drivers_for_optimizer, Driver
 from avicena.models.MergeAddress import load_merge_details_from_csv, load_merge_details_from_db, MergeAddress
@@ -118,11 +119,11 @@ if __name__ == "__main__":
                                 help='List of driver IDs separated by spaces')
 
     args = parser.parse_args()
-    with open('config/app_config.yaml') as cfg_file:
+    with open(APP_CONFIG_FILE) as cfg_file:
         app_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
     validate_app_config(app_config)
 
-    with open('config/optimizer_config.yaml') as cfg_file:
+    with open(OPTIMIZER_CONFIG_FILE) as cfg_file:
         optimizer_config = yaml.load(cfg_file, Loader=yaml.FullLoader)
 
     os.environ['GEOCODER_KEY'] = app_config['geocoder_key']

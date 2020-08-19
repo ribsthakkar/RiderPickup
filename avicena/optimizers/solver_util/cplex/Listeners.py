@@ -1,4 +1,8 @@
 from docplex.mp.progress import ProgressListener, ProgressData
+import logging
+
+
+log = logging.getLogger(__name__)
 
 
 class TimeListener(ProgressListener):
@@ -20,19 +24,19 @@ class TimeListener(ProgressListener):
         A Callback used by the CPLEX solver to update the listener on the progress so far on the solution.
         :param data: ProgressData struct with details about the solution's progress
         """
-        print('Elapsed time: %.2f' % data.time)
+        log.info('Elapsed time: %.2f' % data.time)
         if data.has_incumbent:
-            print('Current incumbent: %f' % data.current_objective)
-            print('Current gap: %.2f%%' % (100. * data.mip_gap))
+            log.info('Current incumbent: %f' % data.current_objective)
+            log.info('Current gap: %.2f%%' % (100. * data.mip_gap))
             # If we are solving for longer than the specified time then
             # stop if we reach the predefined alternate MIP gap.
             if data.time > self._time:
-                print('ABORTING')
+                log.info('ABORTING')
                 self.abort()
         elif data.time > self._time:
             self.abort()
         else:
-            # print('No incumbent yet')
+            log.info('No feasible solution found yet')
             pass
 
 
@@ -58,15 +62,15 @@ class GapListener(ProgressListener):
          A Callback used by the CPLEX solver to update the listener on the progress so far on the solution.
          :param data: ProgressData struct with details about the solution's progress
          """
-        print('Elapsed time: %.2f' % data.time)
+        log.info('Elapsed time: %.2f' % data.time)
         if data.has_incumbent:
-            print('Current incumbent: %f' % data.current_objective)
-            print('Current gap: %.2f%%' % (100. * data.mip_gap))
+            log.info('Current incumbent: %f' % data.current_objective)
+            log.info('Current gap: %.2f%%' % (100. * data.mip_gap))
             # If we are solving for longer than the specified time then
             # stop if we reach the predefined alternate MIP gap.
             if data.time > self._time or data.mip_gap < self._gap:
-                print('ABORTING')
+                log.info('ABORTING')
                 self.abort()
         else:
-            # print('No incumbent yet')
+            log.info('No feasible solution yet')
             pass

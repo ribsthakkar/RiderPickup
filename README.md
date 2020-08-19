@@ -95,6 +95,12 @@ their configuration definitions. Samples are also provided in the
 | GeneralOptimizer         	| [Glossary](./avicena/optimizers/README.md#GeneralOptimizer)                   	| Self Developed Formulation to Solve Problem 	|
 | PDWTWOptimizer         	|  [Glossary](./avicena/optimizers/README.md#PDWTWOptimizer)                     	| (Not working in non-experimental mode yet) Formulation from following paper with additional fairness constraints integrated [here]()  	|
 
+Finally, the app will need a `log_config.yaml` with details about how
+and what kind of logging we expect from the application. Information
+about how to setup the log config can be found at Python's *logging*
+module [documentation](https://docs.python.org/3/howto/logging.html).
+For simplicity, a copy of the `sample_log_config.yaml` will suffice.
+
 #### Database Setup (optional)
 The command-line application supports interfacing with a PostgreSQL
 database. We assume you have a PostgreSQL server hosted somewhere with a

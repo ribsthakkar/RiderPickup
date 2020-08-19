@@ -1,5 +1,5 @@
+import logging
 from typing import Optional, Union, List
-
 from pandas import DataFrame
 
 from avicena.models.Location import Location
@@ -7,6 +7,8 @@ from avicena.models.LocationPair import LocationPair
 from avicena.util.Exceptions import InvalidTripException
 from avicena.util.ParserUtil import convert_time
 from avicena.util.TimeWindows import get_time_window_by_hours_minutes
+
+log = logging.getLogger(__name__)
 
 
 class Trip:
@@ -45,8 +47,8 @@ class Trip:
         self.is_merge = is_merge
         self.rev = revenue
         if self.lp.time > scheduled_dropoff - max(0, scheduled_pickup - get_time_window_by_hours_minutes(0, 20)):
-            raise InvalidTripException("Trip ID:" + str(id) + " start:" + str(scheduled_pickup) + " end:" + str(
-                scheduled_dropoff) + " trip length: " + str(self.lp.time))
+            raise InvalidTripException(f"Trip ID:{id} start:{scheduled_pickup} end:{scheduled_dropoff}  "
+                                       f"trip length:{self.lp.time}")
         self.preset_miles = preset_miles
 
     def __repr__(self) -> str:
@@ -81,8 +83,11 @@ def load_and_filter_valid_trips_from_df(trip_df: DataFrame, speed: int) -> List[
         try:
             trips.append(Trip(pickup, dropoff, capacity_needed, id, scheduled_pickup, scheduled_dropoff, speed,
                               row['merge_flag'], rev, preset_miles=int(row['trip_miles'])))
-        except InvalidTripException:
+        except InvalidTripException as exception:
+            log.warning(f"Filtering out invalid trip and all its legs: {exception}")
             ignore_ids.add(id[:-1] + 'A')
             ignore_ids.add(id[:-1] + 'B')
             ignore_ids.add(id[:-1] + 'C')
+    if len(ignore_ids):
+        log.warning(f"Trips with the following IDs have been filtered: {ignore_ids}")
     return list(filter(lambda t: t.id not in ignore_ids, trips))

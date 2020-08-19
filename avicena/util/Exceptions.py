@@ -46,3 +46,17 @@ class InvalidRevenueRateMileageException(Exception):
     of miles)
     """
     pass
+
+
+class DuplicateAddressException(Exception):
+    """
+    Raised when the same address string is found in a data structure expecting unique addresses
+    """
+    pass
+
+
+class InvalidSolutionException(Exception):
+    """
+    Raised when sanity checks on solution produced by model are failing.
+    """
+    pass

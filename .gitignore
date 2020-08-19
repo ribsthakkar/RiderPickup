@@ -17,6 +17,7 @@ input/
 output/
 config/app_config.yaml
 config/optimizer_config.yaml
+config/log_config.yaml
 *.pdf
 temp.key
 venv/

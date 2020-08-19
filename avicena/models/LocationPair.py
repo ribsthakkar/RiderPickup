@@ -1,7 +1,11 @@
+import logging
+
 from haversine import haversine, Unit
 
 from avicena.models.Location import Location
 from avicena.util.TimeWindows import ONE_MINUTE
+
+log = logging.getLogger(__name__)
 
 
 class LocationPair:
@@ -23,7 +27,7 @@ class LocationPair:
         self.miles = haversine(self.o.coord, self.d.coord, Unit.MILES)
         self.time = (self.miles / float(speed)) / 24 + ONE_MINUTE
         if self.time > 1:
-            print("Travel Time Longer than a Day for given speed")
-            print(self.o, self.o.coord)
-            print(self.d, self.d.coord)
-            print(self.miles, self.time, speed)
+            log.warning(
+                "Travel Time Longer than a Day for given speed. "
+                f"origin:{self.o}, dest:{self.d}, miles:{self.miles}, "
+                f"time:{self.time}, speed:{speed}")

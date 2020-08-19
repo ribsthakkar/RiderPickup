@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from typing import List, Optional, Match, AnyStr, Dict
-
+import logging
 import pandas as pd
 from PyPDF2 import PdfFileReader
 from nltk.tokenize import word_tokenize
@@ -10,6 +10,8 @@ from pandas import DataFrame
 from avicena.models.MergeAddress import MergeAddress
 from avicena.models.RevenueRate import RevenueRate
 from avicena.util.ParserUtil import standardize_trip_df
+
+log = logging.getLogger(__name__)
 
 
 def _load_pdf_content(pdf: PdfFileReader) -> str:
@@ -35,7 +37,7 @@ def _load_pdf_content(pdf: PdfFileReader) -> str:
         text = text
     # If the above returns as False, we run the OCR library textract to #convert scanned/image based PDF files into text
     else:
-        print('cannot read scanned images.')
+        log.error('cannot read scanned images.')
     return text
 
 
@@ -175,9 +177,9 @@ def _store_raw_data(df: DataFrame, output_directory: str, name: str, trip_count:
     :param trip_count: total number of trips found in PDF
     """
     filedate = df['trip_date'].iloc[0].replace('-', '_')
-    print(str(len(df)) + "/" + str(trip_count) + " trips parsed.")
+    log.info(str(len(df)) + "/" + str(trip_count) + " trips parsed.")
     df.to_csv(output_directory + name + filedate + '.csv', encoding='utf-8', index=False)
-    print('PDF file converted to ' + output_directory + name + filedate + '.csv')
+    log.info('PDF file converted to ' + output_directory + name + filedate + '.csv')
 
 
 def parse_trips_to_df(trips_file: str, merge_details: Dict[str, MergeAddress],
