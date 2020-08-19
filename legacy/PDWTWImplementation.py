@@ -1,11 +1,10 @@
-import pandas as pd
-from docplex.mp.progress import ProgressListener
-from docplex.mp.utils import DOcplexException
+from datetime import datetime
 
+import pandas as pd
 from Driver import Driver
 from Trip import Trip, TripType
 from docplex.mp.model import Model
-from datetime import datetime
+from docplex.mp.progress import ProgressListener
 
 print("Started", datetime.now())
 # Read input data
@@ -38,12 +37,15 @@ DRIVER_IDX = 0
 FIFTEEN = 0.01041666666
 
 last_trip = None
-P = [] # Pickup locations
-D = [] # Dropoff locations
+P = []  # Pickup locations
+D = []  # Dropoff locations
+
+
 class Listener(ProgressListener):
     """
     Sample Listener found on IBM DoCPLEX Forums
     """
+
     def __init__(self, time, gap):
         ProgressListener.__init__(self)
         self._time = time
@@ -63,6 +65,7 @@ class Listener(ProgressListener):
             # print('No incumbent yet')
             pass
 
+
 """
 The following varialbes have the prefixes signifying which location they relate to:
 P-Pickup
@@ -73,28 +76,26 @@ Intial and Final Depot should be the same since driver returns home at teh end o
 """
 Decision Variables
 """
-PQ = [] # Capacity after node j is visited; Length of N
-DQ = [] # Capacity after node j is visited; Length of N
+PQ = []  # Capacity after node j is visited; Length of N
+DQ = []  # Capacity after node j is visited; Length of N
 
-PB = [] # time that node j is visited; Length of N
-DB = [] # time that node j is visited; Length of N
+PB = []  # time that node j is visited; Length of N
+DB = []  # time that node j is visited; Length of N
 
-
-Pv = [] # index of first node that is visited in the route; Length of N
-Dv = [] # index of first node that is visited in the route; Length of N
-
+Pv = []  # index of first node that is visited in the route; Length of N
+Dv = []  # index of first node that is visited in the route; Length of N
 
 """
 Parameters
 """
-Pe = [] # start window of node j; length of N
-De = [] # start window of node j; length of N
+Pe = []  # start window of node j; length of N
+De = []  # start window of node j; length of N
 
-Pl = [] # end window of node j; length of N
-Dl = [] # end window of node j; length of N
+Pl = []  # end window of node j; length of N
+Dl = []  # end window of node j; length of N
 
-Pq = [] # demand for each location j; length of N
-Dq = [] # demand for each location j; length of N
+Pq = []  # demand for each location j; length of N
+Dq = []  # demand for each location j; length of N
 
 CAP = 2
 BIGM = 100000
@@ -136,26 +137,30 @@ for index, row in trip_df.iterrows():
             start = last_trip.end + (1 / 24)
         idxes[o] = count
         idxes[d] = TRIPS_TO_DO + count
-        P.append(o) # Add to Pickups
-        D.append(d) # Add to Dropoffs
-        Pe.append(start - FIFTEEN/2) # Add to Pickups open window
-        De.append(start - FIFTEEN/2) # Add to Dropoffs open window
-        Pl.append(end + FIFTEEN/2) # Add to Pickups close window
-        Dl.append(end + FIFTEEN/2) # Add to Dropoffs close window
-        Pq.append(cap) # Add to Pickup capacity
-        Dq.append(-cap) # Add to dropoff capacity
+        P.append(o)  # Add to Pickups
+        D.append(d)  # Add to Dropoffs
+        Pe.append(start - FIFTEEN / 2)  # Add to Pickups open window
+        De.append(start - FIFTEEN / 2)  # Add to Dropoffs open window
+        Pl.append(end + FIFTEEN / 2)  # Add to Pickups close window
+        Dl.append(end + FIFTEEN / 2)  # Add to Dropoffs close window
+        Pq.append(cap)  # Add to Pickup capacity
+        Dq.append(-cap)  # Add to dropoff capacity
 
-        PQ.append(mdl.continuous_var(lb=0, name='Q_'+str(count))) #Varaible for capacity at location pickup
-        DQ.append(mdl.continuous_var(lb=0, name='Q_'+str(TRIPS_TO_DO + count))) #Varaible for capacity at location dropoff
+        PQ.append(mdl.continuous_var(lb=0, name='Q_' + str(count)))  # Varaible for capacity at location pickup
+        DQ.append(
+            mdl.continuous_var(lb=0, name='Q_' + str(TRIPS_TO_DO + count)))  # Varaible for capacity at location dropoff
 
-        PB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(count))) #Varaible for time at location pickup
-        DB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(TRIPS_TO_DO + count))) #Varaible for time at location dropoff
+        PB.append(mdl.continuous_var(lb=0, ub=1, name='B_' + str(count)))  # Varaible for time at location pickup
+        DB.append(mdl.continuous_var(lb=0, ub=1,
+                                     name='B_' + str(TRIPS_TO_DO + count)))  # Varaible for time at location dropoff
 
-        Pv.append(mdl.continuous_var(lb=0, name='v_' + str(count))) #Varaible for index of first location on route pickup
-        Dv.append(mdl.continuous_var(lb=0, name='v_' + str(TRIPS_TO_DO + count))) #Varaible for undex of first location on route dropoff
+        Pv.append(
+            mdl.continuous_var(lb=0, name='v_' + str(count)))  # Varaible for index of first location on route pickup
+        Dv.append(mdl.continuous_var(lb=0, name='v_' + str(
+            TRIPS_TO_DO + count)))  # Varaible for undex of first location on route dropoff
 
-        location_pair.add((o,d))
-        ar[(o,d)] = t
+        location_pair.add((o, d))
+        ar[(o, d)] = t
         if o not in outlfow_trips:
             outlfow_trips[o] = {t}
         else:
@@ -169,7 +174,7 @@ for index, row in trip_df.iterrows():
         if count == TRIPS_TO_DO:
             break
 for index, row in driver_df.iterrows():
-    if count  < DRIVER_IDX:
+    if count < DRIVER_IDX:
         count += 1
         continue
     cap = 1 if row['Vehicle_Type'] == 'A' else 1.5
@@ -177,8 +182,8 @@ for index, row in driver_df.iterrows():
     drivers.add(Driver(row['ID'], row['Name'], add, cap, row['Vehicle_Type']))
     N.append(add)
     driverLocations.append(add)
-    driverstart = add # + "P"
-    driverstop = add #+ "D"
+    driverstart = add  # + "P"
+    driverstop = add  # + "D"
     break
 
 # Append all of the arrays together to make data structure
@@ -197,9 +202,9 @@ n = len(P)
 # print(len(v))
 
 id = 1
-x = [] # binary whether trip ij is taken; length of A
-t = [] # time of traversing trip ij; length of A
-c = [] # cost of traversing trip ij; length of A
+x = []  # binary whether trip ij is taken; length of A
+t = []  # time of traversing trip ij; length of A
+c = []  # cost of traversing trip ij; length of A
 for i, o in enumerate(N):
     for j, d in enumerate(N):
         if o != d:
@@ -236,7 +241,7 @@ for i, o in enumerate(N):
                     x.append(mdl.binary_var(name='C:' + o + '->' + d))
                 else:
                     # Shouldn't happen
-                    print(o,d)
+                    print(o, d)
                     exit(1)
                 tripdex[(o, d)] = len(x) - 1
                 t.append(trp.lp.time)
@@ -268,7 +273,7 @@ for idx, i in enumerate(N):
         total += x[tripdex[(otrip.lp.o, otrip.lp.d)]]
     if i in driverLocations:
         print("here")
-        obj +=  1000 * total
+        obj += 1000 * total
         mdl.add_constraint(total >= NUM_DRIVERS, "Drivers leaving Depot")
     else:
         mdl.add_constraint(total == 1, "Primary Location Exited " + i)
@@ -280,8 +285,8 @@ Time Consistency
 for i, o in enumerate(PuD):
     for j, d in enumerate(PuD):
         if o != d:
-            mdl.add_constraint(ct= B[j] >= B[i] + t[tripdex[(o,d)]] - BIGM*(1- x[tripdex[(o,d)]]))
-            mdl.add_constraint(ct= Q[j] >= Q[i] + q[j] - BIGM*(1- x[tripdex[(o,d)]]))
+            mdl.add_constraint(ct=B[j] >= B[i] + t[tripdex[(o, d)]] - BIGM * (1 - x[tripdex[(o, d)]]))
+            mdl.add_constraint(ct=Q[j] >= Q[i] + q[j] - BIGM * (1 - x[tripdex[(o, d)]]))
 
 """
 Time Windows
@@ -312,8 +317,8 @@ for j, loc in enumerate(PuD):
 for i, o in enumerate(PuD):
     for j, d in enumerate(PuD):
         if o != d:
-            mdl.add_constraint(v[j] >= v[i] + n * (x[tripdex[(o,d)]] - 1))
-            mdl.add_constraint(v[j] <= v[i] + n * (1 - x[tripdex[(o,d)]]))
+            mdl.add_constraint(v[j] >= v[i] + n * (x[tripdex[(o, d)]] - 1))
+            mdl.add_constraint(v[j] <= v[i] + n * (1 - x[tripdex[(o, d)]]))
 
 """
 Temporary Validation
@@ -336,7 +341,7 @@ Temporary Validation
 Objective
 """
 # total = 0.0
-for i,yes in enumerate(x):
+for i, yes in enumerate(x):
     obj += c[i] * yes
 
 # print('\n'.join(str(c) for c in mdl.iter_constraints()))
@@ -369,7 +374,8 @@ try:
     starters = list(var.solution_value for var in v)
     for s in starters:
         for var0, var1, var2, var3 in filter(lambda x: s == x[3].solution_value, zip(PuD, B, Q, v)):
-            print('"' + var0 + '"' + ';' + str(var1.solution_value) +';' + str(var2.solution_value) + ';'+ str(var3.solution_value))
+            print('"' + var0 + '"' + ';' + str(var1.solution_value) + ';' + str(var2.solution_value) + ';' + str(
+                var3.solution_value))
             # print(var1.get_name() + ": "+ str(var1.solution_value))
             # print(var2.get_name() + ": "+ str(var2.solution_value))
             # print(var3.get_name() + ": "+ str(var3.solution_value))
@@ -377,8 +383,8 @@ try:
     for i, o in enumerate(N):
         for j, d in enumerate(N):
             if o != d:
-                var = x[tripdex[(o,d)]]
-                t = ar[(o,d)]
+                var = x[tripdex[(o, d)]]
+                t = ar[(o, d)]
                 # print("'" + var.get_name() + "';" + str(var.solution_value) + ';' + str(t.start)+ ';'  + str(t.end)+ ';'  + str(t.lp.miles))
     with open('output/pdwtw_final_output' + str(datetime.now()) + '.csv', 'w') as output:
         output.write(
@@ -391,9 +397,10 @@ try:
                     if t.id not in primaryTID:
                         continue
                     arrival = idxes[o]
-                    dep  = arrival + TRIPS_TO_DO
+                    dep = arrival + TRIPS_TO_DO
                     print(arrival, dep)
-                    output.write(str(t.id) + "," + str(round(v[arrival].solution_value)) + ",\"" + str(t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(B[arrival].solution_value) + ",\"" +
+                    output.write(str(t.id) + "," + str(round(v[arrival].solution_value)) + ",\"" + str(
+                        t.lp.o[:-4]) + "\"," + str(t.start) + "," + str(B[arrival].solution_value) + ",\"" +
                                  str(t.lp.d[:-4]) + "\"," + str(t.end) + "," + str(
                         B[dep].solution_value) + "," +
                                  str(t.los) + "," + str(t.lp.miles) + "," + str(t.lp.time) + "\n")

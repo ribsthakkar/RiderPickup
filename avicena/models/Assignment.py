@@ -1,13 +1,12 @@
 import random
-from typing import Dict, Any, Union, Mapping, Tuple, List
+from datetime import datetime, timedelta
+from typing import Dict, Any, Tuple, List
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from pandas import DataFrame, Series
 from plotly.subplots import make_subplots
-
-from datetime import datetime, timedelta
 from sqlalchemy import Column, Integer, DateTime, String, Interval, Float
 from sqlalchemy.dialects.postgresql import ARRAY as Array
 from sqlalchemy.orm import relationship, Session
@@ -90,7 +89,7 @@ class Assignment(Base):
         """
 
         # Prepare Table Setup
-        titles = self.driver_names
+        titles = list(self.driver_names)
         titles.insert(0, "Map")
         titles.insert(1, "Driver Summary: " + self.name)
         subplots = [[{"type": "table"}]] * (len(self.driver_names) + 1)
@@ -114,14 +113,15 @@ class Assignment(Base):
         for i, name in enumerate(self.driver_names):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
+            print(i, name, self.driver_names, self.driver_assignments)
             driver_assignment = self.driver_assignments[i]
             details = [driver_assignment.trip_ids,
-                       driver_assignment.trip_pu,
-                       driver_assignment.trip_do,
-                       list(map(timedelta_to_hhmmss, driver_assignment.trip_est_pu)),
-                       list(map(timedelta_to_hhmmss, driver_assignment.trip_sch_pu)),
-                       list(map(timedelta_to_hhmmss, driver_assignment.trip_est_do)),
-                       list(map(timedelta_to_hhmmss, driver_assignment.trip_sch_do)),
+                       driver_assignment.trip_pickup_addresses,
+                       driver_assignment.trip_dropoff_addresses,
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_estimated_pickup_times)),
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_scheduled_pickup_times)),
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_estimated_dropoff_times)),
+                       list(map(timedelta_to_hhmmss, driver_assignment.trip_scheduled_dropoff_times)),
                        driver_assignment.trip_miles,
                        driver_assignment.trip_los,
                        driver_assignment.trip_rev]

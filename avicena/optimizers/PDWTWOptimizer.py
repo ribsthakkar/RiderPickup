@@ -1,15 +1,14 @@
-from copy import copy
-from datetime import datetime, timedelta
-import pandas as pd
+import random
+from datetime import timedelta
+
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
+from docplex.mp.model import Model
 from plotly.subplots import make_subplots
 
-from docplex.mp.model import Model
-
-from experimental.Trip import Trip, locations, TripType
+from experimental.Trip import Trip, TripType
 from experimental.listeners import TimeListener, GapListener
-import random
 
 
 class PDWTWOptimizer:
@@ -36,8 +35,8 @@ class PDWTWOptimizer:
         self.t = []  # time of traversing trip ij; length of A
         self.c = []  # cost of traversing trip ij; length of A
         self.r = []  # driver revenue for doing a trip; length of P
-        self.merges = [] # binary whether merge trip was satisfied
-        self.location_pair = set() # Set of tuples of pickup and dropoff pairs
+        self.merges = []  # binary whether merge trip was satisfied
+        self.location_pair = set()  # Set of tuples of pickup and dropoff pairs
         self.homes = set()  # set of home locations
         self.not_homes = set()  # set of medical office locations
         self.inflow_trips = dict()  # mapping between a location and list of trips ending at the location
@@ -46,9 +45,9 @@ class PDWTWOptimizer:
         self.idxes = dict()  # mapping between location and associated index
         self.tripdex = dict()  # mapping between location_pair and index of trip in trip time/cost/binary var containers
         self.primaryTID = set()  # set of IDs of primary trips
-        self.primaryOIDs = dict() # map from origin location to primary trip ID
+        self.primaryOIDs = dict()  # map from origin location to primary trip ID
         self.opposingTrip = dict()  # mapping between trip ID and trip
-        self.mergeDict = dict() # Map between origins of two merge trip locations
+        self.mergeDict = dict()  # Map between origins of two merge trip locations
 
         # Constants
         self.TRIPS_TO_DO = params["TRIPS_TO_DO"]
@@ -127,7 +126,7 @@ class PDWTWOptimizer:
                 for intrip in self.inflow_trips[i]:
                     # print((intrip.lp.o, intrip.lp.d))
                     in_total += self.x[self.tripdex[(intrip.lp.o, intrip.lp.d)]]
-                self.mdl.add_constraint(total == in_total, "Drivers Returning to Depot" )
+                self.mdl.add_constraint(total == in_total, "Drivers Returning to Depot")
             else:
                 self.mdl.add_constraint(total == 1, "Primary Location Exited " + i)
         """
@@ -137,7 +136,7 @@ class PDWTWOptimizer:
             for j, d in enumerate(self.PuD):
                 if o != d:
                     self.mdl.add_constraint(ct=self.B[j] >= self.B[i] + self.t[self.tripdex[(o, d)]] - self.BIGM * (
-                                1 - self.x[self.tripdex[(o, d)]]))
+                            1 - self.x[self.tripdex[(o, d)]]))
                     self.mdl.add_constraint(
                         ct=self.Q[j] >= self.Q[i] + self.q[j] - self.BIGM * (1 - self.x[self.tripdex[(o, d)]]))
         """
@@ -163,7 +162,7 @@ class PDWTWOptimizer:
         for j, loc in enumerate(self.PuD):
             self.mdl.add_constraint(self.v[j] >= j * self.x[self.tripdex[(self.driverstart, loc)]])
             self.mdl.add_constraint(self.v[j] <= j * self.x[self.tripdex[(self.driverstart, loc)]] - n * (
-                        self.x[self.tripdex[(self.driverstart, loc)]] - 1))
+                    self.x[self.tripdex[(self.driverstart, loc)]] - 1))
         for i, o in enumerate(self.PuD):
             for j, d in enumerate(self.PuD):
                 if o != d:
@@ -182,9 +181,9 @@ class PDWTWOptimizer:
         """
         for i, loc1 in enumerate(self.P):
             for j, loc2 in enumerate(self.P):
-                if loc1 == loc2 or abs(self.e[i] - self.e[j+len(self.P)]) <= self.ROUTE_LIMIT: continue
-                z1 = self.mdl.binary_var(loc1+loc2+'z1')
-                z2 = self.mdl.binary_var(loc1+loc2+'z2')
+                if loc1 == loc2 or abs(self.e[i] - self.e[j + len(self.P)]) <= self.ROUTE_LIMIT: continue
+                z1 = self.mdl.binary_var(loc1 + loc2 + 'z1')
+                z2 = self.mdl.binary_var(loc1 + loc2 + 'z2')
                 m = self.v[i]
                 y = self.v[j]
                 self.mdl.add_constraint(y - m <= -0.5 * z1 + n * z2)
@@ -202,7 +201,7 @@ class PDWTWOptimizer:
             m = self.v[self.idxes[loc1]]
             y = self.v[self.idxes[tr.lp.o]]
             self.mdl.add_constraint(y - m <= -0.005 * z1 + n * z2)
-            self.mdl.add_constraint(y - m >= -n*z1 + z2 * 0.005)
+            self.mdl.add_constraint(y - m >= -n * z1 + z2 * 0.005)
             self.mdl.add_constraint(x + z1 + z2 == 1)
             self.obj += self.MERGE_PEN * (1 - x)
 
@@ -218,8 +217,8 @@ class PDWTWOptimizer:
                 a = k - 0.4
                 b = k + 0.4
                 delta = self.mdl.binary_var(self.primaryOIDs[loc2] + "-delta-" + str(k))
-                self.mdl.add_constraint(x <= a  + self.BIGM * delta + self.BIGM * var)
-                self.mdl.add_constraint(x >= b  - self.BIGM * (1 - delta) - self.BIGM * var)
+                self.mdl.add_constraint(x <= a + self.BIGM * delta + self.BIGM * var)
+                self.mdl.add_constraint(x >= b - self.BIGM * (1 - delta) - self.BIGM * var)
                 self.mdl.add_constraint(x >= a - self.BIGM * (1 - var))
                 self.mdl.add_constraint(x <= b + self.BIGM * (1 - var))
                 idx_vars.append(var)
@@ -244,7 +243,6 @@ class PDWTWOptimizer:
         self.mdl.add_constraint(unique_w_routes >= self.MIN_W_DRIVERS)
         self.obj += self.W_DRIVER_PEN * (unique_w_routes - self.MIN_W_DRIVERS)
 
-
         """
         Equalizing Revenue Penalty
         """
@@ -256,22 +254,20 @@ class PDWTWOptimizer:
             tot = sum(self.loc_v_binary[loc_idx][k] * self.r[loc_idx] for loc_idx in self.loc_v_binary)
             # bin_tot = sum(self.loc_v_binary[loc_idx][k] for loc_idx in self.loc_v_binary)
             # self.mdl.add_equivalence(bin_var, bin_tot == 0)
-            sum_var = self.mdl.continuous_var(0,name=str(k) + "Revenue")
+            sum_var = self.mdl.continuous_var(0, name=str(k) + "Revenue")
             self.mdl.add_constraint(bin_var * self.BIGM >= tot)
             self.mdl.add_constraint(tot >= bin_var)
             self.mdl.add_constraint(self.rev_max >= tot)
-            self.mdl.add_constraint(tot + (1-bin_var)*self.BIGM >= self.rev_min)
+            self.mdl.add_constraint(tot + (1 - bin_var) * self.BIGM >= self.rev_min)
             self.mdl.add_constraint(sum_var == tot)
             self.revens.append(sum_var)
         self.mdl.add_constraint(self.rev_max >= self.rev_min)
         self.obj += self.REVENUE_PEN * (self.rev_max - self.rev_min)
 
-
         """
         Adjustable Speed Penalty
         """
         # self.obj += self.SPEED_PENALTY * (1/self.MIN_SPEED - self.SPEED)
-
 
     def __generate_trips(self):
         # self.SPEED = self.mdl.continuous_var(1/80, 1/self.MIN_SPEED, "Speed")
@@ -330,9 +326,8 @@ class PDWTWOptimizer:
             t.write("Start,End,Time")
             c.write("Start,End,Cost")
             for pair, trp in self.trip_map.items():
-                t.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.time))
-                c.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.miles))
-
+                t.write(pair[0] + "," + pair[1] + "," + str(trp.lp.time))
+                c.write(pair[0] + "," + pair[1] + "," + str(trp.lp.miles))
 
     def __prepare_depot(self):
         self.N.append(self.drivers[self.DRIVER_IDX].address)
@@ -397,7 +392,8 @@ class PDWTWOptimizer:
             Dv.append(self.mdl.integer_var(lb=0, ub=len(self.trips) + 1, name='v_' + str(
                 self.TRIPS_TO_DO + count)))  # Varaible for undex of first location on route dropoff
             if trip.type == TripType.MERGE:
-                vars = (self.mdl.binary_var(name=trip.id), self.mdl.binary_var(name=trip.id + 'z1'), self.mdl.binary_var(name=trip.id + 'z2'))
+                vars = (self.mdl.binary_var(name=trip.id), self.mdl.binary_var(name=trip.id + 'z1'),
+                        self.mdl.binary_var(name=trip.id + 'z2'))
                 self.merges.append(vars)
                 if 'B' in trip.id:
                     self.mergeDict[self.merges[-1]] = (trip.lp.o, self.opposingTrip[trip.id[:-1] + 'A'])
@@ -506,7 +502,8 @@ class PDWTWOptimizer:
 
         def get_labels(trips):
             data = "<br>".join(
-               "0" * (10 - len(str(t.id))) + str(t.id) + "  |  " + str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] +
+                "0" * (10 - len(str(t.id))) + str(t.id) + "  |  " +
+                str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] +
                 "  |  " + str(int(self.v[self.idxes[t.lp.o]].solution_value)) for t in trips
             )
             return trips[0].lp.o[:-4] + "<br><b>TripID,             Time,      DriverID </b><br>" + data
@@ -516,10 +513,10 @@ class PDWTWOptimizer:
         titles = [names(i) for i in driver_ids]
         titles.insert(0, "Map")
         titles.insert(1, "Driver Summary")
-        subplots = [[{"type":"table"}]] * (len(driver_ids) + 1)
-        subplots.insert(0,[{"type": "scattermapbox"}])
-        map_height = 600/ (600 + 400 * (len(driver_ids) + 1))
-        heights = [(1-map_height-0.05)/((len(driver_ids)) + 1)] * (len(driver_ids) +1)
+        subplots = [[{"type": "table"}]] * (len(driver_ids) + 1)
+        subplots.insert(0, [{"type": "scattermapbox"}])
+        map_height = 600 / (600 + 400 * (len(driver_ids) + 1))
+        heights = [(1 - map_height - 0.05) / ((len(driver_ids)) + 1)] * (len(driver_ids) + 1)
         heights.insert(0, map_height)
         # heights = [0.25]
         fig = make_subplots(
@@ -542,11 +539,13 @@ class PDWTWOptimizer:
             x, y = zip(*points)
             filtered_trips = list(filter(lambda t: t.id in self.primaryOIDs.values(), trips))
             details = [[str(t.id) for t in filtered_trips],
-                        [t.lp.o[:-4] for t in filtered_trips],
+                       [t.lp.o[:-4] for t in filtered_trips],
                        [t.lp.d[:-4] for t in filtered_trips],
-                       [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in filtered_trips],
+                       [str(timedelta(days=self.B[self.idxes[t.lp.o]].solution_value)).split('.')[0] for t in
+                        filtered_trips],
                        [str(timedelta(days=self.opposingTrip[t.id].start)).split('.')[0] for t in filtered_trips],
-                       [str(timedelta(days=self.B[self.idxes[t.lp.o] + self.TRIPS_TO_DO].solution_value)).split('.')[0] for t in filtered_trips],
+                       [str(timedelta(days=self.B[self.idxes[t.lp.o] + self.TRIPS_TO_DO].solution_value)).split('.')[0]
+                        for t in filtered_trips],
                        [str(timedelta(days=self.opposingTrip[t.id].end)).split('.')[0] for t in filtered_trips],
                        [str(t.preset_m) for t in filtered_trips],
                        [str(t.los) for t in filtered_trips],
@@ -562,13 +561,15 @@ class PDWTWOptimizer:
                     size=8,
                     color=col,
                 ),
-                name= names(d_id),
+                name=names(d_id),
 
-            ),row=1, col=1)
+            ), row=1, col=1)
             fig.add_trace(
                 go.Table(
                     header=dict(
-                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time", "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles", "LOS", "Revenue"],
+                        values=["TripID", "Pickup Address", "Dropoff Address", "Estimated Pickup Time",
+                                "Scheduled Pickup Time", "Estimated Dropoff Time", "Scheduled Dropoff Time", "Miles",
+                                "LOS", "Revenue"],
                         font=dict(size=10),
                         align="left"
                     ),
@@ -583,7 +584,8 @@ class PDWTWOptimizer:
             for idx, point in enumerate(points):
                 if point in locations:
                     locations[point].append(trips[idx])
-                    locations[point] = list(sorted(locations[point], key=lambda x: self.B[self.idxes[x.lp.o]].solution_value))
+                    locations[point] = list(
+                        sorted(locations[point], key=lambda x: self.B[self.idxes[x.lp.o]].solution_value))
                 else:
                     locations[point] = [trips[idx]]
 
@@ -606,7 +608,7 @@ class PDWTWOptimizer:
                 name="Locations",
 
             ),
-            row=1,col=1
+            row=1, col=1
         )
         ids, times, miles, rev = zip(*(self.__get_driver_trips_times_miles_rev(id) for id in driver_ids))
         fig.add_trace(
@@ -623,14 +625,14 @@ class PDWTWOptimizer:
             row=2, col=1,
         )
 
-        fig.update_mapboxes(zoom = 10, center=go.layout.mapbox.Center(
-        lat=np.mean(all_y),
-        lon=np.mean(all_x)), style='open-street-map')
+        fig.update_mapboxes(zoom=10, center=go.layout.mapbox.Center(
+            lat=np.mean(all_y),
+            lon=np.mean(all_x)), style='open-street-map')
 
         fig.update_layout(
             title_text=self.mdl.name,
             showlegend=True,
-            height = (600 + 400 * (len(driver_ids) + 1))
+            height=(600 + 400 * (len(driver_ids) + 1))
         )
         fig.write_html(vfile, auto_open=True)
 
@@ -653,6 +655,7 @@ class PDWTWOptimizer:
                 return False
             idx2 = self.idxes[t.lp.o]
             return int(round(self.v[idx2].solution_value)) == id
+
         return filt
 
     def __sortTrips(self, t):
@@ -666,7 +669,8 @@ class PDWTWOptimizer:
         depot = Trip(self.driverstart, self.driverstop, 'A', 'ID', None, 0, 1, prefix=False, suffix=True)
         prev = 0.0
         for trip in sorted(filter(self.__filterTrips(id), self.trip_map.values()), key=self.__sortTrips):
-            t = Trip(trip.lp.o, trip.lp.d, 1 if trip.los == 'A' else 1.5, trip.id, None, trip.start, trip.end, rev=0.0, lp = trip.lp)
+            t = Trip(trip.lp.o, trip.lp.d, 1 if trip.los == 'A' else 1.5, trip.id, None, trip.start, trip.end, rev=0.0,
+                     lp=trip.lp)
             # if t.lp.o != self.driverstart and self.Q[self.idxes[t.lp.o]].solution_value - prev > 0.1 and t.lp.d != self.driverstop:
             if t.lp.o in self.primaryOIDs:
                 try:
@@ -674,15 +678,16 @@ class PDWTWOptimizer:
                     t.lp.d = self.opposingTrip[t.id].lp.d
                     t.rev = self.r[self.idxes[t.lp.o]]
                 except:
-                    print("Failed to get primary origin ID", t.id, t.lp.o, t.lp.d,self.Q[self.idxes[t.lp.o]].solution_value, prev)
+                    print("Failed to get primary origin ID", t.id, t.lp.o, t.lp.d,
+                          self.Q[self.idxes[t.lp.o]].solution_value, prev)
                     exit(1)
                 prev = self.Q[self.idxes[t.lp.o]].solution_value
             yield (t.lp.c1[1], t.lp.c1[0]), t
         yield (depot.lp.c2[1], depot.lp.c2[0]), depot
 
-
     def __get_driver_trips_times_miles_rev(self, id):
-        return  ", ".join(map(lambda t: str(t.id),filter(self.__filterPrimaryTrips(id), self.trip_map.values()))), \
-                str(timedelta(days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
+        return ", ".join(map(lambda t: str(t.id), filter(self.__filterPrimaryTrips(id), self.trip_map.values()))), \
+               str(timedelta(
+                   days=sum(t.lp.time for t in filter(self.__filterTrips(id), self.trip_map.values())))).split('.')[0], \
                str(sum(t.lp.miles for t in filter(self.__filterTrips(id), self.trip_map.values()))), \
                str(sum(t.rev for t in filter(self.__filterPrimaryTrips(id), self.trip_map.values())))

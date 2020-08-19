@@ -1,24 +1,24 @@
+import argparse
 import os
 import random
+from datetime import datetime
+from types import ModuleType
 from typing import Type, Union, Dict, List, Any
-import yaml
-import argparse
 
+import yaml
 from pandas import DataFrame
 from sqlalchemy.orm import Session
 
 from avicena.models.Assignment import generate_visualization_from_df, load_assignment_from_df
-from avicena.util.Database import create_db_session, save_and_commit_to_db, close_db_session
 from avicena.models.Driver import load_drivers_from_db, load_drivers_from_csv, prepare_drivers_for_optimizer, Driver
 from avicena.models.MergeAddress import load_merge_details_from_csv, load_merge_details_from_db, MergeAddress
 from avicena.models.RevenueRate import load_revenue_table_from_csv, load_revenue_table_from_db, RevenueRate
 from avicena.models.Trip import load_and_filter_valid_trips_from_df, Trip
+from avicena.optimizers.GeneralOptimizer import GeneralOptimizer
 from avicena.parsers import LogistiCareParser, CSVParser
 from avicena.util.ConfigValidation import validate_app_config
+from avicena.util.Database import create_db_session, save_and_commit_to_db, close_db_session
 from avicena.util.Exceptions import InvalidConfigException
-from avicena.optimizers.GeneralOptimizer import GeneralOptimizer
-from datetime import datetime
-
 from avicena.util.ParserUtil import verify_and_save_parsed_trips_df_to_csv
 
 # Supported Parser and Optimizer types that will be passed into the Config file
@@ -26,7 +26,7 @@ parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
 optimizers = {'GeneralOptimizer': GeneralOptimizer}
 
 
-def _run_parser(trip_parser: Union[Type[LogistiCareParser], Type[CSVParser]], trips_file: str,
+def _run_parser(trip_parser: Union[Type[ModuleType]], trips_file: str,
                 revenue_table: Dict[str, List[RevenueRate]], merge_details: Dict[str, MergeAddress], assumed_speed: int,
                 model_name: str, output_directory: str) -> List[Trip]:
     """
@@ -68,7 +68,7 @@ def _run_optimizer(trip_optimizer: Union[Type[GeneralOptimizer]], trips: List[Tr
 
 
 def _retrieve_database_inputs(db_session: Session) -> (
-Dict[str, List[RevenueRate]], Dict[str, MergeAddress], List[Driver]):
+        Dict[str, List[RevenueRate]], Dict[str, MergeAddress], List[Driver]):
     """
     Retrieve the static inputs of the model from the database
     :param db_session: SQLAlchemy Database connection session
@@ -83,7 +83,7 @@ Dict[str, List[RevenueRate]], Dict[str, MergeAddress], List[Driver]):
 
 
 def _retrieve_csv_inputs(app_config: Dict[str, Any]) -> (
-Dict[str, List[RevenueRate]], Dict[str, MergeAddress], List[Driver]):
+        Dict[str, List[RevenueRate]], Dict[str, MergeAddress], List[Driver]):
     """
     Retrieve static inputs of the model from CSV files
     :param app_config: App Configuration
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     else:
         revenue_table, merge_details, drivers_table = _retrieve_csv_inputs(app_config)
         trips = _run_parser(trip_parser, args.trips_file, revenue_table, merge_details, args.speed,
-                            app_config['output_directory'])
+                            args.name, app_config['output_directory'])
         drivers = prepare_drivers_for_optimizer(drivers_table, args.driver_ids, args.date)
         solution = _run_optimizer(trip_optimizer, trips, drivers, args.name, args.date, args.speed, optimizer_config,
                                   app_config['output_directory'])

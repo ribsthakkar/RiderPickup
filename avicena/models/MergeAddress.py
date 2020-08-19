@@ -1,10 +1,8 @@
+from datetime import timedelta
 from typing import Dict
 
 import pandas as pd
-
 from sqlalchemy import Column, Integer, String, Interval
-from datetime import timedelta
-
 from sqlalchemy.orm import Session
 
 from . import Base

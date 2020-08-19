@@ -1,16 +1,13 @@
+from copy import copy
 from typing import List, Any, Dict, Iterable
 
 import pandas as pd
-
-from copy import copy
 from docloud.status import JobSolveStatus
-from docplex.mp.conflict_refiner import ConflictRefiner, VarLbConstraintWrapper, VarUbConstraintWrapper
-from docplex.mp.model import Model
-from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
 from pandas import DataFrame
 
-from avicena.models import Trip, Location, Driver
+from avicena.models.Trip import Trip, Location
+from avicena.models.Driver import Driver
 from avicena.optimizers.BaseOptimizer import BaseOptimizer
 from avicena.optimizers.solver_util.cplex.Listeners import GapListener, TimeListener
 from avicena.util.Exceptions import InvalidTripException, SolutionNotFoundException
@@ -24,6 +21,7 @@ class GeneralOptimizer(BaseOptimizer):
     The GeneralOptimizer uses CPLEX to solve the Patient Dispatch problem.
     The exact formulation can be found at: <will upload later>
     """
+
     def __init__(self, trips: List[Trip], drivers: List[Driver], name: str, date: str, speed: int,
                  config: Dict[str, Any]) -> None:
         """
@@ -37,7 +35,7 @@ class GeneralOptimizer(BaseOptimizer):
         """
         super().__init__(trips, drivers, name, date, speed, config)
         self.drivers = list()  # List of all Drivers
-        self.primary_trips = dict() # Map Primary trip pair to trip object
+        self.primary_trips = dict()  # Map Primary trip pair to trip object
         self.all_trips = dict()  # Maps Trip-ID to Trip Object
         self.driver_nodes = set()  # All Driver Nodes
         self.driver_starts = set()  # Starting Nodes of Drivers
@@ -52,8 +50,8 @@ class GeneralOptimizer(BaseOptimizer):
         self.node_window_close = dict()  # earliest arrival time to a node
         self.location_to_primary_trip_id_map = dict()  # Map from starting location to ID of primary trip from that location
         self.merges = dict()  # Map from merge trip to incoming primary trip
-        self.revenues = dict() # Map from start node to revenue of the trip
-        self.wheelchair_locations = set() # Set of locations where wheelchair trips start
+        self.revenues = dict()  # Map from start node to revenue of the trip
+        self.wheelchair_locations = set()  # Set of locations where wheelchair trips start
 
         # Decision Variable Structures
         self.trip_vars = dict()  # Map from driver to map of trip to model variable
@@ -106,10 +104,12 @@ class GeneralOptimizer(BaseOptimizer):
         :param iter: Iterable of Trips
         :return: Filter generator of feasible trips that a given driver can perform
         """
-        return filter(lambda t: not ((t.lp.o in self.driver_nodes and t.lp.o.get_clean_address() != driver.get_clean_address()) or (
-                t.lp.d in self.driver_nodes and t.lp.d.get_clean_address() != driver.get_clean_address()))
+        return filter(lambda t: not (
+                    (t.lp.o in self.driver_nodes and t.lp.o.get_clean_address() != driver.get_clean_address()) or (
+                    t.lp.d in self.driver_nodes and t.lp.d.get_clean_address() != driver.get_clean_address()))
                                 and t.required_level_of_service in driver.level_of_service
-                                and not (abs(self.node_capacities[t.lp.o] + self.node_capacities[t.lp.d]) > driver.capacity), iter)
+                                and not (
+                    abs(self.node_capacities[t.lp.o] + self.node_capacities[t.lp.d]) > driver.capacity), iter)
 
     def __prepare_trip_parameters(self) -> None:
         """
@@ -244,7 +244,8 @@ class GeneralOptimizer(BaseOptimizer):
                 try:
                     space = 0
                     if rS in self.wheelchair_locations: space = 1.5
-                    t = Trip(rS, rE, space, id, self.node_window_open[rS], self.node_window_close[rE], self.SPEED, False, 0.0)
+                    t = Trip(rS, rE, space, id, self.node_window_open[rS], self.node_window_close[rE], self.SPEED,
+                             False, 0.0)
                 except InvalidTripException:
                     # print(rS, rE, nodeDeps[rS], nodeArrs[rE])
                     continue
@@ -270,7 +271,8 @@ class GeneralOptimizer(BaseOptimizer):
                 self.trip_vars[d][t] = self.mdl.binary_var(name='y' + '_' + str(d.id) + '_' + str(t.id))
                 self.time_vars[d][t] = self.mdl.continuous_var(lb=0, ub=1, name='t' + '_' + str(d.id) + '_' + str(t.id))
                 self.mdl.add_constraint(self.time_vars[d][t] - self.trip_vars[d][t] <= 0)
-                self.capacity_vars[d][t] = self.mdl.continuous_var(lb=0, ub=d.capacity, name='q' + '_' + str(d.id) + '_' + str(t.id))
+                self.capacity_vars[d][t] = self.mdl.continuous_var(lb=0, ub=d.capacity,
+                                                                   name='q' + '_' + str(d.id) + '_' + str(t.id))
                 self.mdl.add_constraint(self.capacity_vars[d][t] - self.trip_vars[d][t] * d.capacity <= 0)
 
     def __prepare_constraints(self) -> None:
@@ -353,7 +355,8 @@ class GeneralOptimizer(BaseOptimizer):
         """
         for trp in self.all_trips:
             if isinstance(trp, str):
-                if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
+                if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (
+                        trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
                     main_origin = self.all_trips[trp].lp.o
                     main_dest = self.all_trips[trp].lp.d
                     if trp.endswith('A'):
@@ -382,7 +385,8 @@ class GeneralOptimizer(BaseOptimizer):
                         for otrip in self.filter_driver_feasible_trips(d2, self.outtrips[alt_dest]):
                             alt_dest_incoming_time_var_sum += self.time_vars[d2][otrip]
                     self.mdl.add_constraint(main_origin_outtrip_time_var_sum <= main_dest_intrip_time_var_sum)
-                    self.mdl.add_constraint(main_dest_intrip_time_var_sum + main_dest_incoming_travel_time_sum <= alt_origin_outgoing_time_var_sum)
+                    self.mdl.add_constraint(
+                        main_dest_intrip_time_var_sum + main_dest_incoming_travel_time_sum <= alt_origin_outgoing_time_var_sum)
                     self.mdl.add_constraint(alt_origin_outgoing_time_var_sum <= alt_dest_incoming_time_var_sum)
         print("Set primary trip precedence constraints")
 
@@ -485,8 +489,10 @@ class GeneralOptimizer(BaseOptimizer):
         """
         for d in self.drivers:
             for mer in self.filter_driver_feasible_trips(d, self.merges):
-                self.mdl.add_constraint(ct =self.trip_vars[d][mer] == self.trip_vars[d][self.merges[mer]])
-                self.obj += self.MERGE_PEN * (self.time_vars[d][mer] - (self.time_vars[d][self.merges[mer]] + self.merges[mer].lp.time * self.trip_vars[d][mer])) * (24)
+                self.mdl.add_constraint(ct=self.trip_vars[d][mer] == self.trip_vars[d][self.merges[mer]])
+                self.obj += self.MERGE_PEN * (self.time_vars[d][mer] - (
+                            self.time_vars[d][self.merges[mer]] + self.merges[mer].lp.time * self.trip_vars[d][
+                        mer])) * (24)
         """
         Equalizing Revenue Penalty
         """
@@ -494,7 +500,9 @@ class GeneralOptimizer(BaseOptimizer):
         self.rev_min = self.mdl.continuous_var(0)
         for d in self.drivers:
             self.revenue_vars[d] = self.mdl.continuous_var(lb=0, name="Revenue" + str(d.id))
-            self.mdl.add_constraint(self.revenue_vars[d] == sum(self.revenues[t.lp.o] * self.trip_vars[d][t] for t in self.filter_driver_feasible_trips(d, self.all_trips.values())))
+            self.mdl.add_constraint(self.revenue_vars[d] == sum(self.revenues[t.lp.o] * self.trip_vars[d][t] for t in
+                                                                self.filter_driver_feasible_trips(d,
+                                                                                                  self.all_trips.values())))
             self.mdl.add_constraint(self.rev_max >= self.revenue_vars[d])
             self.mdl.add_constraint(self.rev_min <= self.revenue_vars[d])
         self.obj += self.REVENUE_PEN * (self.rev_max - self.rev_min)
@@ -507,7 +515,10 @@ class GeneralOptimizer(BaseOptimizer):
         for d in self.drivers:
             if 'W' not in d.level_of_service: continue
             self.wheelchair_vars[d] = self.mdl.continuous_var(lb=0, name="Wheelchairs" + str(d.id))
-            self.mdl.add_constraint(self.wheelchair_vars[d] == sum(self.trip_vars[d][t] for t in filter(lambda x: x.required_level_of_service == 'W', self.filter_driver_feasible_trips(d, self.all_trips.values()))))
+            self.mdl.add_constraint(self.wheelchair_vars[d] == sum(self.trip_vars[d][t] for t in
+                                                                   filter(lambda x: x.required_level_of_service == 'W',
+                                                                          self.filter_driver_feasible_trips(d,
+                                                                                                            self.all_trips.values()))))
             self.mdl.add_constraint(self.max_wheelchair_trips >= self.wheelchair_vars[d])
             self.mdl.add_constraint(self.min_wheelchair_trips <= self.wheelchair_vars[d])
         self.obj += self.W_PEN * (self.max_wheelchair_trips - self.min_wheelchair_trips)
@@ -532,7 +543,8 @@ class GeneralOptimizer(BaseOptimizer):
                 progress_listener = TimeListener(self.STAGE1_TIME)
                 self.mdl.add_progress_listener(progress_listener)
                 first_solve = self.mdl.solve()
-                if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
+                if first_solve and (
+                        first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                     print("First solve status: " + str(self.mdl.get_solve_status()))
                     print("First solve obj value: " + str(self.mdl.objective_value))
                     if save_stages: self.__save_solution(solution_file + '_stage1')
@@ -591,7 +603,8 @@ class GeneralOptimizer(BaseOptimizer):
                 print("Total Number of trip miles by each driver: ", driver_miles)
                 break
         if self.solution_df is None:
-            raise SolutionNotFoundException(f"General Optimizer failed to find solution for {self.mdl.name} after {self.MAX_RETRIES} tries")
+            raise SolutionNotFoundException(
+                f"General Optimizer failed to find solution for {self.mdl.name} after {self.MAX_RETRIES} tries")
 
         return self.solution_df
 
@@ -613,6 +626,7 @@ class GeneralOptimizer(BaseOptimizer):
         Write solution in CSV format to the
         :param solution_file: Path to where solution will be saved
         """
+
         def assigned_trip_generator():
             for d, driver_trips in self.trip_vars.items():
                 for t, var in driver_trips.items():
@@ -630,7 +644,9 @@ class GeneralOptimizer(BaseOptimizer):
             for d, t in sorted(debug_trip_generator(dr), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
                 print(d.name, t.lp.o, t.lp.d, self.time_vars[d][t].solution_value, t.lp.time)
 
-        columns = ['trip_id','driver_id','driver_name','trip_date','trip_pickup_address','trip_pickup_time','est_pickup_time','trip_dropoff_address','trip_dropoff_time','est_dropoff_time','trip_los','est_miles','est_time','trip_rev']
+        columns = ['trip_id', 'driver_id', 'driver_name', 'trip_date', 'trip_pickup_address', 'trip_pickup_time',
+                   'est_pickup_time', 'trip_dropoff_address', 'trip_dropoff_time', 'est_dropoff_time', 'trip_los',
+                   'est_miles', 'est_time', 'trip_rev']
         data = []
         for d, t in sorted(assigned_trip_generator(), key=lambda x: self.time_vars[x[0]][x[1]].solution_value):
             end_time = -1
@@ -640,18 +656,22 @@ class GeneralOptimizer(BaseOptimizer):
                     end_time = self.time_vars[d][intrip].solution_value + intrip.lp.time
                     if end_time < self.time_vars[d][t].solution_value + t.lp.time:
                         print('Something wrong')
-                        print(sum(self.trip_vars[d][intrip].solution_value for intrip in self.filter_driver_feasible_trips(d, self.intrips[rE])))
+                        print(sum(self.trip_vars[d][intrip].solution_value for intrip in
+                                  self.filter_driver_feasible_trips(d, self.intrips[rE])))
                         print(rE)
                         print(t.lp.o, t.lp.d)
                         print(intrip.lp.o, intrip.lp.d)
-                        print(t.id, self.time_vars[d][t].solution_value, self.time_vars[d][intrip].solution_value, intrip.lp.time)
+                        print(t.id, self.time_vars[d][t].solution_value, self.time_vars[d][intrip].solution_value,
+                              intrip.lp.time)
                     break
             if end_time < 0:
                 print("Something wrong")
             required_end = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]].scheduled_dropoff
             ptrip = self.all_trips[self.location_to_primary_trip_id_map[t.lp.o]]
-            data.append([self.location_to_primary_trip_id_map[t.lp.o], d.id, d.name, self.date,t.lp.o.get_clean_address(),
-                         t.scheduled_pickup, self.time_vars[d][t].solution_value, rE.get_clean_address(), required_end, end_time,
-                         t.required_level_of_service, ptrip.lp.miles, ptrip.lp.time, self.revenues[t.lp.o]])
+            data.append(
+                [self.location_to_primary_trip_id_map[t.lp.o], d.id, d.name, self.date, t.lp.o.get_clean_address(),
+                 t.scheduled_pickup, self.time_vars[d][t].solution_value, rE.get_clean_address(), required_end,
+                 end_time,
+                 t.required_level_of_service, ptrip.lp.miles, ptrip.lp.time, self.revenues[t.lp.o]])
         self.solution_df = pd.DataFrame(data, columns=columns)
         self.solution_df.to_csv(solution_file)

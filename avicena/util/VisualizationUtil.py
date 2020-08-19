@@ -2,7 +2,7 @@ import datetime
 
 from pandas import Series
 
-from avicena.models import Driver
+from avicena.models.Driver import Driver
 
 
 def generate_html_label_for_addr(trips: Series, addr: str) -> str:
@@ -26,5 +26,4 @@ def generate_html_label_for_driver_addr(d: Driver) -> str:
     :param d: Driver object
     :return: HTML formatted driver address
     """
-    return d.address.get_clean_address() + "<br>Driver " + str(d.id) + " Home"
-
+    return d.get_clean_address() + "<br>Driver " + str(d.id) + " Home"

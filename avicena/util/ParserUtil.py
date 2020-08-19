@@ -4,9 +4,8 @@ from typing import Union, Dict, List
 import pandas as pd
 from pandas import Series, DataFrame
 
-from avicena.models import MergeAddress, RevenueRate
-from avicena.models.MergeAddress import load_merge_details_from_db, load_merge_details_from_csv
-from avicena.models.RevenueRate import load_revenue_table_from_db, load_revenue_table_from_csv
+from avicena.models.MergeAddress import MergeAddress
+from avicena.models.RevenueRate import RevenueRate
 from avicena.util.Exceptions import RevenueCalculationException, MissingTripDetailsException
 from avicena.util.Geolocator import find_coord_lat_lon
 from avicena.util.TimeWindows import get_time_window_by_hours_minutes, timedelta_to_fraction_of_day
@@ -36,7 +35,8 @@ def convert_time(time: Union[float, str]) -> float:
         return timedelta_to_fraction_of_day(td)
 
 
-def _adjust_pickup_dropoff_merge(pickup_time: float, id: str, pickup_address: str, dropoff_times: Series, ids: Series, merge_details: Dict[str, MergeAddress]) -> Series:
+def _adjust_pickup_dropoff_merge(pickup_time: float, id: str, pickup_address: str, dropoff_times: Series, ids: Series,
+                                 merge_details: Dict[str, MergeAddress]) -> Series:
     """
     Clean up the pickup and dropoff times for a given trip that was parsed from the inputs
     This function returns a a series with the udpated pickup_time, dropoff_time, and indication of whether it is a merge trip
@@ -80,7 +80,7 @@ def _revenue_calculation(table: Dict[str, List[RevenueRate]], miles: float, los:
 def _get_trip_coordinates(df: DataFrame) -> None:
     """
     Populate DataFrame with coordinates of pickup and dropoff addresses
-    :param df: Dataframe to update
+    :param df: DataFrame to update
     """
     df[['trip_pickup_lat', 'trip_pickup_lon']] = df['trip_pickup_address'].apply(
         lambda x: pd.Series(find_coord_lat_lon(x)))
@@ -119,7 +119,8 @@ def _standardize_time_format_trip_df(df: DataFrame) -> None:
     df['trip_dropoff_time'] = df['trip_dropoff_time'].apply(convert_time)
 
 
-def standardize_trip_df(df: DataFrame, merge_details: Dict[str, MergeAddress], revenue_table: Dict[str, List[RevenueRate]]) -> None:
+def standardize_trip_df(df: DataFrame, merge_details: Dict[str, MergeAddress],
+                        revenue_table: Dict[str, List[RevenueRate]]) -> None:
     """
     Apply time standardization, merge trip updates, missing time updates, revenue calculations, and coordinates to
     the trip DataFrame

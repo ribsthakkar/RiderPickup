@@ -6,6 +6,7 @@ class TimeListener(ProgressListener):
     Sample CPLEX Listener found on IBM DoCPLEX Forums. This listener logs and tracks MIP Gap and the time passed
     in attempt to solve the problem. It aborts the solve if a certain amount of time has passed.
     """
+
     def __init__(self, time: int):
         """
         Initalize Listener
@@ -31,8 +32,9 @@ class TimeListener(ProgressListener):
         elif data.time > self._time:
             self.abort()
         else:
-            #print('No incumbent yet')
+            # print('No incumbent yet')
             pass
+
 
 class GapListener(ProgressListener):
     """
@@ -40,6 +42,7 @@ class GapListener(ProgressListener):
     in attempt to solve the problem. It aborts the solve if a certain MIP gap is reached or a certain amount of time has
     passed.
     """
+
     def __init__(self, time: int, gap: float) -> None:
         """
         Initialize Listener
@@ -65,5 +68,5 @@ class GapListener(ProgressListener):
                 print('ABORTING')
                 self.abort()
         else:
-            #print('No incumbent yet')
+            # print('No incumbent yet')
             pass

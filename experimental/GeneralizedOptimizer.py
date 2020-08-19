@@ -1,30 +1,28 @@
 import random
 from copy import copy
 from datetime import timedelta
+
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import numpy as np
 from docloud.status import JobSolveStatus
-from docplex.mp.conflict_refiner import ConflictRefiner, VarLbConstraintWrapper, VarUbConstraintWrapper
 from docplex.mp.model import Model
-from docplex.mp.relaxer import Relaxer
 from docplex.mp.utils import DOcplexException
 from plotly.subplots import make_subplots
 
-from experimental.Trip import Trip, locations, InvalidTripException, TripType, Location
-from experimental.constants import FIFTEEN
+from experimental.Trip import Trip, InvalidTripException, TripType, Location
 from experimental.listeners import TimeListener, GapListener
+
 
 class GeneralOptimizer:
     def filtered(self, d, iter):
         return filter(lambda t: not ((t.lp.o in self.driverNodes and t.lp.o[:4] != d.address[:4]) or (
-                    t.lp.d in self.driverNodes and t.lp.d[:4] != d.address[:4]))
+                t.lp.d in self.driverNodes and t.lp.d[:4] != d.address[:4]))
                                 and t.los in d.los
                                 # and
                                 and not (abs(self.nodeCaps[t.lp.o] + self.nodeCaps[t.lp.d]) > d.capacity), iter)
 
-
-    def __init__(self, trips, drivers, params, name = None):
+    def __init__(self, trips, drivers, params, name=None):
         self.drivers_inp = drivers
         self.trips_inp = trips
         if not name:
@@ -33,7 +31,7 @@ class GeneralOptimizer:
             self.mdl = Model(name=name)
 
         self.drivers = list()  # List of all Drivers
-        self.primary_trips = dict() # Map Primary trip pair to trip object
+        self.primary_trips = dict()  # Map Primary trip pair to trip object
         self.all_trips = dict()  # Maps Trip-ID to Trip Object
         self.driverNodes = set()  # All Driver Nodes
         self.driverStart = set()  # Starting Nodes of Driver
@@ -48,9 +46,9 @@ class GeneralOptimizer:
         self.nodeClose = dict()  # earliest arrival time to a node
         self.primaryTID = dict()  # Map from starting location to ID of primary trip from that location
         self.merges = dict()  # Map from merge trip to incoming primary trip
-        self.revenues = dict() # Map from start node to revenue of the trip
-        self.badPairs = dict() # Map from Pickup location of trip pair to dropoff of incoming trip pair
-        self.wheelchairs = set() # Set of locations where wheelchair trips start
+        self.revenues = dict()  # Map from start node to revenue of the trip
+        self.badPairs = dict()  # Map from Pickup location of trip pair to dropoff of incoming trip pair
+        self.wheelchairs = set()  # Set of locations where wheelchair trips start
 
         # Decision Variable Structures
         self.trips = dict()  # Map from driver to map of trip to model variable
@@ -92,8 +90,6 @@ class GeneralOptimizer:
         self.__generate_trips()
         self.__prepare_constraints()
         self.__prepare_objective()
-
-
 
     def __prepare_trip_parameters(self):
         count = 0
@@ -221,12 +217,14 @@ class GeneralOptimizer:
         for rS in self.requestNodes:
             for rE in self.requestNodes:
                 if rS == rE or (rS in self.requestPair and self.requestPair[rS] == rE) or (
-                        rE in self.requestPair and self.requestPair[rE] == rS) or (rS in self.badPairs and self.badPairs[rS] == rE):
+                        rE in self.requestPair and self.requestPair[rE] == rS) or (
+                        rS in self.badPairs and self.badPairs[rS] == rE):
                     continue
                 try:
                     space = 0
                     if rS in self.wheelchairs: space = 1.5
-                    t = Trip(rS, rE, space, id, None, self.nodeOpen[rS], self.nodeClose[rE], 0.0, prefix=False, suffix=True)
+                    t = Trip(rS, rE, space, id, None, self.nodeOpen[rS], self.nodeClose[rE], 0.0, prefix=False,
+                             suffix=True)
                 except InvalidTripException:
                     # print(rS, rE, nodeDeps[rS], nodeArrs[rE])
                     continue
@@ -252,17 +250,16 @@ class GeneralOptimizer:
                 self.trips[d][t] = self.mdl.binary_var(name='y' + '_' + str(d.id) + '_' + str(t.id))
                 self.times[d][t] = self.mdl.continuous_var(lb=0, ub=1, name='t' + '_' + str(d.id) + '_' + str(t.id))
                 self.mdl.add_constraint(self.times[d][t] - self.trips[d][t] <= 0)
-                self.caps[d][t] = self.mdl.continuous_var(lb=0, ub=d.capacity, name='q' + '_' + str(d.id) + '_' + str(t.id))
+                self.caps[d][t] = self.mdl.continuous_var(lb=0, ub=d.capacity,
+                                                          name='q' + '_' + str(d.id) + '_' + str(t.id))
                 self.mdl.add_constraint(self.caps[d][t] - self.trips[d][t] * d.capacity <= 0)
-
 
         with open("time.csv", "w") as t, open("cost.csv", "w") as c:
             t.write("Start,End,Time")
             c.write("Start,End,Cost")
             for pair, trp in self.primary_trips.items():
-                t.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.time) + "\n")
-                c.write(pair[0]+ "," + pair[1] + "," + str(trp.lp.miles) + "\n")
-
+                t.write(pair[0] + "," + pair[1] + "," + str(trp.lp.time) + "\n")
+                c.write(pair[0] + "," + pair[1] + "," + str(trp.lp.miles) + "\n")
 
     def __prepare_constraints(self):
         """
@@ -340,7 +337,8 @@ class GeneralOptimizer:
         """
         for trp in self.all_trips:
             if isinstance(trp, str):
-                if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
+                if (trp.endswith('A') and (trp[:-1] + 'B' in self.all_trips)) or (
+                        trp.endswith('B') and (trp[:-1] + 'C' in self.all_trips)):
                     main_trip_start = self.all_trips[trp].lp.o
                     main_trip_dest = self.all_trips[trp].lp.d
                     alt_trip_start = None
@@ -471,8 +469,9 @@ class GeneralOptimizer:
         """
         for d in self.drivers:
             for mer in self.filtered(d, self.merges):
-                self.mdl.add_constraint(ct = self.trips[d][mer] == self.trips[d][self.merges[mer]])
-                self.obj += self.MERGE_PEN * (self.times[d][mer] - (self.times[d][self.merges[mer]] + self.merges[mer].lp.time * self.trips[d][mer])) * (24)
+                self.mdl.add_constraint(ct=self.trips[d][mer] == self.trips[d][self.merges[mer]])
+                self.obj += self.MERGE_PEN * (self.times[d][mer] - (
+                            self.times[d][self.merges[mer]] + self.merges[mer].lp.time * self.trips[d][mer])) * (24)
         """
         Equalizing Revenue Penalty
         """
@@ -480,7 +479,8 @@ class GeneralOptimizer:
         self.rev_min = self.mdl.continuous_var(0)
         for d in self.drivers:
             self.revs[d] = self.mdl.continuous_var(lb=0, name="Revenue" + str(d.id))
-            self.mdl.add_constraint(self.revs[d] == sum(self.revenues[t.lp.o] * self.trips[d][t] for t in self.filtered(d, self.all_trips.values())))
+            self.mdl.add_constraint(self.revs[d] == sum(
+                self.revenues[t.lp.o] * self.trips[d][t] for t in self.filtered(d, self.all_trips.values())))
             self.mdl.add_constraint(self.rev_max >= self.revs[d])
             self.mdl.add_constraint(self.rev_min <= self.revs[d])
         self.obj += self.REVENUE_PEN * (self.rev_max - self.rev_min)
@@ -493,7 +493,8 @@ class GeneralOptimizer:
         for d in self.drivers:
             if 'W' not in d.los: continue
             self.ws[d] = self.mdl.continuous_var(lb=0, name="Wheelchairs" + str(d.id))
-            self.mdl.add_constraint(self.ws[d] == sum(self.trips[d][t] for t in filter(lambda x: x.los == 'W', self.filtered(d, self.all_trips.values()))))
+            self.mdl.add_constraint(self.ws[d] == sum(
+                self.trips[d][t] for t in filter(lambda x: x.los == 'W', self.filtered(d, self.all_trips.values()))))
             self.mdl.add_constraint(self.w_max >= self.ws[d])
             self.mdl.add_constraint(self.w_min <= self.ws[d])
         self.obj += self.W_PEN * (self.w_max - self.w_min)
@@ -519,13 +520,14 @@ class GeneralOptimizer:
                     pL = TimeListener(self.STAGE1_TIME)
                     self.mdl.add_progress_listener(pL)
                     first_solve = self.mdl.solve()
-                    if first_solve and (first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
+                    if first_solve and (
+                            first_solve.solve_status == JobSolveStatus.FEASIBLE_SOLUTION or first_solve.solve_status == JobSolveStatus.OPTIMAL_SOLUTION):
                         print("First solve status: " + str(self.mdl.get_solve_status()))
                         print("First solve obj value: " + str(self.mdl.objective_value))
-                        driverMiles = self.__write_sol(solution_file+'stage1')
+                        driverMiles = self.__write_sol(solution_file + 'stage1')
                         print("Total Number of trip miles by each driver after stage 1: ")
                         print(driverMiles)
-                        self.visualize(solution_file+'stage1', 'stage1vis.html')
+                        self.visualize(solution_file + 'stage1', 'stage1vis.html')
                     else:
                         print("Stage 1 Infeasible with ED")
                     if not first_solve or first_solve.solve_status == JobSolveStatus.INFEASIBLE_SOLUTION:
@@ -607,9 +609,11 @@ class GeneralOptimizer:
     def visualize(self, sfile, vfile='visualized.html', open_after=False):
         def names(id):
             return "Driver " + str(id) + " Route"
+
         def get_labels(trips, addr):
             data = "<br>".join(
-               "0" * (10 - len(str(t['trip_id']))) + str(t['trip_id']) + "  |  " + str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] +
+                "0" * (10 - len(str(t['trip_id']))) + str(t['trip_id']) + "  |  " +
+                str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] +
                 "  |  " + str(t['driver_id']) for t in trips
             )
             return addr + "<br><b>TripID,             Time,      DriverID </b><br>" + data
@@ -640,19 +644,23 @@ class GeneralOptimizer:
         for i, d in enumerate(self.drivers):
             r = lambda: random.randint(0, 255)
             col = '#%02X%02X%02X' % (r(), r(), r())
-            filtered_trips = sol_df[sol_df['driver_id']==d.id]
+            filtered_trips = sol_df[sol_df['driver_id'] == d.id]
             points, trips = self.__get_driver_coords(filtered_trips, d)
             x, y = zip(*points)
             details = [[str(t['trip_id']) for _, t in filtered_trips.iterrows()],
-                       [t['trip_pickup_address'] for _,t in filtered_trips.iterrows()],
-                       [t['trip_dropoff_address'] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['trip_pickup_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['est_dropoff_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(timedelta(days=float(t['trip_dropoff_time']))).split('.')[0] for _,t in filtered_trips.iterrows()],
-                       [str(t['est_miles']) for _,t in filtered_trips.iterrows()],
-                       [str(t['trip_los']) for _,t in filtered_trips.iterrows()],
-                       [str(t['trip_rev']) for _,t in filtered_trips.iterrows()],
+                       [t['trip_pickup_address'] for _, t in filtered_trips.iterrows()],
+                       [t['trip_dropoff_address'] for _, t in filtered_trips.iterrows()],
+                       [str(timedelta(days=float(t['est_pickup_time']))).split('.')[0] for _, t in
+                        filtered_trips.iterrows()],
+                       [str(timedelta(days=float(t['trip_pickup_time']))).split('.')[0] for _, t in
+                        filtered_trips.iterrows()],
+                       [str(timedelta(days=float(t['est_dropoff_time']))).split('.')[0] for _, t in
+                        filtered_trips.iterrows()],
+                       [str(timedelta(days=float(t['trip_dropoff_time']))).split('.')[0] for _, t in
+                        filtered_trips.iterrows()],
+                       [str(t['est_miles']) for _, t in filtered_trips.iterrows()],
+                       [str(t['trip_los']) for _, t in filtered_trips.iterrows()],
+                       [str(t['trip_rev']) for _, t in filtered_trips.iterrows()],
                        ]
             all_x += x
             all_y += y
@@ -713,7 +721,8 @@ class GeneralOptimizer:
             ),
             row=1, col=1
         )
-        names, ids, times, ep, ld,  miles, rev = zip(*(self.__get_driver_trips_times_miles_rev(sol_df, id) for id in driver_ids))
+        names, ids, times, ep, ld, miles, rev = zip(
+            *(self.__get_driver_trips_times_miles_rev(sol_df, id) for id in driver_ids))
         names = list(names)
         ids = list(ids)
         times = list(times)
@@ -722,14 +731,14 @@ class GeneralOptimizer:
         miles = list(miles)
         rev = list(rev)
         ids.append("Average")
-        times.append(sum(times)/len(times))
-        ep.append(sum(ep)/len(ep))
-        ld.append(sum(ld)/len(ld))
-        miles.append(sum(miles)/len(miles))
-        rev.append(sum(rev)/len(rev))
-        times = list(map(lambda t: str(timedelta(days=t)).split('.')[0],times))
-        ep = list(map(lambda t: str(timedelta(days=t)).split('.')[0],ep))
-        ld = list(map(lambda t: str(timedelta(days=t)).split('.')[0],ld))
+        times.append(sum(times) / len(times))
+        ep.append(sum(ep) / len(ep))
+        ld.append(sum(ld) / len(ld))
+        miles.append(sum(miles) / len(miles))
+        rev.append(sum(rev) / len(rev))
+        times = list(map(lambda t: str(timedelta(days=t)).split('.')[0], times))
+        ep = list(map(lambda t: str(timedelta(days=t)).split('.')[0], ep))
+        ld = list(map(lambda t: str(timedelta(days=t)).split('.')[0], ld))
         miles = list(map(str, miles))
         rev = list(map(str, rev))
         fig.add_trace(
@@ -745,10 +754,10 @@ class GeneralOptimizer:
             ),
             row=2, col=1,
         )
-        fig.update_mapboxes(zoom=10,center=go.layout.mapbox.Center(
-                lat=np.mean(all_y),
-                lon=np.mean(all_x)),
-         style='open-street-map')
+        fig.update_mapboxes(zoom=10, center=go.layout.mapbox.Center(
+            lat=np.mean(all_y),
+            lon=np.mean(all_x)),
+                            style='open-street-map')
 
         fig.update_layout(
             title_text=self.mdl.name,
@@ -762,7 +771,9 @@ class GeneralOptimizer:
         pairs.append((0.0, Location(driver.address[:-4]).rev_coord(), {}))
         for idx, t in filtered_trips.iterrows():
             pairs.append((float(t['est_pickup_time']), Location(t['trip_pickup_address']).rev_coord(), t))
-            pairs.append((float(t['est_dropoff_time']), Location(t['trip_dropoff_address']).rev_coord(), {'est_pickup_time': t['est_dropoff_time'], 'driver_id': driver.id, 'trip_id': 'INTER', 'trip_pickup_address': t['trip_dropoff_address']}))
+            pairs.append((float(t['est_dropoff_time']), Location(t['trip_dropoff_address']).rev_coord(),
+                          {'est_pickup_time': t['est_dropoff_time'], 'driver_id': driver.id, 'trip_id': 'INTER',
+                           'trip_pickup_address': t['trip_dropoff_address']}))
 
         pairs.append((1.0, Location(driver.address[:-4]).rev_coord(), {}))
         _, coords, trips = zip(*sorted(pairs, key=lambda x: x[0]))
@@ -805,11 +816,13 @@ class GeneralOptimizer:
                     if t.lp.o not in self.requestStart or var.solution_value != 1:
                         continue
                     yield (d, t)
+
         def tripGen_debug(d):
             for t, var in self.trips[d].items():
                 if var.solution_value != 1:
                     continue
                 yield (d, t)
+
         for dr in self.drivers:
             for d, t in sorted(tripGen_debug(dr), key=lambda x: self.times[x[0]][x[1]].solution_value):
                 print(d.name, t.lp.o, t.lp.d, self.times[d][t].solution_value, t.lp.time)
@@ -827,11 +840,13 @@ class GeneralOptimizer:
                         end_time = self.times[d][intrip].solution_value + intrip.lp.time
                         if end_time < self.times[d][t].solution_value + t.lp.time:
                             print('Something wrong')
-                            print(sum(self.trips[d][intrip].solution_value for intrip in self.filtered(d, self.intrips[rE])))
+                            print(sum(
+                                self.trips[d][intrip].solution_value for intrip in self.filtered(d, self.intrips[rE])))
                             print(rE)
                             print(t.lp.o, t.lp.d)
                             print(intrip.lp.o, intrip.lp.d)
-                            print(t.id, self.times[d][t].solution_value, self.times[d][intrip].solution_value, intrip.lp.time)
+                            print(t.id, self.times[d][t].solution_value, self.times[d][intrip].solution_value,
+                                  intrip.lp.time)
                         break
                 if end_time < 0:
                     print("Something wrong")

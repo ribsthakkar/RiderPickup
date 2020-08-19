@@ -1,16 +1,14 @@
+import re
+from datetime import datetime
 from typing import List, Optional, Match, AnyStr, Dict
 
+import pandas as pd
 from PyPDF2 import PdfFileReader
 from nltk.tokenize import word_tokenize
-from datetime import datetime
-import pandas as pd
-import re
-import os
-
 from pandas import DataFrame
 
-from avicena.models import MergeAddress, RevenueRate
-from avicena.util.Geolocator import locations
+from avicena.models.MergeAddress import MergeAddress
+from avicena.models.RevenueRate import RevenueRate
 from avicena.util.ParserUtil import standardize_trip_df
 
 

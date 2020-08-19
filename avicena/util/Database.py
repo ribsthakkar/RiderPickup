@@ -1,7 +1,7 @@
 from typing import Dict, Any
 
-from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def create_db_session(db_config: Dict[str, Any]) -> Session:

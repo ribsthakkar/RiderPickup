@@ -3,7 +3,8 @@ from typing import Dict, List
 import pandas as pd
 from pandas import DataFrame
 
-from avicena.models import RevenueRate, MergeAddress
+from avicena.models.RevenueRate import RevenueRate
+from avicena.models.MergeAddress import MergeAddress
 from avicena.util.ParserUtil import standardize_trip_df
 
 

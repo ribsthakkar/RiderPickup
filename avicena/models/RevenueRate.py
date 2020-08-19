@@ -45,7 +45,7 @@ class RevenueRate(Base):
         :param miles: distance for which revenue is being calculated
         :return: revenue made for trip with given distance
         """
-        if self.lower_mileage_bound <= miles <= self.upper_mileage_bound:
+        if not self.lower_mileage_bound <= miles <= self.upper_mileage_bound:
             raise InvalidRevenueRateMileageException(
                 f"{miles} miles not within RevenueRate bounds [{self.lower_mileage_bound},{self.upper_mileage_bound}]")
         return self.base_rate + self.revenue_per_mile * miles
