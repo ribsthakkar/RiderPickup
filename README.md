@@ -167,7 +167,7 @@ details standarized and parsed from the original trips file,
 which provides a visual representation of the final solution. 
 
 ```
-usage: run.py [-h] [-n NAME] [-s SPEED] [-d DATE] [-t TRIPS_FILE]
+usage: cli_run.py [-h] [-n NAME] [-s SPEED] [-d DATE] [-t TRIPS_FILE]
               [-i DRIVER_IDS [DRIVER_IDS ...]]
 
 Run the Patient Dispatch Model
