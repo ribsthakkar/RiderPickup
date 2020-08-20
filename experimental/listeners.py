@@ -5,6 +5,7 @@ class TimeListener(ProgressListener):
     """
     Sample Listener found on IBM DoCPLEX Forums
     """
+
     def __init__(self, time):
         ProgressListener.__init__(self)
         self._time = time
@@ -22,13 +23,15 @@ class TimeListener(ProgressListener):
         elif data.time > self._time:
             self.abort()
         else:
-            #print('No incumbent yet')
+            # print('No incumbent yet')
             pass
+
 
 class GapListener(ProgressListener):
     """
     Sample Listener found on IBM DoCPLEX Forums
     """
+
     def __init__(self, time, gap):
         ProgressListener.__init__(self)
         self._time = time
@@ -45,5 +48,5 @@ class GapListener(ProgressListener):
                 print('ABORTING')
                 self.abort()
         else:
-            #print('No incumbent yet')
+            # print('No incumbent yet')
             pass

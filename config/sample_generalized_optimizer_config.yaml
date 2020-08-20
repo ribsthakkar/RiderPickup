@@ -1,0 +1,25 @@
+# Base Optimizer Parameters
+seed: 1
+
+# Optimizer Parameters
+# All Windows/Limits/Penalties in Minutes
+max_trips: 1000 # if greater than total number of trips, then ignored
+max_drivers: 10
+driver_capacity: 2.5 # W trips take 1.5 space and A trips take 1 space
+early_day_time: 4:30  # Time of day marking trips that are "early day"
+early_pickup_window: 45 # How early before schedule can patient be picked up?
+late_pickup_window: 15 # How late after schedule can patient be picked up?
+early_drop_window: 60 # How early before schedule can patient be dropped?
+late_drop_window: 5 # How late after schedule can patient be dropped?
+route_limit: 900 # Time between earliest pickup to latest drop off
+route_limit_penalty: 500  # Limits on the length of time of the route
+merge_penalty: 1000  # Penalty for not meeting AB or BC Trip Merge Requirements
+revenue_penalty: 250 # Penalty for Revenue Difference
+wheelchair_penalty: 150 # Penalty for Wheelchair Trips Difference
+
+# Solver Parameters
+stage1_time: 10 # Stage 1 Time in seconds
+stage1_gap: 0.05 # Stage 1 Target MIP Gap
+stage2_time: 10 # Stage 2 Time in seconds
+stage2_gap: 0.05 # Stage 2 Target MIP Gap
+max_retries: 3 # number of attempts to solve problem

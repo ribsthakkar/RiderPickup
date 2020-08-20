@@ -1,33 +1,32 @@
-from lib.GeneralizedOptimizer import GeneralOptimizer
-from lib.Preprocessor import TripPreprocess as tp
-from datetime import datetime
-from lib.Assumptions import preprocess_assumptions, gen_opt_params
-from lib.constants import keys, SPEED
-
 import argparse
+
+from experimental.Assumptions import preprocess_assumptions, gen_opt_params
+from experimental.GeneralizedOptimizer import GeneralOptimizer
+from experimental.Preprocessor import TripPreprocess as tp
+from experimental.constants import keys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the Generalized Optimizer with given files')
     rn = parser.add_argument_group('required named args')
 
     parser.add_argument('-s', '--speed', action='store', type=int, dest='s', default=60,
-                    help='Speed in MPH to use for time calculations. Default is 60 MPH')
+                        help='Speed in MPH to use for time calculations. Default is 60 MPH')
 
     parser.add_argument('-n', '--name', action='store', type=str, dest='n', default=None,
-                    help='Name of the Model')
+                        help='Name of the Model')
 
     rn.add_argument('-r', '--rev', action='store', type=str, dest='r',
-                        help='Path to CSV with Revenue Table', required=True)
-    rn.add_argument('-t','--trips', action='store', type=str, dest='t',
-                        help='Path to CSV Trips File', required=True)
+                    help='Path to CSV with Revenue Table', required=True)
+    rn.add_argument('-t', '--trips', action='store', type=str, dest='t',
+                    help='Path to CSV Trips File', required=True)
     rn.add_argument('-d', '--drivers', action='store', type=str, dest='d',
-                        help='Path to CSV Driver Details File', required=True)
+                    help='Path to CSV Driver Details File', required=True)
     rn.add_argument('-k', '--key', action='store', type=str, dest='k',
-                        help='Path to File With OpenCage GeoCode API Key', required=True)
+                    help='Path to File With OpenCage GeoCode API Key', required=True)
     rn.add_argument('-o', '--output', action='store', type=str, dest='o',
-                        help='File To Store Assignment CSV', required=True)
+                    help='File To Store Assignment CSV', required=True)
     rn.add_argument('-v', '--vis', action='store', type=str, dest='v',
-                        help='File To Store Assignment HTML Visualization', required=True)
+                    help='File To Store Assignment HTML Visualization', required=True)
 
     args = parser.parse_args()
     if not all([args.r, args.k, args.t, args.d, args.o, args.v]):

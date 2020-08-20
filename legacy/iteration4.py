@@ -1,25 +1,25 @@
-import pandas as pd
-from docloud.status import JobSolveStatus
-from docplex.mp.basic import Priority
-from docplex.mp.utils import DOcplexException
-from constants import *
-
-from Driver import Driver
-from Trip import Trip, TripType, InvalidTripException
-from docplex.mp.model import Model
-from docplex.mp.progress import ProgressListener
-
 from datetime import datetime
 
+import pandas as pd
+from Driver import Driver
+from Trip import Trip, TripType, InvalidTripException
+from constants import *
+from docloud.status import JobSolveStatus
+from docplex.mp.model import Model
+from docplex.mp.utils import DOcplexException
 from listeners import TimeListener, GapListener
 
-NUM_TRIPS =   55 # float('inf')
-NUM_DRIVERS =  float('inf')
-invalid_trips = {(-1, -1.5), (-1.5,-1), (1, 1.5), (1, -1.5)}
+NUM_TRIPS = 55  # float('inf')
+NUM_DRIVERS = float('inf')
+invalid_trips = {(-1, -1.5), (-1.5, -1), (1, 1.5), (1, -1.5)}
+
 
 def filtered(d, iter):
-    return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (t.lp.d in driverNodes and t.lp.d[3:] != d.address)) and t.los in d.los
-                            and not ( abs(nodeCaps[t.lp.o] + nodeCaps[t.lp.d]) > d.capacity )  , iter)
+    return filter(lambda t: not ((t.lp.o in driverNodes and t.lp.o[3:] != d.address) or (
+                t.lp.d in driverNodes and t.lp.d[3:] != d.address)) and t.los in d.los
+                            and not (abs(nodeCaps[t.lp.o] + nodeCaps[t.lp.d]) > d.capacity), iter)
+
+
 # ((abs(nodeCaps[t.lp.o]) <= d.capacity + nodeCaps[t.lp.d]) and (d.capacity >= nodeCaps[t.lp.o] + nodeCaps[t.lp.d]))
 
 
@@ -32,31 +32,30 @@ driver_df = pd.read_csv("../Data/in_drivers.csv", keep_default_na=False)
 mdl = Model(name="Patient Transport")
 
 # Input Data Structures
-drivers = list() # List of all Drivers
+drivers = list()  # List of all Drivers
 primary_trips = set()
-all_trips = dict() # Maps Trip-ID to Trip Object
-driverNodes = set() # All Driver Nodes
-driverStart = set() # Starting Nodes of Driver
-driverEnd = set() # Ending Nodes of Driver
+all_trips = dict()  # Maps Trip-ID to Trip Object
+driverNodes = set()  # All Driver Nodes
+driverStart = set()  # Starting Nodes of Driver
+driverEnd = set()  # Ending Nodes of Driver
 
-requestNodes = set() # Nodes of request trips
-requestStart = set() # Starting nodes of request trips
-requestEnd = set() # Ending nodes of request trips
-requestPair = dict() # Map from request start to request end
-nodeCaps = dict() # Map from node to capacity delta
-nodeDeps = dict() # Earliest departure time from a node
-nodeArrs = dict() # earliest arrival time to a node
-primaryTID = dict() # Map from starting location to ID of primary trip from that location
+requestNodes = set()  # Nodes of request trips
+requestStart = set()  # Starting nodes of request trips
+requestEnd = set()  # Ending nodes of request trips
+requestPair = dict()  # Map from request start to request end
+nodeCaps = dict()  # Map from node to capacity delta
+nodeDeps = dict()  # Earliest departure time from a node
+nodeArrs = dict()  # earliest arrival time to a node
+primaryTID = dict()  # Map from starting location to ID of primary trip from that location
 
 # Decision Variable Structures
-trips = dict() # Map from driver to map of trip to model variable
-times = dict() # Map from driver to map of trip to model variable
-caps = dict() # Map from driver to map of trip to model variable
+trips = dict()  # Map from driver to map of trip to model variable
+times = dict()  # Map from driver to map of trip to model variable
+caps = dict()  # Map from driver to map of trip to model variable
 
 # Additional Structures
-intrips = dict() # Map from driver to Map from location to list of trips
-outtrips = dict() # Map from driver to Map from location to list of trips
-
+intrips = dict()  # Map from driver to Map from location to list of trips
+outtrips = dict()  # Map from driver to Map from location to list of trips
 
 # Preprocess input data
 
@@ -114,10 +113,10 @@ for index, row in trip_df.iterrows():
         nodeCaps[start] = cap
         nodeCaps[end] = -cap
         t = Trip(start, end, cap, id, type, pick, drop, prefix=True, prefixLen=4)
-        nodeArrs[start] = drop - t.lp.time # 0
+        nodeArrs[start] = drop - t.lp.time  # 0
         nodeDeps[start] = pick  # max(0, pick - BUFFER)
         nodeArrs[end] = drop
-        nodeDeps[end] = pick + t.lp.time # 0 # max(0, pick - BUFFER) + t.lp.time
+        nodeDeps[end] = pick + t.lp.time  # 0 # max(0, pick - BUFFER) + t.lp.time
         # nodeArrs[start] = 1
         # nodeDeps[start] = 0
         # nodeArrs[end] = 1
@@ -138,7 +137,7 @@ for index, row in trip_df.iterrows():
             break
 
 if len(requestNodes) != 2 * count:
-    print("Not enough nodes", len(requestNodes), count )
+    print("Not enough nodes", len(requestNodes), count)
     exit(1)
 
 print("Number of Trips:", count)
@@ -227,13 +226,13 @@ for d in drivers:
     for t in filtered(d, all_trips.values()):
         # if (t.lp.o in driverNodes and t.lp.o[2:] != d.address) or (t.lp.d in driverNodes and t.lp.d[2:] != d.address):
         #     continue
-        trips[d][t] = mdl.binary_var(name='y' +'_' + str(d.id) +'_' + str(t.id))
+        trips[d][t] = mdl.binary_var(name='y' + '_' + str(d.id) + '_' + str(t.id))
         # if d.los == 'A' and t.los != 'A':
         #     mdl.add_constraint(ct=trips[d][t] == 0)
-        times[d][t] = mdl.continuous_var(lb=0, ub=1, name='t' +'_' + str(d.id) +'_' + str(t.id))
+        times[d][t] = mdl.continuous_var(lb=0, ub=1, name='t' + '_' + str(d.id) + '_' + str(t.id))
         mdl.add_constraint(times[d][t] - trips[d][t] <= 0)
         # mdl.add_equivalence(trips[d][t], times[d][t] > 0)
-        caps[d][t] = mdl.continuous_var(lb=0, ub=d.capacity, name='q' +'_' + str(d.id) +'_' + str(t.id))
+        caps[d][t] = mdl.continuous_var(lb=0, ub=d.capacity, name='q' + '_' + str(d.id) + '_' + str(t.id))
         mdl.add_constraint(caps[d][t] - trips[d][t] * d.capacity <= 0)
 
 # print(outtrips)
@@ -294,9 +293,9 @@ for rN in requestNodes:
             totalin += trips[d][intrip]
         for otrip in filtered(d, outtrips[rN]):
             totalout -= trips[d][otrip]
-    mdl.add_constraint(ct= totalin <= 1, ctname='flowin' + '_' + str(rN)[:5])
-    mdl.add_constraint(ct= totalout >= -1, ctname='flowout' + '_' + str(rN)[:5])
-    mdl.add_constraint(ct= totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
+    mdl.add_constraint(ct=totalin <= 1, ctname='flowin' + '_' + str(rN)[:5])
+    mdl.add_constraint(ct=totalout >= -1, ctname='flowout' + '_' + str(rN)[:5])
+    mdl.add_constraint(ct=totalin + totalout == 0, ctname='flowinout' + '_' + str(rN)[:5])
 for d in drivers:
     for dS in driverStart:
         if dS[3:] != d.address:
@@ -304,7 +303,7 @@ for d in drivers:
         total = 0
         for otrip in filtered(d, outtrips[dS]):
             total -= trips[d][otrip]
-        mdl.add_constraint(ct= total == -1, ctname='driverout' + '_' + str(d.id))
+        mdl.add_constraint(ct=total == -1, ctname='driverout' + '_' + str(d.id))
 for d in drivers:
     for dE in driverEnd:
         if dE[3:] != d.address:
@@ -312,7 +311,7 @@ for d in drivers:
         total = 0
         for intrip in filtered(d, intrips[dE]):
             total += trips[d][intrip]
-        mdl.add_constraint(ct= total == 1, ctname='driverin' + '_'  + str(d.id))
+        mdl.add_constraint(ct=total == 1, ctname='driverin' + '_' + str(d.id))
 
 print("Set flow conservation constraints")
 
@@ -335,7 +334,7 @@ for loc in requestNodes:
             intripTimes += intrip.lp.time * trips[d][intrip]
             # intripEnds += intrip.end * trips[d][intrip]
     mdl.add_constraint(intripSum + intripTimes <= intripEnds)
-        # obj += dropOffPenalty * ((intripSum + intripTimes) - intripEnds)
+    # obj += dropOffPenalty * ((intripSum + intripTimes) - intripEnds)
 print("Set arrival time constriants")
 
 # for d in drivers:
@@ -357,7 +356,7 @@ for loc in requestNodes:
         # obj += pickupEarlyPenalty * (otripStarts - (otripSum + BUFFER))
         # obj += pickupLatePenalty * (otripStarts - (otripSum - BUFFER))
     mdl.add_constraint(otripSum + BUFFER >= otripStarts)
-    mdl.add_constraint(otripSum  <= otripStarts + BUFFER)
+    mdl.add_constraint(otripSum <= otripStarts + BUFFER)
 print("Set departure time constraints")
 
 """
@@ -379,8 +378,8 @@ for trp in all_trips:
             for d2 in drivers:
                 for otrip in filtered(d2, outtrips[alt_trip_loc]):
                     osum += times[d2][otrip]
-                            # print(d.id, d2.id, repr(intrip), repr(otrip))
-                            # mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d2][otrip])
+                    # print(d.id, d2.id, repr(intrip), repr(otrip))
+                    # mdl.add_indicator(trips[d][intrip], times[d][intrip] + intrip.lp.time <= times[d2][otrip])
             mdl.add_constraint(isum + itimeSum <= osum)
 print("Set primary trip precedence constraints")
 
@@ -403,7 +402,7 @@ for loc in requestNodes:
             total += d.id * trips[d][intrip]
         for otrip in filtered(d, outtrips[loc]):
             total -= d.id * trips[d][otrip]
-    mdl.add_constraint(ct= total == 0)
+    mdl.add_constraint(ct=total == 0)
 
 for rS in requestStart:
     rE = requestPair[rS]
@@ -413,7 +412,7 @@ for rS in requestStart:
             total += d.id * trips[d][intrip]
         for otrip in filtered(d, outtrips[rS]):
             total -= d.id * trips[d][otrip]
-    mdl.add_constraint(ct= total == 0)
+    mdl.add_constraint(ct=total == 0)
 print("Set incoming driver is the same as outgoing driver constraints")
 
 """
@@ -460,7 +459,7 @@ try:
     print("Warm starting from single rider constraint solution")
     mdl.add_mip_start(first_solve)
     mdl.remove_progress_listener(pL)
-    pL = GapListener(3600*6, 0.01)
+    pL = GapListener(3600 * 6, 0.01)
     mdl.add_progress_listener(pL)
     mdl.solve()
     print("Final solve status: " + str(mdl.get_solve_status()))
@@ -478,8 +477,10 @@ finally:
                     totalMiles += t.lp.miles
                     print(str(d.id) + " : " + str(t) + " at time ", str(times[d][t].solution_value), "holding ",
                           str(caps[d][t].solution_value), " out of total capacity ", d.capacity)
-                elif var.solution_value == 0 and (abs(times[d][t].solution_value) >= 0.1 or abs(caps[d][t].solution_value) >= 0.1):
-                    print("Something Wrong, non ok trips with time/or cap not equal to 0", times[d][t].solution_value, caps[d][t].solution_value)
+                elif var.solution_value == 0 and (
+                        abs(times[d][t].solution_value) >= 0.1 or abs(caps[d][t].solution_value) >= 0.1):
+                    print("Something Wrong, non ok trips with time/or cap not equal to 0", times[d][t].solution_value,
+                          caps[d][t].solution_value)
         # for driver_trips in times.values():
         #     for t, var in driver_trips.items():
         #         print(var.get_name() + ": " + str(var.solution_value))
@@ -529,5 +530,3 @@ finally:
         print("Total Number of primary trip miles by each driver: ")
         print(driverMiles)
 print("Ended", datetime.now())
-
-
