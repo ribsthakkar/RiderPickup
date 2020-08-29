@@ -39,45 +39,37 @@ fairness attributes for the drivers.
 
 ### Prepare Environment
 
-1. Make sure IBM CPLEX Solver is installed. Use the following link:
-   [CPLEX](https://www.ibm.com/support/knowledgecenter/SSSA5P_12.7.1/ilog.odms.cplex.help/CPLEX/GettingStarted/topics/set_up/setup_synopsis.html)
-   Follow the instructions on the website to prepare the CPLEX
-   Installation with usage for Python. Make sure you do not re-install
-   CPLEX using PIP or it will overwrite the licensed version from IBM.
-   However, if you are unable to obtain a CPLEX license, PIP will
-   install a community version of CPLEX. (Warning: the community version
-   will likely only support on the order of 2 drivers and 7-10 trips)
-2. Clone this repository:
+Make sure IBM CPLEX Solver is installed. Use the following link:
+[CPLEX](https://www.ibm.com/support/knowledgecenter/SSSA5P_12.7.1/ilog.odms.cplex.help/CPLEX/GettingStarted/topics/set_up/setup_synopsis.html)
+Follow the instructions on the website to prepare the CPLEX
+Installation with usage for Python. Make sure you do not re-install
+CPLEX using PIP or it will overwrite the licensed version from IBM.
+However, if you are unable to obtain a CPLEX license, PIP will
+install a community version of CPLEX. (Warning: the community version
+will likely only support on the order of 2 drivers and 7-10 trips)
+
+Setup prerequisites
 
 ```
-git clone https://github.com/ribsthakkar/RiderPickup
-```
-
-3. Setup virtual environment
-
-```
-cd RiderPickup/
-python -m venv venv/
-source venv/bin/activate
-export PYTHONPATH="$PYTHONPATH:<path_to_current_directory>"
-```
-
-4. Install Requirements:
-
-```
-sudo apt-get install postgresql postgresql-server-dev-all
-sudo -u postgres createuser -P -d -r -s pickup
-sudo -u postgres createdb -O pickup pickup
-
-pip install -r requirements.txt
-
-# install CPLEX
 cd ~/Downloads
 chmod 755 cplex_studio1210.linux-x86-64.bin
 ./cplex_studio1210.linux-x86-64.bin
-python /opt/ibm/ILOG/CPLEX_Studio1210/python/setup.py install
 
+sudo apt-get install postgresql postgresql-server-dev-all
+sudo -u postgres createuser -P -d -r -s pickup
+sudo -u postgres createdb -O pickup pickup
+```
+
+Setup python app
+
+```
+git clone https://github.com/ribsthakkar/RiderPickup
+cd RiderPickup/
+python3 -m virtualenv ~/.riderpickup
+source ~/.riderpickup/bin/activate
+python3 -m pip install -r requirements.txt
 python setup.py develop
+python /opt/ibm/ILOG/CPLEX_Studio1210/python/setup.py install
 ```
 
 ### Setup
