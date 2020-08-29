@@ -85,7 +85,7 @@ the application configuration parameters.
 is a child parameter of the field before the "." See the
 `config/sample_app_config.yaml` for proper format.*
 
-|Parameter                              | Type    | Details                                                                                                                                   |
+| Parameter                   | Type    | Details                                                                                                                                   |
 |-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | database.enabled            | Boolean | True if input data such as revenue table, merge addresses, driver table will come from database. Otherwise it uses CSVs with paths below |
 | database.url                | String  | URL to PostgreSQL database. Ignored if database.enabled is False                                                                        |
