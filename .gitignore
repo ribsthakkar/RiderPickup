@@ -1,5 +1,6 @@
 .idea
 __pycache__
+*.egg-info
 *final_output*
 assignments.csv
 locations30.csv
@@ -13,8 +14,10 @@ calc_trips.csv
 /geocode.key
 *.html
 *.pyc
-input/
-output/
+/input/*
+!/input/.gitkeep
+/output/*
+!/output/.gitkeep
 config/app_config.yaml
 config/optimizer_config.yaml
 config/log_config.yaml

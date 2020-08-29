@@ -1,8 +1,8 @@
 database:
   enabled: False
-  url: postgres://rides:password@localhost:5432/rides_test
+  url: postgres://pickup:pickup@localhost:5432/pickup
 geocoder_key: 78bdef6c2b254abaa78c55640925d3db
-trips_parser: LogistiCare
+trips_parser: CSV
 optimizer: GeneralOptimizer
 seed: 10
 merge_address_table_path: sample_data/sample_merge_details.csv

@@ -14,12 +14,12 @@ parsers = {'LogistiCare': LogistiCareParser, 'CSV': CSVParser}
 optimizers = {'GeneralOptimizer': GeneralOptimizer}
 
 
-if __name__ == "__main__":
+def avicena_run_cli():
     init_logging()
     parser = argparse.ArgumentParser(description='Run the Patient Dispatch Model')
     required_named = parser.add_argument_group('required arguments')
 
-    required_named.add_argument('-n', '--name', action='store', type=str, dest='name', default='Patient Dispatch',
+    required_named.add_argument('-n', '--name', action='store', type=str, dest='name', default='PatientDispatch',
                                 help='Name of Model')
 
     required_named.add_argument('-s', '--speed', action='store', type=int, dest='speed', default=50,
@@ -30,9 +30,11 @@ if __name__ == "__main__":
                                 help='Date in MM-DD-YYYY format')
 
     required_named.add_argument('-t', '--trips-file', action='store', type=str, dest='trips_file',
+                                default='sample_data/sample_trips.csv',
                                 help='Path to Trips File')
 
     required_named.add_argument('-i', '--driver-ids', nargs='+', type=int, dest='driver_ids',
+                                default=[101, 102, 103, 104],
                                 help='List of driver IDs separated by spaces')
 
     args = parser.parse_args()
@@ -72,3 +74,7 @@ if __name__ == "__main__":
                                  app_config['output_directory'])
         generate_visualization_from_df(solution, drivers, args.name,
                                        app_config['output_directory'] + '/visualization.html', False)
+
+
+if __name__ == "__main__":
+    avicena_run_cli()

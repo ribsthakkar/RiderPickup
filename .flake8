@@ -1,0 +1,268 @@
+[flake8]
+select =
+  # https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  # E101  indentation contains mixed spaces and tabs
+  E101,
+  # E111  indentation is not a multiple of four
+  E111,
+  # E112  expected an indented block
+  E112,
+  # E113  unexpected indentation
+  E113,
+  # E114  indentation is not a multiple of four (comment)
+  E114,
+  # E115  expected an indented block (comment)
+  E115,
+  # E116  unexpected indentation (comment)
+  E116,
+  # E117  over-indented
+  E117,
+  # E121 (*^)  continuation line under-indented for hanging indent
+  E121,
+  # E122 (^)  continuation line missing indentation or outdented
+  E122,
+  # E123 (*)  closing bracket does not match indentation of opening bracket's line
+  E123,
+  # E124 (^)  closing bracket does not match visual indentation
+  E124,
+  # E125 (^)  continuation line with same indent as next logical line
+  E125,
+  # E126 (*^)  continuation line over-indented for hanging indent
+  E126,
+  # E127 (^)  continuation line over-indented for visual indent
+  E127,
+  # E128 (^)  continuation line under-indented for visual indent
+  #E128,
+  # E129 (^)  visually indented line with same indent as next logical line
+  E129,
+  # E131 (^)  continuation line unaligned for hanging indent
+  E131,
+  # E133 (*)  closing bracket is missing indentation
+  E133,
+  # E201  whitespace after '('
+  E201,
+  # E202  whitespace before ')'
+  E202,
+  # E203  whitespace before ':'
+  E203,
+  # E211  whitespace before '('
+  E211,
+  # E221  multiple spaces before operator
+  E221,
+  # E222  multiple spaces after operator
+  E222,
+  # E223  tab before operator
+  E223,
+  # E224  tab after operator
+  E224,
+  # E225  missing whitespace around operator
+  E225,
+  # E226 (*)  missing whitespace around arithmetic operator
+  E226,
+  # E227  missing whitespace around bitwise or shift operator
+  E227,
+  # E228  missing whitespace around modulo operator
+  E228,
+  # E231  missing whitespace after ',', ';', or ':'
+  E231,
+  # E241 (*)  multiple spaces after ','
+  E241,
+  # E242 (*)  tab after ','
+  E242,
+  # E251  unexpected spaces around keyword / parameter equals
+  E251,
+  # E261  at least two spaces before inline comment
+  E261,
+  # E262  inline comment should start with '# '
+  E262,
+  # E265  block comment should start with '# '
+  E265,
+  # E266  too many leading '#' for block comment
+  E266,
+  # E271  multiple spaces after keyword
+  E271,
+  # E272  multiple spaces before keyword
+  E272,
+  # E273  tab after keyword
+  E273,
+  # E274  tab before keyword
+  E274,
+  # E275  missing whitespace after keyword
+  E275,
+  # E301  expected 1 blank line, found 0
+  E301,
+  # E302  expected 2 blank lines, found 0
+  E302,
+  # E303  too many blank lines (3)
+  E303,
+  # E304  blank lines found after function decorator
+  E304,
+  # E305  expected 2 blank lines after end of function or class
+  E305,
+  # E306  expected 1 blank line before a nested definition
+  E306,
+  # E401  multiple imports on one line
+  E401,
+  # E402  module level import not at top of file
+  E402,
+  # E501 (^)  line too long (82 > 79 characters)
+  E501,
+  # E502  the backslash is redundant between brackets
+  E502,
+  # E701  multiple statements on one line (colon)
+  E701,
+  # E702  multiple statements on one line (semicolon)
+  E702,
+  # E703  statement ends with a semicolon
+  E703,
+  # E704 (*)  multiple statements on one line (def)
+  E704,
+  # E711 (^)  comparison to None should be 'if cond is None:'
+  E711,
+  # E712 (^)  comparison to True should be 'if cond is True:' or 'if cond:'
+  E712,
+  # E713  test for membership should be 'not in'
+  E713,
+  # E714  test for object identity should be 'is not'
+  E714,
+  # E721 (^)  do not compare types, use 'isinstance()'
+  E721,
+  # E722  do not use bare except, specify exception instead
+  E722,
+  # E731  do not assign a lambda expression, use a def
+  E731,
+  # E741  do not use variables named 'l', 'O', or 'I'
+  E741,
+  # E742  do not define classes named 'l', 'O', or 'I'
+  E742,
+  # E743  do not define functions named 'l', 'O', or 'I'
+  E743,
+  # E901  SyntaxError or IndentationError
+  E901,
+  # E902  IOError
+  E902,
+  # W191  indentation contains tabs
+  W191,
+  # W291  trailing whitespace
+  W291,
+  # W292  no newline at end of file
+  W292,
+  # W293  blank line contains whitespace
+  W293,
+  # W391  blank line at end of file
+  W391,
+  # W503 (*)  line break before binary operator
+  W503,
+  # W504 (*)  line break after binary operator
+  W504,
+  # W505 (*^)  doc line too long (82 > 79 characters)
+  W505,
+  # W601  .has_key() is deprecated, use 'in'
+  W601,
+  # W602  deprecated form of raising exception
+  W602,
+  # W603  '<>' is deprecated, use '!='
+  W603,
+  # W604  backticks are deprecated, use 'repr()'
+  W604,
+  # W605  invalid escape sequence 'x'
+  W605,
+  # W606  'async' and 'await' are reserved keywords starting with Python 3.7
+  W606,
+  # https://flake8.pycqa.org/en/latest/user/error-codes.html
+  E902,
+  # F401  module imported but unused
+  F401,
+  # F402  import module from line N shadowed by loop variable
+  F402,
+  # F403  'from module import *' used; unable to detect undefined names
+  F403,
+  # F404  future import(s) name after other statements
+  F404,
+  # F405  name may be undefined, or defined from star imports: module
+  F405,
+  # F406  'from module import *' only allowed at module level
+  F406,
+  # F407  an undefined __future__ feature name was imported
+  # F501  invalid % format literal
+  F501,
+  # F502  % format expected mapping but got sequence
+  F502,
+  # F503  % format expected sequence but got mapping
+  F503,
+  # F504  % format unused named arguments
+  F504,
+  # F505  % format missing named arguments
+  F505,
+  # F506  % format mixed positional and named arguments
+  F506,
+  # F507  % format mismatch of placeholder and argument count
+  F507,
+  # F508  % format with * specifier requires a sequence
+  F508,
+  # F509  % format with unsupported format character
+  F509,
+  # F521  .format(...) invalid format string
+  F521,
+  # F522  .format(...) unused named arguments
+  F522,
+  # F523  .format(...) unused positional arguments
+  F523,
+  # F524  .format(...) missing argument
+  F524,
+  # F525  .format(...) mixing automatic and manual numbering
+  F525,
+  # F541  f-string without any placeholders
+  F541,
+  # F601  dictionary key name repeated with different values
+  F601,
+  # F602  dictionary key variable name repeated with different values
+  F602,
+  # F621  too many expressions in an assignment with star-unpacking
+  F621,
+  # F622  two or more starred expressions in an assignment (a, *b, *c = d)
+  F622,
+  # F631  assertion test is a tuple, which is always True
+  F631,
+  # F632  use ==/!= to compare str, bytes, and int literals
+  F632,
+  # F633  use of >> is invalid with print function
+  F633,
+  # F634  if test is a tuple, which is always True
+  F634,
+  # F701  a break statement outside of a while or for loop
+  F701,
+  # F702  a continue statement outside of a while or for loop
+  F702,
+  # F703  a continue statement in a finally block in a loop
+  F703,
+  # F704  a yield or yield from statement outside of a function
+  F704,
+  # F705  a return statement with arguments inside a generator
+  F705,
+  # F706  a return statement outside of a function/method
+  F706,
+  # F707  an except: block as not the last exception handler
+  F707,
+  # F721  syntax error in doctest
+  F721,
+  # F722  syntax error in forward annotation
+  F722,
+  # F723  syntax error in type comment
+  F723,
+  # F811  redefinition of unused name from line N
+  F811,
+  # F812  list comprehension redefines name from line N
+  F812,
+  # F821  undefined name name
+  F821,
+  # F822  undefined name name in __all__
+  F822,
+  # F823  local variable name … referenced before assignment
+  F823,
+  # F831  duplicate argument name in function definition
+  F831,
+  # F841  local variable name is assigned to but never used
+  F841,
+  # F901  raise NotImplemented should be raise NotImplementedError
+  F901

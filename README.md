@@ -1,7 +1,10 @@
 # Avicena
+
 ### Problem Description
+
 Avicena is an application that solves the patient pickup and dropoff
 problem. Below is a rough description of the problem's attributes:
+
 * There are some number of patients that must be transported from one
   location to one or more other locations through out the day, and there
   are some number of drivers available to complete the trips.
@@ -28,13 +31,14 @@ problem. Below is a rough description of the problem's attributes:
 * The goal is to minimize the total amount of time spent traveling on
   the road while ensuring to meet all of driver fairness requirements
   and trip scheduling requirements.
-  
+
 In general, the patient pickup and dropoff problem is a special case of
 the Vehicle Routing with Time Windows problem. However, here we have
 additional constraints that take into account the preferences and
 fairness attributes for the drivers.
 
 ### Prepare Environment
+
 1. Make sure IBM CPLEX Solver is installed. Use the following link:
    [CPLEX](https://www.ibm.com/support/knowledgecenter/SSSA5P_12.7.1/ilog.odms.cplex.help/CPLEX/GettingStarted/topics/set_up/setup_synopsis.html)
    Follow the instructions on the website to prepare the CPLEX
@@ -43,24 +47,43 @@ fairness attributes for the drivers.
    However, if you are unable to obtain a CPLEX license, PIP will
    install a community version of CPLEX. (Warning: the community version
    will likely only support on the order of 2 drivers and 7-10 trips)
-2. Clone this repository: 
+2. Clone this repository:
+
 ```
 git clone https://github.com/ribsthakkar/RiderPickup
 ```
-3. Setup virtual environment 
+
+3. Setup virtual environment
+
 ```
 cd RiderPickup/
 python -m venv venv/
 source venv/bin/activate
 export PYTHONPATH="$PYTHONPATH:<path_to_current_directory>"
 ```
+
 4. Install Requirements:
+
 ```
+sudo apt-get install postgresql postgresql-server-dev-all
+sudo -u postgres createuser -P -d -r -s pickup
+sudo -u postgres createdb -O pickup pickup
+
 pip install -r requirements.txt
+
+# install CPLEX
+cd ~/Downloads
+chmod 755 cplex_studio1210.linux-x86-64.bin
+./cplex_studio1210.linux-x86-64.bin
+python /opt/ibm/ILOG/CPLEX_Studio1210/python/setup.py install
+
+python setup.py develop
 ```
 
 ### Setup
+
 #### Application Configuration
+
 `config/sample_app_config.yaml` provides an example configuration YAML.
 A configuration file of this format must be placed at the path
 `config/app_config.yaml` to run the application. Below is a glossary of
@@ -70,18 +93,18 @@ the application configuration parameters.
 is a child parameter of the field before the "." See the
 `config/sample_app_config.yaml` for proper format.*
 
-|Parameter                             | Type    | Details                                                                                                                                   |
+|Parameter                              | Type    | Details                                                                                                                                   |
 |-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| database.enabled           | Boolean | True if input data such as revenue table, merge addresses, driver table will come from database. Otherwise it uses CSVs with paths below |
-| database.url               | String  | URL to PostgreSQL database. Ignored if database.enabled is False                                                                        |
-| geocoder_key               | String  | API Key for geocoding. Currently only support [OpenCage Geocoder](https://opencagedata.com/api)                                     |
-| trips_parser               | String  | Parser used to read the incoming trips file. See more [here](./avicena/parsers/README.md)                                                                                   |
+| database.enabled            | Boolean | True if input data such as revenue table, merge addresses, driver table will come from database. Otherwise it uses CSVs with paths below |
+| database.url                | String  | URL to PostgreSQL database. Ignored if database.enabled is False                                                                        |
+| geocoder_key                | String  | API Key for geocoding. Currently only support [OpenCage Geocoder](https://opencagedata.com/api)                                     |
+| trips_parser                | String  | Parser used to read the incoming trips file. See more [here](./avicena/parsers/README.md)                                                                                   |
 | optimizer                   | String  | Model used to calculate and assign trips. See more details below.                                                                                                  |
 | seed                        | Integer | Sets the Python random seed.                                                                                                             |
-| merge_address_table_path | String  | Path to CSV representation of merge_address_table. Ignored if database.enabled is True.                                              |
-| revenue_table_path        | String  | Path to CSV representation of revenue rate. Ignored if database.enabled is True.                                                       |
-| driver_table_path         | String  | Path to CSV representation of drivers table. Ignored if database.enabled is True.                                                      |
-| output_directory           | String  | Path to directory where the generated files are stored. These include the one or more parsed trips file (depending on parser), the resulting CSV with the solution, and an HTML page that provides a visualization of the solution.                                          |
+| merge_address_table_path    | String  | Path to CSV representation of merge_address_table. Ignored if database.enabled is True.                                              |
+| revenue_table_path          | String  | Path to CSV representation of revenue rate. Ignored if database.enabled is True.                                                       |
+| driver_table_path           | String  | Path to CSV representation of drivers table. Ignored if database.enabled is True.                                                      |
+| output_directory            | String  | Path to directory where the generated files are stored. These include the one or more parsed trips file (depending on parser), the resulting CSV with the solution, and an HTML page that provides a visualization of the solution.                                          |
 
 In addition to the `app_config.yaml`, you will need to provide a
 `config/optimizer_config.yaml`. This configuration file provides the
@@ -90,10 +113,10 @@ used to solve the problem. Below is a list of supported optimizers and
 their configuration definitions. Samples are also provided in the
 `config/` folder.
 
-| Optimizer           	| Configuration Details          	| Comments                                                                                                                                                                                                                        	|
-|---------------------	|------------------------	|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| GeneralOptimizer         	| [Glossary](./avicena/optimizers/README.md#GeneralOptimizer)                   	| Self Developed Formulation to Solve Problem 	|
-| PDWTWOptimizer         	|  [Glossary](./avicena/optimizers/README.md#PDWTWOptimizer)                     	| (Not working in non-experimental mode yet) Formulation from following paper with additional fairness constraints integrated [here]()  	|
+| Optimizer           | Configuration Details  | Comments                                                                                                                                                                                                                        |
+|---------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GeneralOptimizer    | [Glossary](./avicena/optimizers/README.md#GeneralOptimizer) | Self Developed Formulation to Solve Problem |
+| PDWTWOptimizer      | [Glossary](./avicena/optimizers/README.md#PDWTWOptimizer)   | (Not working in non-experimental mode yet) Formulation from following paper with additional fairness constraints integrated [here]() |
 
 Finally, the app will need a `log_config.yaml` with details about how
 and what kind of logging we expect from the application. Information
@@ -102,6 +125,7 @@ module [documentation](https://docs.python.org/3/howto/logging.html).
 For simplicity, a copy of the `sample_log_config.yaml` will suffice.
 
 #### Database Setup (optional)
+
 The command-line application supports interfacing with a PostgreSQL
 database. We assume you have a PostgreSQL server hosted somewhere with a
 configured username and login. If in the database section in your
@@ -117,20 +141,22 @@ directory and name it `alembic.ini`. Modify the line in the file
 starting with `sqlalchemy.url = <fake_url>` and replace `<fake_url>` the
 URL to connect to your database. Be sure that the URL of the database
 will be the same one used in the `app_config.yaml`.
- 
- Run the command: 
- ```
- alembic upgrade head
- ```
- After that, the database tables should be created.
- 
+
+Run the command:
+
+```
+alembic upgrade head
+```
+
+After that, the database tables should be created.
+
 Once the tables are created, the *revenue_rate*, *merge_details*, and
 *driver* tables must be populated with data. In order to help populate
 your database with the required inputs, a script
-`avicena/prepare_database.py` is provided. It can be run as follows:
+`avi-import` is provided. It can be run as follows:
 
 ```
-usage: prepare_database.py [-h] -r REVENUE_TABLE_FILE -m MERGE_DETAILS_FILE -d
+usage: avi-import [-h] -r REVENUE_TABLE_FILE -m MERGE_DETAILS_FILE -d
                            DRIVER_DETAILS_FILE
 
 Populate Database with Base Information needed including Revenue Table, Merge
@@ -146,16 +172,15 @@ required arguments:
                         Path to merge details CSV
   -d DRIVER_DETAILS_FILE, --driver-details-csv DRIVER_DETAILS_FILE
                         Path to driver details CSV
-
 ```
 
 The three input CSV files must follow the same format and header as
 shown by `sample_data/sample_rev_table.csv`,
 `sample_data/sample_merge_details.csv`, and
-`sample_data/sample_drivers.csv`. 
- 
+`sample_data/sample_drivers.csv`.
 
 ### How to Run
+
 Avicena is run through the command line by simply following the format
 below. If the database is enabled in the application configuration, then
 the resulting dispatch "Assignment" and its driver specific solutions
@@ -164,10 +189,10 @@ directory you will find any files generated during the model's running.
 At the least, they include `parsed_trips.csv` with the basic trip
 details standarized and parsed from the original trips file,
 `solution.csv` with the final dispatch assignments, `visualization.html`
-which provides a visual representation of the final solution. 
+which provides a visual representation of the final solution.
 
 ```
-usage: cli_run.py [-h] [-n NAME] [-s SPEED] [-d DATE] [-t TRIPS_FILE]
+usage: avi-cli [-h] [-n NAME] [-s SPEED] [-d DATE] [-t TRIPS_FILE]
               [-i DRIVER_IDS [DRIVER_IDS ...]]
 
 Run the Patient Dispatch Model
@@ -184,5 +209,4 @@ required arguments:
                         Path to Trips File
   -i DRIVER_IDS [DRIVER_IDS ...], --driver-ids DRIVER_IDS [DRIVER_IDS ...]
                         List of driver IDs separated by spaces
-
 ```
