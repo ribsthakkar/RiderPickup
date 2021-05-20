@@ -1,5 +1,6 @@
 import datetime
 import random
+import re
 
 import pandas as pd
 
@@ -33,6 +34,16 @@ class TripPreprocess:
             return rates['10'] + rates['>10'] * (miles - 10)
 
     @staticmethod
+    def clean_address(addr):
+        text_replacements = {'\s*No Gc\s*': ' ', '\s*\*\s*': ' ', 'Apt\s?.\s?[a-zA-Z0-9]+': ' ', '\s*//\s*': ' ',
+                             'Bldg\s?.\s?[a-zA-Z0-9]+': ' ', '\s*Aust \s*': 'Austin, TX ',
+                             '\s* B \s*': 'Blvd ', '\s*Doorcode :\s*': ' ', '-\s?[0-9]+$': '', '^x\s': ''}
+        for to_replace, replace_with in text_replacements.items():
+            pattern = re.compile(to_replace)
+            addr = re.sub(pattern, replace_with, addr)
+        return addr
+
+    @staticmethod
     def prepare_and_load_trips(trips_file, revenue_table, assumptions, processed_file_name='calc_trips.csv'):
         trip_df = pd.read_csv(trips_file)
         trips = []
@@ -46,12 +57,8 @@ class TripPreprocess:
         names = {}
         for index, row in trip_df.iterrows():
             if not row['trip_status'] == "CANCELED":
-                o = row['trip_pickup_address'].replace('No Gc', '').replace('*', '').replace('Apt .', '').replace('//',
-                                                                                                                  '').replace(
-                    'Bldg .', '') + "P" + str(hash(row['trip_id']))[1:4]
-                d = row['trip_dropoff_address'].replace('No Gc', '').replace('*', '').replace('Apt .', '').replace('//',
-                                                                                                                   '').replace(
-                    'Bldg .', '') + "D" + str(hash(row['trip_id']))[1:4]
+                o = TripPreprocess.clean_address(row['trip_pickup_address']) + "P" + str(hash(row['trip_id']))[1:4]
+                d = TripPreprocess.clean_address(row['trip_dropoff_address']) + "D" + str(hash(row['trip_id']))[1:4]
                 temp_start = TripPreprocess.convert_time(str(row['trip_pickup_time']))
                 temp_end = TripPreprocess.convert_time(str(row['trip_dropoff_time']))
                 los = row['trip_los']
