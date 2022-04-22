@@ -16,7 +16,7 @@ opencage==1.2
 pandas==0.25.3
 plotly==4.5.4
 psycopg2==2.8.5
-PyPDF2==1.26.0
+PyPDF2==1.27.5
 python-dateutil==2.8.1
 python-editor==1.0.4
 pytz==2020.1
